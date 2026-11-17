@@ -10,7 +10,9 @@ import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { createVillage, findMyVillage } from "../api";
+import { BACKDROP_CARD_TOP } from "../lib/render";
 import type { Village } from "../types";
+import { HomeBackdrop } from "./HomeBackdrop";
 
 /** 첫 화면: 내 마을이 있으면 들어가기·링크 복사, 없으면 마을 만들기 */
 export function HomeScreen() {
@@ -18,6 +20,8 @@ export function HomeScreen() {
   const [mine, setMine] = useState<Village | null | undefined>(undefined);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
+  const [leaving, setLeaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const dday = useChristmasLabel();
 
@@ -44,6 +48,7 @@ export function HomeScreen() {
     setMessage(null);
     try {
       const village = await createVillage(trimmed);
+      setLeaving(true);
       router.push(`/v/${village.code}`);
     } catch (e) {
       console.error(e);
@@ -63,12 +68,16 @@ export function HomeScreen() {
   };
 
   return (
-    <main className="fixed inset-0 flex items-center justify-center bg-ground px-[calc(var(--p)*6)]">
+    <main
+      className="fixed inset-0 flex flex-col items-center overflow-y-auto bg-ground px-[calc(var(--p)*6)] pb-[calc(var(--p)*6)]"
+      style={{ paddingTop: `calc(var(--p) * ${BACKDROP_CARD_TOP})` }}
+    >
+      <HomeBackdrop />
       <PixelPanel
         as="section"
         aria-labelledby="home-title"
         pad={6}
-        className="flex w-full max-w-[360px] flex-col items-center gap-[calc(var(--p)*4)] text-ink"
+        className={`relative flex w-full max-w-[360px] shrink-0 flex-col items-center gap-[calc(var(--p)*4)] text-ink ${leaving ? "pixel-leave" : ""}`}
       >
         <h1 id="home-title" className="text-display flex items-center gap-[calc(var(--p)*3)]">
           데굴레터
@@ -81,7 +90,14 @@ export function HomeScreen() {
         {mine && (
           <div className="flex w-full flex-col gap-[calc(var(--p)*4)]">
             <p className="text-label text-center">{mine.name}의 마을</p>
-            <PixelButton variant="primary" className="w-full" onClick={() => router.push(`/v/${mine.code}`)}>
+            <PixelButton
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                setLeaving(true);
+                router.push(`/v/${mine.code}`);
+              }}
+            >
               내 마을 가기
             </PixelButton>
             <PixelButton icon="send" className="w-full" onClick={() => copyLink(mine)}>

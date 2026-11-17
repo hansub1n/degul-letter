@@ -135,6 +135,84 @@ const PAL = {
   hammerHead: "#B8C2D8",
 } as const;
 
+/**
+ * 밤 모드(`<html data-time="night">`)에서만 바뀌는 땅 색과 창문 빛 웅덩이.
+ * globals.css의 :root[data-time="night"]와 같은 값
+ */
+const PAL_NIGHT = {
+  ground: "#4A4F86",
+  groundDot: "#42467A",
+  groundGlint: "#8E95C8",
+  path: "#3E4275",
+  pathDeep: "#363A6A",
+  groundShadow: "#33366A",
+} as const;
+/** 창문 빛 웅덩이 (바깥 → 안쪽). 밤 땅 위에서 따뜻하게 보이는 색 */
+const GLOW_OUTER = "#6A5D88";
+const GLOW_INNER = "#A68A7A";
+/**
+ * 밤에는 집·나무·우체통·눈덩이·눈사람 그림에 이 색을 곱해서(multiply) 달빛 아래 푸른 보라로 만든다.
+ * 흰 눈은 이 색 그대로가 되어 밤 땅보다 한참 밝다. 창문과 전구는 곱하지 않아서 따뜻하게 빛난다.
+ */
+const NIGHT_MUL = "#A3A8DE";
+/** 캐릭터와 망치는 덜 어둡게 곱해서 밤에도 얼굴이 또렷하다 */
+const NIGHT_MUL_HERO = "#D6D8F4";
+/** 밤의 흰 눈 색 (= 흰색 × NIGHT_MUL). 연기, 꺼진 전구 등 직접 칠하는 곳에 쓴다 */
+const NIGHT_SNOW = NIGHT_MUL;
+const NIGHT_SNOW_EDGE = "#6E74AC";
+
+type GroundPal = { ground: string; groundDot: string; groundGlint: string; path: string; pathDeep: string; groundShadow: string };
+const PAL_DAY: GroundPal = {
+  ground: PAL.ground,
+  groundDot: PAL.groundDot,
+  groundGlint: PAL.groundGlint,
+  path: PAL.path,
+  pathDeep: PAL.pathDeep,
+  groundShadow: PAL.groundShadow,
+};
+
+/** 지금 그리는 땅의 색 (렌더러를 만들 때 낮/밤 중 하나로 정한다) */
+let groundPal: GroundPal = PAL_DAY;
+
+function isNight(): boolean {
+  return typeof document !== "undefined" && document.documentElement.dataset.time === "night";
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+const tintCache = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>();
+
+/** 그림에 색을 곱한 새 그림 (투명한 칸은 그대로). 같은 그림·색이면 만들어 둔 것을 다시 쓴다 */
+function tinted(sprite: HTMLCanvasElement, mul: string): HTMLCanvasElement {
+  let byColor = tintCache.get(sprite);
+  if (!byColor) {
+    byColor = new Map();
+    tintCache.set(sprite, byColor);
+  }
+  const cached = byColor.get(mul);
+  if (cached) return cached;
+  const out = makeSprite(sprite.width, sprite.height, (ctx) => {
+    ctx.drawImage(sprite, 0, 0);
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = mul;
+    ctx.fillRect(0, 0, sprite.width, sprite.height);
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.drawImage(sprite, 0, 0);
+  });
+  byColor.set(mul, out);
+  return out;
+}
+
+/** 밤의 창문: 곱하지 않은 따뜻한 창문과 문고리를 집 그림 위에 다시 칠한다 (bright = 한 칸 밝아진 순간) */
+function paintNightWindow(ctx: CanvasRenderingContext2D, hx: number, hy: number, bright: boolean): void {
+  rect(ctx, bright ? PAL.windowLight : PAL.window, hx + 11, hy + 27, 9, 7);
+  if (!bright) rect(ctx, PAL.windowLight, hx + 11, hy + 27, 4, 3);
+  rect(ctx, "#5E4A3C", hx + 15, hy + 27, 1, 7);
+  rect(ctx, PAL.window, hx + 32, hy + 37, 1, 2);
+}
+
 /** "#RRGGBB" → [r, g, b] (땅처럼 픽셀 배열에 직접 쓰는 곳에서 쓴다) */
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
@@ -202,7 +280,7 @@ function drawOutlined(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, 
 }
 
 function shadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rw: number): void {
-  ctx.fillStyle = PAL.groundShadow;
+  ctx.fillStyle = groundPal.groundShadow;
   const rh = Math.max(1, Math.round(rw * 0.35));
   for (let dy = -rh; dy <= rh; dy++) {
     const w = Math.round(rw * Math.sqrt(1 - (dy * dy) / ((rh + 0.5) * (rh + 0.5))));
@@ -429,6 +507,22 @@ function makeCrouchSprite(): HTMLCanvasElement {
   });
 }
 
+/** 손 흔들기: 만세 그림에서 한쪽 팔만 든 모습 (홈 배경용). 11x13, 발이 맨 아랫줄. */
+function makeWaveSprite(): HTMLCanvasElement {
+  return makeSprite(11, 13, (ctx) => {
+    const c = PLAYER_COLORS;
+    paintCheerHead(ctx);
+    rect(ctx, c.coat, 1, 4, 1, 5);
+    rect(ctx, c.skin, 1, 3, 1, 1);
+    rect(ctx, c.scarf, 3, 7, 5, 1);
+    rect(ctx, c.coat, 2, 8, 7, 3);
+    rect(ctx, c.coat, 8, 8, 1, 2);
+    rect(ctx, c.coatShade, 3, 11, 5, 1);
+    rect(ctx, INK, 3, 12, 2, 1);
+    rect(ctx, INK, 6, 12, 2, 1);
+  });
+}
+
 const playerSprites = new Map<string, HTMLCanvasElement>();
 function playerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
   const key = `${dir}:${step}`;
@@ -443,7 +537,7 @@ function playerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
 // ---------- 우체통 ----------
 
 /** 집 옆 빨간 우체통 14x18. 편지가 있으면 봉투가 삐죽 나오고 노란 깃발이 올라간다. 발밑 가운데가 (5, 17). */
-function makeMailboxSprite(hasMail: boolean): HTMLCanvasElement {
+function makeMailboxSprite(hasMail: boolean, flagUp = false): HTMLCanvasElement {
   return outline(makeSprite(14, 18, (ctx) => {
     if (hasMail) {
       rect(ctx, PAL.slate, 3, 0, 5, 4);
@@ -459,7 +553,7 @@ function makeMailboxSprite(hasMail: boolean): HTMLCanvasElement {
     if (hasMail) rect(ctx, PAL.snow, 4, 6, 3, 1);
     // 깃발: 편지가 오면 올라간다
     rect(ctx, PAL.roofEdge, 11, 4, 1, 6);
-    rect(ctx, PAL.gold, 12, hasMail ? 4 : 8, 2, 2);
+    rect(ctx, PAL.gold, 12, hasMail ? (flagUp ? 3 : 4) : 8, 2, 2);
     // 기둥
     rect(ctx, PAL.wood, 4, 11, 3, 7);
     rect(ctx, PAL.woodMid, 5, 11, 1, 6);
@@ -592,15 +686,20 @@ const STRIKE_OFFSET: Record<Direction, Vec & { h: number }> = {
 
 // ---------- 땅 ----------
 
-function makeGround(width: number, height: number): HTMLCanvasElement {
+function makeGround(
+  width: number,
+  height: number,
+  pal: GroundPal = groundPal,
+  house: { x: number; y: number } = HOUSE_POSITION,
+): HTMLCanvasElement {
   return makeSprite(width, height, (ctx) => {
     const img = ctx.createImageData(width, height);
     const data = img.data;
-    const base = rgb(PAL.ground);
-    const dot = rgb(PAL.groundDot);
-    const glint = rgb(PAL.groundGlint);
-    const path = rgb(PAL.path);
-    const pathDeep = rgb(PAL.pathDeep);
+    const base = rgb(pal.ground);
+    const dot = rgb(pal.groundDot);
+    const glint = rgb(pal.groundGlint);
+    const path = rgb(pal.path);
+    const pathDeep = rgb(pal.pathDeep);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const h = hash2(x, y);
@@ -608,8 +707,8 @@ function makeGround(width: number, height: number): HTMLCanvasElement {
         if (h < 0.04) c = dot;
         else if (h > 0.994) c = glint;
         // 집 앞에서 아래로 이어지는 발자국 길
-        const pathX = HOUSE_POSITION.x + Math.sin(y / 28) * 12;
-        if (y > HOUSE_POSITION.y && Math.abs(x - pathX) < 6 + Math.sin(y / 9)) {
+        const pathX = house.x + Math.sin(y / 28) * 12;
+        if (y > house.y && Math.abs(x - pathX) < 6 + Math.sin(y / 9)) {
           c = h < 0.5 ? path : pathDeep;
         }
         const i = (y * width + x) * 4;
@@ -623,6 +722,194 @@ function makeGround(width: number, height: number): HTMLCanvasElement {
   });
 }
 
+// ---------- 집 장식: 지붕 전구, 굴뚝 연기, 밤의 창문 빛 ----------
+
+/** 집 그림(48x44)의 왼쪽 위가 (hx, hy)일 때, 지붕 아래 가장자리(row 18)에 3칸 간격으로 1px 전구를 단다. */
+function paintRoofLights(ctx: CanvasRenderingContext2D, hx: number, hy: number, time: number, night: boolean): void {
+  const colors = [PAL.berry, PAL.gold, PAL.pineLight];
+  const period = night ? 0.5 : 1;
+  const phase = Math.floor(time / period) % 2;
+  // row 18의 지붕은 x 1..46. 그 아랫줄(y = 18 + 2 + 1)에 매단다
+  for (let i = 0, x = 3; x <= 44; x += 3, i++) {
+    const on = i % 2 === phase;
+    const off = night ? "#4A1C2E" : PAL.roofEdge;
+    rect(ctx, on ? colors[i % colors.length] : off, hx + x, hy + 21, 1, 1);
+  }
+}
+
+/** 굴뚝 연기: 2x2 도트 4개가 올라가며 옆으로 한 칸씩 흔들리고, 크기를 줄여 사라진다. */
+function paintSmoke(ctx: CanvasRenderingContext2D, hx: number, hy: number, time: number, night: boolean): void {
+  const color = night ? NIGHT_SNOW : SNOW_SHADE;
+  const edge = night ? NIGHT_SNOW_EDGE : SNOW_EDGE;
+  for (let i = 0; i < 4; i++) {
+    const t = (time / 3.2 + i / 4) % 1;
+    const size = t < 0.55 ? 2 : t < 0.85 ? 1 : 0;
+    if (!size) continue;
+    const x = hx + 35 + (Math.floor(t * 6) % 2 === 0 ? 0 : 1) + (t > 0.5 ? 1 : 0);
+    const y = hy - 1 - Math.round(t * 16);
+    // 밝은 하늘빛 땅 위에서도 보이게 아래 한 줄에 그늘을 붙인다
+    rect(ctx, edge, x, y + size, size, 1);
+    rect(ctx, color, x, y, size, size);
+  }
+}
+
+/** 밤: 집 앞 땅에 계단식 타원 두 겹으로 창문 빛 웅덩이를 깐다 (땅 다음, 그림자 전에) */
+function paintWindowGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+  const layer = (rx: number, ry: number, color: string) => {
+    ctx.fillStyle = color;
+    for (let dy = -ry; dy <= ry; dy++) {
+      const w = Math.round(rx * Math.sqrt(1 - (dy * dy) / ((ry + 0.5) * (ry + 0.5))));
+      ctx.fillRect(Math.round(cx - w), Math.round(cy + dy), w * 2 + 1, 1);
+    }
+  };
+  layer(18, 5, GLOW_OUTER);
+  layer(11, 3, GLOW_INNER);
+}
+
+// ---------- 홈 배경 ----------
+
+/** 홈 배경의 하늘 띠 높이(도트). 아래 2줄은 땅과 디더로 섞인다 */
+const BACKDROP_SKY = 16;
+/** 집 발밑의 y(도트). 홈 카드는 이 아래(BACKDROP_CARD_TOP)부터 놓는다 */
+const BACKDROP_HOUSE_BASE = BACKDROP_SKY + 50;
+/** 홈 카드가 시작할 y(도트). 홈은 배율 3(= --p)으로 그리므로 calc(var(--p) * 이 값)으로 쓴다 */
+export const BACKDROP_CARD_TOP = BACKDROP_HOUSE_BASE + 10;
+
+const SKY_DAY = "#BFD9F2";
+const SKY_NIGHT = "#1A1730";
+
+/** 흰 도트 구름 (아랫줄은 그늘색) */
+function paintCloud(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
+  rect(ctx, PAL.snow, x + 3, y, w - 7, 1);
+  rect(ctx, PAL.snow, x + 1, y + 1, w - 2, 1);
+  rect(ctx, PAL.snow, x, y + 2, w, 1);
+  rect(ctx, SNOW_SHADE, x + 1, y + 3, w - 2, 1);
+}
+
+/**
+ * 홈 배경: 마을 엔진 없이, 마을 그림 함수(땅·집·소나무·우체통·눈덩이)로 정적인 장면을 한 번 그린다.
+ * 배치는 시드가 고정이라 매번 같다. width/height는 캔버스 픽셀 크기, scale은 도트 1칸의 캔버스 픽셀 수.
+ * 낮/밤은 `<html data-time>`을 따른다.
+ */
+export function paintBackdrop(canvas: HTMLCanvasElement, { width, height, scale }: { width: number; height: number; scale: number }): void {
+  const night = isNight();
+  const pal: GroundPal = night ? { ...PAL_DAY, ...PAL_NIGHT } : PAL_DAY;
+  const prevPal = groundPal;
+  groundPal = pal;
+  const w = Math.ceil(width / scale);
+  const h = Math.ceil(height / scale);
+  const cx = Math.round(w / 2);
+  const house = { x: cx, y: BACKDROP_HOUSE_BASE };
+
+  const scene = makeSprite(w, h, (ctx) => {
+    // 땅 (길은 집 앞에서 아래로)
+    ctx.drawImage(makeGround(w, h, pal, house), 0, 0);
+
+    // 하늘 띠 + 땅과 이어지는 2줄 디더
+    const sky = night ? SKY_NIGHT : SKY_DAY;
+    rect(ctx, sky, 0, 0, w, BACKDROP_SKY);
+    for (let x = 0; x < w; x++) {
+      if (x % 2 === 0) rect(ctx, sky, x, BACKDROP_SKY, 1, 1);
+      if (x % 4 === 1) rect(ctx, sky, x, BACKDROP_SKY + 1, 1, 1);
+    }
+    if (night) {
+      for (let i = 0; i < Math.round(w / 8); i++) {
+        const sx = Math.floor(hash2(i, 41) * w);
+        const sy = 1 + Math.floor(hash2(41, i) * (BACKDROP_SKY - 3));
+        rect(ctx, hash2(i, i) < 0.2 ? PAL.gold : PAL.snow, sx, sy, 1, 1);
+      }
+    } else {
+      paintCloud(ctx, Math.round(w * 0.12), 4, 15);
+      paintCloud(ctx, Math.round(w * 0.58), 8, 11);
+      paintCloud(ctx, Math.round(w * 0.82), 3, 13);
+    }
+
+    const hx = house.x - 24;
+    const hy = house.y - 43;
+    if (night) paintWindowGlow(ctx, hx + 16, hy + 47);
+
+    // y 순서로 그린다 (아래쪽이 앞)
+    const items: Array<{ y: number; paint: () => void }> = [];
+    items.push({
+      y: house.y,
+      paint: () => {
+        const houseSprite = makeHouseSprite();
+        drawOutlined(ctx, night ? tinted(houseSprite, NIGHT_MUL) : houseSprite, hx, hy);
+        if (night) paintNightWindow(ctx, hx, hy, false);
+        paintRoofLights(ctx, hx, hy, 0, night);
+        paintSmoke(ctx, hx, hy, 1.2, night);
+      },
+    });
+    const treeDay = makeTreeSprite();
+    const tree = night ? tinted(treeDay, NIGHT_MUL) : treeDay;
+    // 집 둘레의 소나무 (도트 좌표: 집 가운데 기준 dx, 하늘 아래 기준 y). 집 옆은 비워 둔다
+    const trees: Array<[number, number]> = [
+      [-96, 34], [-140, 70], [104, 64], [140, 24],
+      [-196, 22], [-224, 76], [200, 40], [236, 82],
+    ];
+    for (const [dx, ty] of trees) {
+      const tx = cx + dx;
+      const y = BACKDROP_SKY + ty;
+      if (tx < -12 || tx > w + 12) continue;
+      items.push({ y, paint: () => drawOutlined(ctx, tree, tx - 10, y - 29) });
+    }
+    // 카드 옆과 화면 아래쪽 소나무 (세로 화면에서도 몇 그루는 보이게, 화면 비율 위치)
+    const lower: Array<[number, number]> = [[0.17, 0.7], [0.86, 0.68], [0.11, 0.95], [0.27, 0.98], [0.75, 0.97], [0.91, 0.99]];
+    for (const [fx, fy] of lower) {
+      const tx = Math.round(w * fx);
+      const y = Math.round(h * fy);
+      if (y < BACKDROP_CARD_TOP + 34) continue;
+      items.push({ y, paint: () => drawOutlined(ctx, tree, tx - 10, y - 29) });
+    }
+    // 우체통 (편지 있음: 깃발이 올라간 모습)
+    const mx = cx + 31;
+    const my = house.y + 2;
+    items.push({
+      y: my,
+      paint: () => {
+        shadow(ctx, mx, my, 4);
+        const mailbox = makeMailboxSprite(true);
+        drawOutlined(ctx, night ? tinted(mailbox, NIGHT_MUL) : mailbox, mx - 5, my - 17);
+      },
+    });
+    // 손 흔드는 캐릭터
+    const px = cx - 33;
+    const py = house.y + 3;
+    items.push({
+      y: py,
+      paint: () => {
+        shadow(ctx, px, py, 5);
+        const wave = makeWaveSprite();
+        ctx.drawImage(night ? tinted(wave, NIGHT_MUL_HERO) : wave, px - 5, py - 12);
+      },
+    });
+    // 굴리다 만 눈덩이 (화면 비율 위치)
+    const balls: Array<[number, number, number]> = [[0.3, 0.55, 3], [0.13, 0.66, 3], [0.58, 0.93, 3]];
+    for (const [fx, fy, r] of balls) {
+      const bx = Math.round(w * fx);
+      const y = Math.round(h * fy);
+      if (y < BACKDROP_CARD_TOP + 8) continue;
+      items.push({
+        y,
+        paint: () => {
+          shadow(ctx, bx, y, r * 0.8);
+          const ball = ballSprite(r, 0);
+          ctx.drawImage(night ? tinted(ball, NIGHT_MUL) : ball, bx - r, y - r * 2);
+        },
+      });
+    }
+    items.sort((a, b) => a.y - b.y);
+    for (const item of items) item.paint();
+  });
+
+  groundPal = prevPal;
+  canvas.width = Math.round(width);
+  canvas.height = Math.round(height);
+  const out = context2d(canvas);
+  out.imageSmoothingEnabled = false;
+  out.drawImage(scene, 0, 0, w * scale, h * scale);
+}
+
 // ---------- 렌더러 ----------
 
 type Flake = { x: number; y: number; speed: number; size: number };
@@ -631,18 +918,30 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   const screen = context2d(canvas);
   const pixel = document.createElement("canvas");
   const px = context2d(pixel);
-  const ground = makeGround(worldWidth, worldHeight);
+  // 낮/밤은 렌더러를 만들 때 한 번 정한다 (시그니처는 그대로)
+  const night = isNight();
+  groundPal = night ? { ...PAL_DAY, ...PAL_NIGHT } : PAL_DAY;
+  const reducedMotion = prefersReducedMotion();
+  const ground = makeGround(worldWidth, worldHeight, groundPal);
   const groundCtx = context2d(ground);
-  const treeSprite = makeTreeSprite();
-  const houseSprite = makeHouseSprite();
-  const cheerSprite = makeCheerSprite();
-  const mailboxEmpty = makeMailboxSprite(false);
-  const mailboxFull = makeMailboxSprite(true);
-  const crouchSprite = makeCrouchSprite();
+  // 밤에는 마을 그림에 달빛 색을 곱하고, 캐릭터는 덜 어둡게 곱한다
+  const moonlit = (sprite: HTMLCanvasElement) => (night ? tinted(sprite, NIGHT_MUL) : sprite);
+  const hero = (sprite: HTMLCanvasElement) => (night ? tinted(sprite, NIGHT_MUL_HERO) : sprite);
+  const ball = (r: number, roll: number) => moonlit(ballSprite(r, roll));
+  const treeSprite = moonlit(makeTreeSprite());
+  const houseSprite = moonlit(makeHouseSprite());
+  const cheerSprite = hero(makeCheerSprite());
+  const mailboxEmpty = moonlit(makeMailboxSprite(false));
+  const mailboxFull = moonlit(makeMailboxSprite(true));
+  const mailboxFullFlag = moonlit(makeMailboxSprite(true, true));
+  const crouchSprite = hero(makeCrouchSprite());
 
   const hammerSprites = new Map<string, HammerSprite>();
   for (const pose of ["up", "mid", "down"] as const) {
-    for (const dir of ["left", "right", "up", "down"] as const) hammerSprites.set(`${pose}:${dir}`, makeHammerSprite(pose, dir));
+    for (const dir of ["left", "right", "up", "down"] as const) {
+      const hs = makeHammerSprite(pose, dir);
+      hammerSprites.set(`${pose}:${dir}`, { ...hs, image: hero(hs.image) });
+    }
   }
   let lastHammerPose: HammerPose | null = null;
   let lastCelebrateId: number | null = null;
@@ -655,17 +954,24 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   function sculptSprite(id: number, sculpt: Sculpt, version = 0): HTMLCanvasElement {
     const cached = sculptSprites.get(id);
     if (cached && cached.source === sculpt && cached.version === version) return cached.image;
-    const image = makeSprite(sculpt.width, sculpt.height, (ctx) => drawSculpt(ctx, sculpt, 0, 0, 1));
+    const image = moonlit(makeSprite(sculpt.width, sculpt.height, (ctx) => drawSculpt(ctx, sculpt, 0, 0, 1)));
     sculptSprites.set(id, { source: sculpt, version, image });
     return image;
   }
 
-  const flakes: Flake[] = Array.from({ length: 70 }, () => ({
-    x: Math.random(),
-    y: Math.random(),
-    speed: 8 + Math.random() * 14,
-    size: Math.random() < 0.2 ? 2 : 1,
-  }));
+  // 내리는 눈 두 겹: 먼 눈(1px, 느리게 40개)과 가까운 눈(2px, 빠르게 12개).
+  // 움직임 줄이기 설정이면 가까운 눈은 끄고 먼 눈은 절반 속도로 내린다.
+  const flakes: Flake[] = [
+    ...Array.from({ length: 40 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      speed: (6 + Math.random() * 8) * (reducedMotion ? 0.5 : 1),
+      size: 1,
+    })),
+    ...(reducedMotion
+      ? []
+      : Array.from({ length: 12 }, () => ({ x: Math.random(), y: Math.random(), speed: 22 + Math.random() * 12, size: 2 }))),
+  ];
 
   let dpr = 1;
   let cssW = 0;
@@ -833,7 +1139,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const pose = popPose(stack);
     if (pose) {
       shadow(px, pose.x - camX, pose.y - camY, pose.r * 0.8);
-      const sprite = ballSprite(pose.r, stack.balls[0].roll + time * 30);
+      const sprite = ball(pose.r, stack.balls[0].roll + time * 30);
       const half = (sprite.width - 1) / 2;
       px.drawImage(sprite, Math.round(pose.x - camX - half), Math.round(pose.y - camY - pose.h - half));
       return;
@@ -875,18 +1181,18 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       return;
     }
 
-    stack.balls.forEach((ball, i) => {
+    stack.balls.forEach((b, i) => {
       const lean = n > 1 ? i / (n - 1) : 0;
       const tremble = charge > 0 ? Math.round(Math.sin(time * 55 + i * 2) * (0.6 + charge * 1.6)) : 0;
       const sway = Math.round(Math.sin(time * 8 + stack.id) * stack.wobble * 5 * lean) + tremble;
-      const sprite = ballSprite(ball.r, ball.roll);
+      const sprite = ball(b.r, b.roll);
       const half = (sprite.width - 1) / 2;
       const by = Math.round(sy - heights[i]);
       px.drawImage(sprite, Math.round(sx + sway - half), by - half);
       // 오래 누를수록 아래 공부터 차례로 금이 간다
       const crackStart = 0.15 + i * 0.2;
       if (charge > crackStart) {
-        drawCrack(Math.round(sx + sway), by, ball.r, Math.min(1, (charge - crackStart) * 3), stack.id * 7 + i);
+        drawCrack(Math.round(sx + sway), by, b.r, Math.min(1, (charge - crackStart) * 3), stack.id * 7 + i);
       }
     });
   }
@@ -937,14 +1243,23 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     if (!celebrate) lastCelebrateId = null;
     const hop = celebrate ? hopAt(celebrate.t) : { h: 0, sx: 1, sy: 1 };
 
-    rect(px, PAL.path, 0, 0, pw, ph);
+    rect(px, groundPal.path, 0, 0, pw, ph);
     px.drawImage(ground, -camX, -camY);
+    const hx = Math.round(HOUSE_POSITION.x - 24 - camX);
+    const hy = Math.round(HOUSE_POSITION.y - 43 - camY);
+    if (night) paintWindowGlow(px, hx + 16, hy + 47);
 
     // 아래쪽(y가 큰) 것이 앞에 오도록 y 순서로 그린다
     const layers: Array<{ y: number; paint: () => void }> = [];
     layers.push({
       y: HOUSE_POSITION.y,
-      paint: () => drawOutlined(px, houseSprite, Math.round(HOUSE_POSITION.x - 24 - camX), Math.round(HOUSE_POSITION.y - 43 - camY)),
+      paint: () => {
+        drawOutlined(px, houseSprite, hx, hy);
+        // 밤에는 창문이 따뜻하게 빛나고, 1.6초마다 한 칸 밝아졌다 돌아온다
+        if (night) paintNightWindow(px, hx, hy, !reducedMotion && Math.floor(time / 0.8) % 2 === 1);
+        paintRoofLights(px, hx, hy, reducedMotion ? 0 : time, night);
+        paintSmoke(px, hx, hy, reducedMotion ? 1.2 : time, night);
+      },
     });
     for (const [tx, ty] of TREE_POSITIONS) {
       layers.push({ y: ty, paint: () => drawOutlined(px, treeSprite, Math.round(tx - 10 - camX), Math.round(ty - 29 - camY)) });
@@ -953,7 +1268,9 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       y: MAILBOX_POSITION.y,
       paint: () => {
         shadow(px, MAILBOX_POSITION.x - camX, MAILBOX_POSITION.y - camY, 4);
-        const sprite = overlay.mailCount > 0 ? mailboxFull : mailboxEmpty;
+        // 편지가 있으면 금색 깃발이 0.8초마다 한 칸 까딱인다
+        const flag = !reducedMotion && Math.floor(time / 0.8) % 2 === 1;
+        const sprite = overlay.mailCount > 0 ? (flag ? mailboxFullFlag : mailboxFull) : mailboxEmpty;
         drawOutlined(px, sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY));
       },
     });
@@ -979,7 +1296,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
         y: lift.y + 0.5,
         paint: () => {
           shadow(px, lift.x - camX, lift.y - camY, lift.ball.r * 0.8);
-          const sprite = ballSprite(lift.ball.r, lift.ball.roll + time * 20);
+          const sprite = ball(lift.ball.r, lift.ball.roll + time * 20);
           const half = (sprite.width - 1) / 2;
           px.drawImage(sprite, Math.round(lift.x - camX - half), Math.round(lift.y - camY - lift.h - half));
         },
@@ -992,9 +1309,19 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const left = Math.round(player.x - 5 - camX);
       const feet = Math.round(player.y - camY - step - hop.h); // 맨 아랫줄(발)이 그려질 y
       const cheering = celebrate !== null && hop.sy !== 1;
-      const sprite = !cheering ? playerSprite(player.dir, step) : hop.sy < 1 ? crouchSprite : cheerSprite;
+      const sprite = !cheering ? hero(playerSprite(player.dir, step)) : hop.sy < 1 ? crouchSprite : cheerSprite;
       // 맨 아랫줄(발)이 feet에 오도록 그림 키만큼 올려서 그린다
-      px.drawImage(sprite, left, feet - (sprite.height - 1));
+      const top = feet - (sprite.height - 1);
+      px.drawImage(sprite, left, top);
+      // 깜빡임: 4.2초에 한 번 0.12초 동안 눈을 감는다 (뒤를 볼 때와 축하 중에는 하지 않는다)
+      const blinking = !reducedMotion && !cheering && player.dir !== "up" && time % 4.2 < 0.12;
+      if (blinking) {
+        const shift = player.dir === "left" ? -1 : player.dir === "right" ? 1 : 0;
+        rect(px, PAL.heroSkin, left + 4 + shift, top + 5, 1, 1);
+        rect(px, PAL.heroSkin, left + 6 + shift, top + 5, 1, 1);
+        rect(px, INK, left + 4 + shift, top + 6, 1, 1);
+        rect(px, INK, left + 6 + shift, top + 6, 1, 1);
+      }
       const hammer = overlay.hammer;
       if (hammer) {
         const sprite = hammerSprites.get(`${hammer.pose}:${hammer.dir}`);
@@ -1054,12 +1381,16 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     }
     px.globalAlpha = 1;
 
-    // 내리는 눈
-    px.fillStyle = "rgba(255,255,255,0.9)";
+    // 내리는 눈: 흰 도트 아래에 그늘 한 칸을 붙여 밝은 땅에서도 보이게 한다
     for (const f of flakes) {
       const y = (f.y + (time * f.speed) / 240) % 1.04;
       const x = f.x + Math.sin(time + f.speed) * 0.01;
-      px.fillRect(Math.round(x * viewW), Math.round(y * viewH - 0.02 * viewH), f.size, f.size);
+      const fx = Math.round(x * viewW);
+      const fy = Math.round(y * viewH - 0.02 * viewH);
+      px.fillStyle = f.size === 1 ? SNOW_SHADE : SNOW_EDGE;
+      px.fillRect(fx, fy + f.size, f.size, 1);
+      px.fillStyle = PAL.snow;
+      px.fillRect(fx, fy, f.size, f.size);
     }
 
     // 작은 도트 캔버스를 화면 크기로 키워서 옮긴다

@@ -25,6 +25,8 @@
   --roof: #c94b42; /* 주요 버튼 면, 지붕 */
   --roof-shade: #a63a33; /* 주요 버튼 안쪽 아랫줄, 눌림 */
   --roof-edge: #7a2723; /* 지붕 테두리 */
+  --roof-muted: #e39a93; /* 꺼진 주요 버튼 면 (옅은 빨강) */
+  --roof-muted-shade: #d4857e; /* 꺼진 주요 버튼 안쪽 아랫줄 */
   --berry: #e0574f; /* 봉인, 개수 배지, 전구 빨강 */
   --gold: #ffc94d; /* 별, D-day 배지, 포커스 링, 전구 노랑 */
   --gold-shade: #d9a032; /* 금색 배지의 아랫줄 */
@@ -63,13 +65,14 @@
 
 /* 밤 모드 (선택, 기본값 아님): <html data-time="night">일 때만 바뀐다 */
 :root[data-time="night"] {
-  --ground: #bcc9df;
-  --ground-dot: #aebcd5;
-  --ground-glint: #e4ebf6;
-  --path: #a3b2ce;
-  --path-deep: #95a5c4;
-  --ground-shadow: #9daecb;
-  --veil: rgb(26 23 48 / 0.55);
+  /* 깊은 푸른 보라 밤 땅. render.ts의 PAL_NIGHT와 같은 값 */
+  --ground: #4a4f86;
+  --ground-dot: #42467a;
+  --ground-glint: #8e95c8;
+  --path: #3e4275;
+  --path-deep: #363a6a;
+  --ground-shadow: #33366a;
+  --veil: rgb(26 23 48 / 0.4); /* 밤 땅이 이미 어두워서 베일은 옅게 */
 }
 
 @theme inline {
@@ -319,6 +322,18 @@ body {
   cursor: not-allowed;
 }
 
+/* primary는 꺼져 있어도 주요 행동으로 읽히게 옅은 빨강 (그림자 없음, 흰 글자) */
+.pixel-btn[data-variant="primary"]:disabled {
+  --box-fill: var(--roof-muted);
+  --box-light: var(--roof-muted);
+  --box-shade: var(--roof-muted-shade);
+  color: var(--snow);
+}
+
+.pixel-btn[data-variant="primary"]:disabled svg {
+  --ink: var(--roof-muted-shade);
+}
+
 /* 입력칸: flat 상자. 초점이 오면 버튼과 같은 금색 링 */
 .pixel-field {
   outline: none;
@@ -414,10 +429,108 @@ body {
   animation: pixel-rise 150ms steps(3, end) both;
 }
 
+/* 홈 카드 퇴장: 마을로 들어갈 때 한 칸 내려가며 steps(3)로 사라진다 */
+@keyframes pixel-leave {
+  to {
+    transform: translateY(var(--p));
+    opacity: 0;
+  }
+}
+
+.pixel-leave {
+  animation: pixel-leave 150ms steps(3, end) forwards;
+}
+
+/* primary 버튼 hover: 왼쪽 위 1칸에 눈 반짝이가 한 프레임 뜬다 */
+.pixel-btn[data-variant="primary"]::after {
+  content: "";
+  position: absolute;
+  left: var(--p);
+  top: var(--p);
+  width: var(--p);
+  height: var(--p);
+  background: var(--snow);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes pixel-sparkle {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (hover: hover) {
+  .pixel-btn[data-variant="primary"]:hover:not(:disabled)::after {
+    animation: pixel-sparkle 160ms steps(1, end) 1;
+  }
+}
+
+/* D-day 배지의 별: 4초마다 한 번 깜빡인다 */
+@keyframes pixel-twinkle {
+  0%,
+  94% {
+    opacity: 1;
+  }
+  95%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.pixel-badge[data-tone="gold"] svg {
+  animation: pixel-twinkle 4s steps(1, end) infinite;
+}
+
+/* 홈 배경의 눈송이 두 겹 (먼 눈 1칸, 가까운 눈 2칸). 흰 도트 아래 그늘 1칸 */
+.pixel-snowfall {
+  background-repeat: repeat;
+  image-rendering: pixelated;
+}
+
+.pixel-snowfall-far {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' shape-rendering='crispEdges'%3E%3Cg fill='%23DCE5F2'%3E%3Crect x='3' y='5' width='1' height='1'/%3E%3Crect x='21' y='14' width='1' height='1'/%3E%3Crect x='33' y='27' width='1' height='1'/%3E%3Crect x='11' y='34' width='1' height='1'/%3E%3C/g%3E%3Cg fill='%23FFFFFF'%3E%3Crect x='3' y='4' width='1' height='1'/%3E%3Crect x='21' y='13' width='1' height='1'/%3E%3Crect x='33' y='26' width='1' height='1'/%3E%3Crect x='11' y='33' width='1' height='1'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 120px 120px;
+  animation: pixel-snow-far 16s steps(40, end) infinite;
+}
+
+.pixel-snowfall-near {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' shape-rendering='crispEdges'%3E%3Cg fill='%23A9B8D6'%3E%3Crect x='9' y='12' width='2' height='1'/%3E%3Crect x='48' y='55' width='2' height='1'/%3E%3C/g%3E%3Cg fill='%23FFFFFF'%3E%3Crect x='9' y='10' width='2' height='2'/%3E%3Crect x='48' y='53' width='2' height='2'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 210px 210px;
+  animation: pixel-snow-near 9s steps(70, end) infinite;
+}
+
+@keyframes pixel-snow-far {
+  to {
+    background-position: 0 120px;
+  }
+}
+
+@keyframes pixel-snow-near {
+  to {
+    background-position: 0 210px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pixel-rise,
-  .pixel-bob {
+  .pixel-bob,
+  .pixel-leave,
+  .pixel-badge[data-tone="gold"] svg,
+  .pixel-snowfall-far {
     animation: none;
+  }
+
+  .pixel-leave {
+    opacity: 0;
+  }
+
+  .pixel-snowfall-near,
+  .pixel-btn[data-variant="primary"]::after {
+    display: none;
   }
 
   .pixel-btn {
