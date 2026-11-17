@@ -1,26 +1,117 @@
 @import "tailwindcss";
 
+/* ---------- 데굴레터 팔레트 ----------
+   도트 세계와 UI가 같은 색만 쓰도록 여기 모아 둔다. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #2a2350; /* 테두리, 글자 */
+  --snow: #ffffff;
+  --snow-shade: #dce5f2;
+  --snow-edge: #a9b8d6;
+  --ground: #f2f6fb;
+  --ice: #dce5f2; /* 패널 */
+  --ice-shade: #c3cfe4;
+  --berry: #e0574f; /* 주요 버튼, 선택됨 (크리스마스 빨강) */
+  --berry-light: #ff8f87;
+  --berry-shade: #b23a34;
+  --gold: #ffc94d; /* 반짝이 같은 작은 강조 */
+  --night: #1a1730;
+
+  /* 도트 1칸 크기. 마을 그림의 도트 크기와 맞춘다 */
+  --p: 3px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-pixel), sans-serif;
+  --color-ink: var(--ink);
+  --color-ice: var(--ice);
+  --color-berry: var(--berry);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--night);
+  color: var(--ink);
+  overscroll-behavior: none;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-pixel), sans-serif;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+/* ---------- 도트 상자 ----------
+   box-shadow 네 방향으로 1칸 두께 테두리를 그리면 네 모서리가 비어서 계단 모서리가 된다.
+   안쪽 위는 밝게, 안쪽 아래는 어둡게 한 줄씩 넣어 볼록한 느낌을 낸다. */
+.pixel-box {
+  --box-fill: var(--snow);
+  --box-light: #ffffff;
+  --box-shade: var(--snow-shade);
+  --box-line: var(--ink);
+  --box-drop: rgba(42, 35, 80, 0.35);
+  background: var(--box-fill);
+  box-shadow:
+    0 calc(var(--p) * -1) 0 0 var(--box-line),
+    0 var(--p) 0 0 var(--box-line),
+    calc(var(--p) * -1) 0 0 0 var(--box-line),
+    var(--p) 0 0 0 var(--box-line),
+    inset 0 var(--p) 0 0 var(--box-light),
+    inset 0 calc(var(--p) * -1) 0 0 var(--box-shade),
+    0 calc(var(--p) * 2) 0 0 var(--box-drop);
+}
+
+/* 선택됨: 버튼이 쑥 눌려 들어간 상태. 한 칸 내려가고, 안쪽 위에 그늘이 져서 움푹해 보인다 */
+.pixel-box-on {
+  --box-fill: var(--ice);
+  --box-light: var(--ice-shade);
+  --box-shade: #edf2f9;
+  --box-drop: transparent;
+  transform: translateY(var(--p));
+}
+
+
+.pixel-box-flat {
+  --box-drop: transparent;
+}
+
+/* 말풍선이 한 칸씩 둥실둥실 오르내린다 (부드럽게가 아니라 도트처럼 딱딱 끊어서) */
+@keyframes pixel-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(var(--p) * -1));
+  }
+}
+
+.pixel-bob {
+  animation: pixel-bob 1.2s steps(1, end) infinite;
+}
+
+/* 마을에 들어올 때 이름이 떴다가 사라지는 타이틀 */
+@keyframes title-in-out {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--p) * -2));
+  }
+  10%,
+  80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+.title-in-out {
+  animation: title-in-out 3.4s steps(12, end) forwards;
+}
+
+/* 누르면 한 칸 내려가고 그림자가 사라진다 */
+.pixel-press:active:not(:disabled) {
+  transform: translateY(var(--p));
+  --box-drop: transparent;
 }
