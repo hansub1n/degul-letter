@@ -85,13 +85,68 @@ type Particle = {
 
 type Ring = { x: number; y: number; r: number; t: number };
 
-const CRACK = "#7D8BB0";
+/**
+ * 마을 그림의 색. 캔버스는 CSS 변수를 매 프레임 읽을 수 없어서 여기에 같은 hex를 적어 둔다.
+ * globals.css와 같은 값 (globals.css의 :root를 바꾸면 여기도 함께 바꾼다)
+ */
+const PAL = {
+  ground: "#DCE6F3",
+  groundDot: "#CCD8EA",
+  groundGlint: "#FFFFFF",
+  path: "#C9D3E6",
+  pathDeep: "#B8C4DC",
+  groundShadow: "#B8C4DC",
+  snow: "#FFFFFF",
+  snowShade: "#DCE5F2",
+  snowEdge: "#A9B8D6",
+  ink: "#2A2350",
+  muted: "#7D8BB0",
+  roof: "#C94B42",
+  roofShade: "#A63A33",
+  roofEdge: "#7A2723",
+  berry: "#E0574F",
+  gold: "#FFC94D",
+  goldShade: "#D9A032",
+  window: "#FFD27A",
+  windowLight: "#FFEBC0",
+  pine: "#3B7660",
+  pineLight: "#4C8C6E",
+  pineShade: "#2E5E4B",
+  pineEdge: "#264D3E",
+  wood: "#5C3A24",
+  woodLight: "#7B4E30",
+  woodMid: "#8A5A34",
+  wall: "#F4E4C8",
+  wallShade: "#E2CCA8",
+  heroHat: "#FF8F8F",
+  heroHatShade: "#E06C6C",
+  heroSkin: "#F7D7BC",
+  heroHair: "#4A3428",
+  heroCoat: "#6E8EF0",
+  heroCoatShade: "#4F6CC8",
+  heroScarf: "#FFC24D",
+  heroCheek: "#F29A9A",
+  heroMouth: "#C0392B",
+  // 아래는 그림 전용 색 (globals.css 토큰 없음)
+  wallFrame: "#8A6A4A",
+  chimney: "#B49C86",
+  slate: "#4A5068",
+  hammerLight: "#E3E8F3",
+  hammerHead: "#B8C2D8",
+} as const;
+
+/** "#RRGGBB" → [r, g, b] (땅처럼 픽셀 배열에 직접 쓰는 곳에서 쓴다) */
+function rgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+const CRACK = PAL.muted;
 const SHAKE_SECONDS = 0.28;
 
-const INK = "#2A2350";
-const SNOW_EDGE = "#A9B8D6";
-const SNOW_SHADE = "#DCE5F2";
-const SKY = "#C9D3E6";
+const INK = PAL.ink;
+const SNOW_EDGE = PAL.snowEdge;
+const SNOW_SHADE = PAL.snowShade;
 
 // ---------- 캔버스 도우미 ----------
 
@@ -114,8 +169,40 @@ function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number
   ctx.fillRect(Math.round(x), Math.round(y), w, h);
 }
 
+/**
+ * 스프라이트 둘레에 1px 외곽선을 두른 새 그림을 만든다. 크기가 (w+2, h+2)가 되므로
+ * 그릴 때는 drawOutlined로 (-1, -1) 옮겨서 그려야 원래 발 위치가 그대로다.
+ * 비어 있는 칸 중 상하좌우에 칠해진 칸이 있으면 그 색으로 칠한다. (집·나무·우체통만 쓴다)
+ */
+function outline(sprite: HTMLCanvasElement, color: string): HTMLCanvasElement {
+  const w = sprite.width;
+  const h = sprite.height;
+  const src = context2d(sprite).getImageData(0, 0, w, h).data;
+  const hexAt = (x: number, y: number): string | null => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return null;
+    const i = (y * w + x) * 4;
+    if (src[i + 3] === 0) return null;
+    return `#${[src[i], src[i + 1], src[i + 2]].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+  };
+  return makeSprite(w + 2, h + 2, (ctx) => {
+    for (let y = -1; y <= h; y++) {
+      for (let x = -1; x <= w; x++) {
+        if (hexAt(x, y)) continue;
+        const neighbors = [hexAt(x, y + 1), hexAt(x + 1, y), hexAt(x - 1, y), hexAt(x, y - 1)];
+        if (neighbors.some(Boolean)) rect(ctx, color, x + 1, y + 1, 1, 1);
+      }
+    }
+    ctx.drawImage(sprite, 1, 1);
+  });
+}
+
+/** 외곽선을 두른 그림을 원래 그림의 왼쪽 위 (x, y)에 맞춰 그린다 */
+function drawOutlined(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, x: number, y: number): void {
+  ctx.drawImage(sprite, x - 1, y - 1);
+}
+
 function shadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rw: number): void {
-  ctx.fillStyle = "rgba(110,125,170,0.28)";
+  ctx.fillStyle = PAL.groundShadow;
   const rh = Math.max(1, Math.round(rw * 0.35));
   for (let dy = -rh; dy <= rh; dy++) {
     const w = Math.round(rw * Math.sqrt(1 - (dy * dy) / ((rh + 0.5) * (rh + 0.5))));
@@ -145,8 +232,11 @@ function ballSprite(r: number, roll: number): HTMLCanvasElement {
         if (d2 > (ri - 1) * (ri - 1) + ri * 0.5 - 1) color = SNOW_EDGE;
         else {
           const light = (-dx * 0.6 - dy * 0.8) / ri;
-          color = light > -0.25 ? "#FFFFFF" : SNOW_SHADE;
+          color = light > -0.25 ? PAL.snow : SNOW_SHADE;
           if (hash2(dx + phase * 3, dy - phase) < 0.05) color = SNOW_SHADE;
+          // 아래쪽 그늘 면의 가장자리 한 줄 더: 바닥과 경계를 분명히 한다 (큰 공은 두 줄)
+          const rim = ri >= 6 ? 2 : 1;
+          if (dy > ri * 0.35 && light <= -0.25 && d2 > (ri - 1 - rim) * (ri - 1 - rim) + ri * 0.5 - 1) color = SNOW_EDGE;
         }
         rect(ctx, color, dx + ri, dy + ri, 1, 1);
       }
@@ -157,9 +247,9 @@ function ballSprite(r: number, roll: number): HTMLCanvasElement {
 }
 
 // 그림은 브라우저에서 게임이 시작될 때 만든다 (서버에는 document가 없다)
-const makeTreeSprite = () => makeSprite(21, 30, (ctx) => {
-  rect(ctx, "#5C3A24", 9, 24, 3, 6);
-  rect(ctx, "#7B4E30", 9, 24, 1, 6);
+const makeTreeSprite = () => outline(makeSprite(21, 30, (ctx) => {
+  rect(ctx, PAL.wood, 9, 24, 3, 6);
+  rect(ctx, PAL.woodLight, 9, 24, 1, 6);
   const center = 10;
   const tiers: Array<[number, number, number]> = [
     [1, 9, 5],
@@ -171,64 +261,78 @@ const makeTreeSprite = () => makeSprite(21, 30, (ctx) => {
       const w = Math.round(((row + 1) / height) * half);
       for (let x = center - w; x <= center + w; x++) {
         const edge = x === center - w || x === center + w;
-        let color = "#3B7660";
-        if (x < center - w / 3) color = "#4C8C6E";
-        if (x > center + w / 2) color = "#2E5E4B";
-        if (edge || row === height - 1) color = "#264D3E";
-        if (row < 2) color = edge ? "#D5DEEE" : "#FFFFFF";
-        if (row === 2 && !edge && hash2(x, top) < 0.5) color = "#FFFFFF";
+        let color: string = PAL.pine;
+        if (x < center - w / 3) color = PAL.pineLight;
+        if (x > center + w / 2) color = PAL.pineShade;
+        if (edge || row === height - 1) color = PAL.pineEdge;
+        if (row < 2) color = edge ? SNOW_EDGE : PAL.snow;
+        // 눈 바로 아랫줄: 녹은 눈이 들쭉날쭉 걸린 줄 (그늘과 테두리 색이 섞인다)
+        if (row === 2 && !edge) {
+          const m = hash2(x, top);
+          if (m < 0.3) color = PAL.snow;
+          else if (m < 0.55) color = SNOW_SHADE;
+          else if (m < 0.8) color = SNOW_EDGE;
+        }
         rect(ctx, color, x, top + row, 1, 1);
       }
     }
   }
-});
+}), PAL.ink);
 
-const makeHouseSprite = () => makeSprite(48, 44, (ctx) => {
+const makeHouseSprite = () => outline(makeSprite(48, 44, (ctx) => {
   // 벽
-  rect(ctx, "#8A6A4A", 5, 20, 38, 24);
-  rect(ctx, "#F4E4C8", 6, 20, 36, 23);
-  rect(ctx, "#E2CCA8", 33, 20, 9, 23);
+  rect(ctx, PAL.wallFrame, 5, 20, 38, 24);
+  rect(ctx, PAL.wall, 6, 20, 36, 23);
+  rect(ctx, PAL.wallShade, 33, 20, 9, 23);
   // 굴뚝
-  rect(ctx, "#B49C86", 33, 1, 5, 10);
-  rect(ctx, "#FFFFFF", 32, 0, 7, 2);
+  rect(ctx, PAL.chimney, 33, 1, 5, 10);
+  rect(ctx, PAL.snow, 32, 0, 7, 2);
+  rect(ctx, SNOW_EDGE, 32, 1, 1, 1);
+  rect(ctx, SNOW_EDGE, 38, 1, 1, 1);
   // 지붕 (위쪽은 눈)
   for (let row = 0; row < 19; row++) {
     const inset = Math.round((19 - row) * 1.2);
     for (let x = inset; x < 48 - inset; x++) {
       const edge = x === inset || x === 47 - inset || row === 18;
-      let color = x > 30 ? "#A63A33" : "#C94B42";
-      if (edge) color = "#7A2723";
-      if (row < 6) color = edge ? "#D5DEEE" : "#FFFFFF";
-      if (row === 6 && hash2(x, 3) < 0.5) color = "#FFFFFF";
+      let color: string = x > 30 ? PAL.roofShade : PAL.roof;
+      if (edge) color = PAL.roofEdge;
+      if (row < 6) color = edge ? SNOW_EDGE : PAL.snow;
+      // 눈 바로 아랫줄: 녹은 눈이 들쭉날쭉 걸린 줄 (그늘과 테두리 색이 섞인다)
+      if (row === 6 && !edge) {
+        const m = hash2(x, 3);
+        if (m < 0.3) color = PAL.snow;
+        else if (m < 0.55) color = SNOW_SHADE;
+        else if (m < 0.8) color = SNOW_EDGE;
+      }
       rect(ctx, color, x, row + 2, 1, 1);
     }
   }
   // 문
-  rect(ctx, "#5A3A24", 26, 30, 9, 14);
-  rect(ctx, "#7B4E30", 27, 31, 7, 13);
-  rect(ctx, "#FFD27A", 32, 37, 1, 2);
+  rect(ctx, PAL.wood, 26, 30, 9, 14);
+  rect(ctx, PAL.woodLight, 27, 31, 7, 13);
+  rect(ctx, PAL.window, 32, 37, 1, 2);
   // 창문
-  rect(ctx, "#8A6A4A", 10, 26, 11, 9);
-  rect(ctx, "#FFD27A", 11, 27, 9, 7);
-  rect(ctx, "#FFEBC0", 11, 27, 4, 3);
-  rect(ctx, "#8A6A4A", 15, 27, 1, 7);
+  rect(ctx, PAL.wallFrame, 10, 26, 11, 9);
+  rect(ctx, PAL.window, 11, 27, 9, 7);
+  rect(ctx, PAL.windowLight, 11, 27, 4, 3);
+  rect(ctx, PAL.wallFrame, 15, 27, 1, 7);
   // 리스
-  rect(ctx, "#2F6B57", 29, 25, 3, 3);
-  rect(ctx, "#D9534F", 30, 28, 1, 1);
-});
+  rect(ctx, PAL.pine, 29, 25, 3, 3);
+  rect(ctx, PAL.berry, 30, 28, 1, 1);
+}), PAL.ink);
 
 /** 캐릭터 11x13 도트. 가운데 열(5)을 기준으로 좌우 대칭이고, 발 위치가 (5, 12). */
 function makePlayerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
   return makeSprite(11, 13, (ctx) => {
-    const hat = "#FF8F8F";
-    const hatShade = "#E06C6C";
-    const skin = "#F7D7BC";
-    const hair = "#4A3428";
-    const coat = "#6E8EF0";
-    const coatShade = "#4F6CC8";
-    const scarf = "#FFC24D";
+    const hat = PAL.heroHat;
+    const hatShade = PAL.heroHatShade;
+    const skin = PAL.heroSkin;
+    const hair = PAL.heroHair;
+    const coat = PAL.heroCoat;
+    const coatShade = PAL.heroCoatShade;
+    const scarf = PAL.heroScarf;
 
-    rect(ctx, "#FFFFFF", 4, 0, 3, 1);
+    rect(ctx, PAL.snow, 4, 0, 3, 1);
     rect(ctx, hat, 3, 1, 5, 1);
     rect(ctx, hat, 2, 2, 7, 1);
     rect(ctx, hatShade, 2, 3, 7, 1);
@@ -244,8 +348,8 @@ function makePlayerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
       if (dir === "right") rect(ctx, hair, 2, 4, 2, 3);
       rect(ctx, INK, 4 + shift, 5, 1, 1);
       rect(ctx, INK, 6 + shift, 5, 1, 1);
-      rect(ctx, "#F29A9A", 3 + shift, 6, 1, 1);
-      rect(ctx, "#F29A9A", 7 + shift, 6, 1, 1);
+      rect(ctx, PAL.heroCheek, 3 + shift, 6, 1, 1);
+      rect(ctx, PAL.heroCheek, 7 + shift, 6, 1, 1);
     }
 
     rect(ctx, scarf, 3, 7, 5, 1);
@@ -264,21 +368,21 @@ function makePlayerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
 }
 
 const PLAYER_COLORS = {
-  hat: "#FF8F8F",
-  hatShade: "#E06C6C",
-  skin: "#F7D7BC",
-  hair: "#4A3428",
-  coat: "#6E8EF0",
-  coatShade: "#4F6CC8",
-  scarf: "#FFC24D",
-  cheek: "#F29A9A",
-  mouth: "#C0392B",
+  hat: PAL.heroHat,
+  hatShade: PAL.heroHatShade,
+  skin: PAL.heroSkin,
+  hair: PAL.heroHair,
+  coat: PAL.heroCoat,
+  coatShade: PAL.heroCoatShade,
+  scarf: PAL.heroScarf,
+  cheek: PAL.heroCheek,
+  mouth: PAL.heroMouth,
 };
 
 /** 앞을 보는 얼굴과 모자 (0~6번째 줄). 축하 동작 그림들이 함께 쓴다. 입을 동그랗게 벌린다. */
 function paintCheerHead(ctx: CanvasRenderingContext2D): void {
   const c = PLAYER_COLORS;
-  rect(ctx, "#FFFFFF", 4, 0, 3, 1);
+  rect(ctx, PAL.snow, 4, 0, 3, 1);
   rect(ctx, c.hat, 3, 1, 5, 1);
   rect(ctx, c.hat, 2, 2, 7, 1);
   rect(ctx, c.hatShade, 2, 3, 7, 1);
@@ -340,31 +444,31 @@ function playerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
 
 /** 집 옆 빨간 우체통 14x18. 편지가 있으면 봉투가 삐죽 나오고 노란 깃발이 올라간다. 발밑 가운데가 (5, 17). */
 function makeMailboxSprite(hasMail: boolean): HTMLCanvasElement {
-  return makeSprite(14, 18, (ctx) => {
+  return outline(makeSprite(14, 18, (ctx) => {
     if (hasMail) {
-      rect(ctx, "#4A5068", 3, 0, 5, 4);
-      rect(ctx, "#FFFFFF", 4, 1, 3, 3);
-      rect(ctx, "#E0574F", 5, 2, 1, 1);
+      rect(ctx, PAL.slate, 3, 0, 5, 4);
+      rect(ctx, PAL.snow, 4, 1, 3, 3);
+      rect(ctx, PAL.berry, 5, 2, 1, 1);
     }
-    rect(ctx, "#5A2420", 0, 3, 11, 8);
-    rect(ctx, "#D9473F", 1, 4, 9, 6);
-    rect(ctx, "#F07068", 2, 4, 4, 1);
-    rect(ctx, "#A8322C", 9, 4, 1, 6);
-    rect(ctx, "#A8322C", 1, 9, 9, 1);
+    rect(ctx, PAL.roofEdge, 0, 3, 11, 8);
+    rect(ctx, PAL.roof, 1, 4, 9, 6);
+    rect(ctx, PAL.berry, 2, 4, 4, 1);
+    rect(ctx, PAL.roofShade, 9, 4, 1, 6);
+    rect(ctx, PAL.roofShade, 1, 9, 9, 1);
     rect(ctx, INK, 2, 6, 7, 1);
-    if (hasMail) rect(ctx, "#FFFFFF", 4, 6, 3, 1);
+    if (hasMail) rect(ctx, PAL.snow, 4, 6, 3, 1);
     // 깃발: 편지가 오면 올라간다
-    rect(ctx, "#5A2420", 11, 4, 1, 6);
-    rect(ctx, "#FFC94D", 12, hasMail ? 4 : 8, 2, 2);
+    rect(ctx, PAL.roofEdge, 11, 4, 1, 6);
+    rect(ctx, PAL.gold, 12, hasMail ? 4 : 8, 2, 2);
     // 기둥
-    rect(ctx, "#5A3A24", 4, 11, 3, 7);
-    rect(ctx, "#8A5A34", 5, 11, 1, 6);
-  });
+    rect(ctx, PAL.wood, 4, 11, 3, 7);
+    rect(ctx, PAL.woodMid, 5, 11, 1, 6);
+  }), PAL.ink);
 }
 
 // ---------- 망치 ----------
 
-const HAMMER_PALETTE: Record<string, string> = { o: "#4A5068", l: "#E3E8F3", h: "#B8C2D8", w: "#8A5A34" };
+const HAMMER_PALETTE: Record<string, string> = { o: PAL.slate, l: PAL.hammerLight, h: PAL.hammerHead, w: PAL.woodMid };
 
 /** 오른쪽을 향한 망치 그림과, 손에 쥐는 점(anchor) */
 const HAMMER_ROWS: Record<HammerPose, { rows: string[]; anchor: [number, number] }> = {
@@ -492,16 +596,21 @@ function makeGround(width: number, height: number): HTMLCanvasElement {
   return makeSprite(width, height, (ctx) => {
     const img = ctx.createImageData(width, height);
     const data = img.data;
+    const base = rgb(PAL.ground);
+    const dot = rgb(PAL.groundDot);
+    const glint = rgb(PAL.groundGlint);
+    const path = rgb(PAL.path);
+    const pathDeep = rgb(PAL.pathDeep);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const h = hash2(x, y);
-        let c: [number, number, number] = [242, 246, 251];
-        if (h < 0.03) c = [226, 233, 244];
-        else if (h > 0.994) c = [255, 255, 255];
+        let c = base;
+        if (h < 0.04) c = dot;
+        else if (h > 0.994) c = glint;
         // 집 앞에서 아래로 이어지는 발자국 길
         const pathX = HOUSE_POSITION.x + Math.sin(y / 28) * 12;
         if (y > HOUSE_POSITION.y && Math.abs(x - pathX) < 6 + Math.sin(y / 9)) {
-          c = h < 0.5 ? [224, 220, 234] : [216, 211, 228];
+          c = h < 0.5 ? path : pathDeep;
         }
         const i = (y * width + x) * 4;
         data[i] = c[0];
@@ -586,7 +695,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
         life: 0,
         maxLife: 0.6 + Math.random() * 0.7,
         size: Math.random() < 0.5 ? 2 : 1,
-        color: Math.random() < 0.25 ? SNOW_SHADE : "#FFFFFF",
+        color: Math.random() < 0.25 ? SNOW_SHADE : PAL.snow,
       });
     }
     rings.push({ x, y, r, t: 0 });
@@ -629,7 +738,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
         life: 0,
         maxLife: 0.3 + Math.random() * 0.3,
         size: Math.random() < 0.4 ? 2 : 1,
-        color: "#FFFFFF",
+        color: PAL.snow,
       });
     }
     if (shakeTime < 0.1) {
@@ -693,7 +802,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   function paintTrail(x: number, y: number, r: number): void {
     const rr = Math.max(2, r * 0.6);
     const rh = Math.ceil(rr * 0.5);
-    groundCtx.fillStyle = "#E1E7F1";
+    groundCtx.fillStyle = PAL.pathDeep;
     for (let dy = -rh; dy <= rh; dy++) {
       const w = Math.round(rr * Math.sqrt(Math.max(0, 1 - (dy * dy) / ((rh + 0.5) * (rh + 0.5)))));
       groundCtx.fillRect(Math.round(x - w), Math.round(y + dy), w * 2 + 1, 1);
@@ -738,7 +847,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     if (highlighted) {
       const rr = stack.balls[0].r + 3;
       const ry = Math.max(2, Math.round(rr * 0.4));
-      px.fillStyle = "#FFC24D";
+      px.fillStyle = PAL.gold;
       for (let a = 0; a < 40; a++) {
         if (a % 2) continue;
         const an = (a / 40) * Math.PI * 2 + time;
@@ -828,24 +937,24 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     if (!celebrate) lastCelebrateId = null;
     const hop = celebrate ? hopAt(celebrate.t) : { h: 0, sx: 1, sy: 1 };
 
-    rect(px, SKY, 0, 0, pw, ph);
+    rect(px, PAL.path, 0, 0, pw, ph);
     px.drawImage(ground, -camX, -camY);
 
     // 아래쪽(y가 큰) 것이 앞에 오도록 y 순서로 그린다
     const layers: Array<{ y: number; paint: () => void }> = [];
     layers.push({
       y: HOUSE_POSITION.y,
-      paint: () => px.drawImage(houseSprite, Math.round(HOUSE_POSITION.x - 24 - camX), Math.round(HOUSE_POSITION.y - 43 - camY)),
+      paint: () => drawOutlined(px, houseSprite, Math.round(HOUSE_POSITION.x - 24 - camX), Math.round(HOUSE_POSITION.y - 43 - camY)),
     });
     for (const [tx, ty] of TREE_POSITIONS) {
-      layers.push({ y: ty, paint: () => px.drawImage(treeSprite, Math.round(tx - 10 - camX), Math.round(ty - 29 - camY)) });
+      layers.push({ y: ty, paint: () => drawOutlined(px, treeSprite, Math.round(tx - 10 - camX), Math.round(ty - 29 - camY)) });
     }
     layers.push({
       y: MAILBOX_POSITION.y,
       paint: () => {
         shadow(px, MAILBOX_POSITION.x - camX, MAILBOX_POSITION.y - camY, 4);
         const sprite = overlay.mailCount > 0 ? mailboxFull : mailboxEmpty;
-        px.drawImage(sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY));
+        drawOutlined(px, sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY));
       },
     });
     for (const stack of world.stacks) {
@@ -884,6 +993,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const feet = Math.round(player.y - camY - step - hop.h); // 맨 아랫줄(발)이 그려질 y
       const cheering = celebrate !== null && hop.sy !== 1;
       const sprite = !cheering ? playerSprite(player.dir, step) : hop.sy < 1 ? crouchSprite : cheerSprite;
+      // 맨 아랫줄(발)이 feet에 오도록 그림 키만큼 올려서 그린다
       px.drawImage(sprite, left, feet - (sprite.height - 1));
       const hammer = overlay.hammer;
       if (hammer) {
@@ -969,7 +1079,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
         if (!stack.saved || stack.pop) continue;
         const p = toScreen(stack.x, stack.y + 3);
         const label = stack.saved.authorName;
-        screen.strokeStyle = "#FFFFFF";
+        screen.strokeStyle = PAL.snow;
         screen.strokeText(label, Math.round(p.x), Math.round(p.y));
         screen.fillStyle = INK;
         screen.fillText(label, Math.round(p.x), Math.round(p.y));
@@ -991,7 +1101,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       screen.lineWidth = 6;
       screen.strokeStyle = INK;
       screen.strokeText("완성!", Math.round(p.x), Math.round(p.y - rise));
-      screen.fillStyle = "#FFC94D";
+      screen.fillStyle = PAL.gold;
       screen.fillText("완성!", Math.round(p.x), Math.round(p.y - rise));
       screen.globalAlpha = 1;
     }
@@ -1008,7 +1118,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const arm = 18;
       screen.setTransform(dpr, 0, 0, dpr, 0, 0);
       screen.globalAlpha = Math.min(1, (t - 0.6) / 0.4);
-      screen.fillStyle = "#9FAED0";
+      screen.fillStyle = PAL.gold;
       for (const [cx, cy, sx, sy] of [
         [left, top, 1, 1],
         [right, top, -1, 1],
@@ -1026,15 +1136,17 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const joy = overlay.joystick;
     if (joy) {
       screen.setTransform(dpr, 0, 0, dpr, 0, 0);
-      screen.fillStyle = "rgba(42,35,80,0.10)";
-      screen.strokeStyle = "rgba(42,35,80,0.35)";
-      screen.lineWidth = 2;
+      // 바깥 링은 속을 비워 마을이 보이게 하고, 손잡이는 흰 눈 면에 남색 테두리
+      screen.strokeStyle = PAL.snow;
+      screen.lineWidth = 4;
       screen.beginPath();
       screen.arc(joy.baseX, joy.baseY, 48, 0, Math.PI * 2);
-      screen.fill();
       screen.stroke();
-      screen.fillStyle = "rgba(255,255,255,0.95)";
-      screen.strokeStyle = "rgba(42,35,80,0.45)";
+      screen.strokeStyle = INK;
+      screen.lineWidth = 2;
+      screen.stroke();
+      screen.fillStyle = PAL.snow;
+      screen.strokeStyle = INK;
       screen.beginPath();
       screen.arc(joy.knobX, joy.knobY, 22, 0, Math.PI * 2);
       screen.fill();
