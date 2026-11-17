@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LETTER_MAX_LENGTH } from "@/domains/letter";
-import { PixelTextButton } from "@/shared/components/PixelTextButton";
+import { PixelButton } from "@/shared/components/PixelButton";
 
 type Submit = (result: { name: string; letter: string }) => void;
 
@@ -69,9 +69,9 @@ export function FinishDialog(props: Props) {
         </label>
 
         <div className="flex flex-col gap-2">
-          <PixelTextButton type="submit" disabled={!name || !letter.trim()}>
+          <PixelButton type="submit" disabled={!name || !letter.trim()}>
             편지 넣고 눈사람 세우기
-          </PixelTextButton>
+          </PixelButton>
 
         </div>
       </form>

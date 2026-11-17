@@ -1,47 +1,52 @@
 // 도트 아이콘. 글자 한 개가 도트 한 칸이고, 글자마다 색이 정해져 있다.
 // 도구 아이콘은 기호 대신 "게임 속 물건"(끌, 눈덩이, 털장갑, 망치)을 마을 그림과 같은 색으로 그린다.
 
-// 흰 버튼 위에서도 또렷하도록 테두리는 모두 ✕와 같은 진한 남색으로 쓴다
+// 색은 모두 globals.css 토큰을 따른다(화면 코드에 hex를 쓰지 않는다).
+// 모든 아이콘은 "속이 채워진 덩어리 + 1px --ink 외곽"으로 무게를 맞춘다.
+// 기호 아이콘(✕, ✓, 넘기기)은 속까지 --ink로 꽉 채운 덩어리다. 흰 버튼과 빨간 버튼 위에서 같은 색으로 읽힌다.
+// 비활성 버튼 안에서는 globals.css가 --ink를 --muted로 바꿔 아이콘도 함께 흐려진다.
 const PALETTE: Record<string, string> = {
-  O: "#2A2350", // 진한 남색 (✕, ✓)
-  v: "#A9B8D6", // 눈 테두리 하늘색 (장식)
-  o: "#2A2350", // 물건 테두리
-  w: "#FFFFFF",
-  s: "#C9D5EA", // 눈 그늘 (봉투 아래 그늘)
-  e: "#2A2350", // 눈덩이 테두리
-  l: "#E3E8F3", // 쇠 밝은 면
-  h: "#B8C2D8", // 쇠
-  b: "#B07A48", // 나무
-  B: "#7A4E2C", // 나무 그늘
-  f: "#FFE2C8", // 손
-  F: "#F2C29E",
-  r: "#E0574F", // 털장갑
-  R: "#B23A34",
-  p: "#FF8F87",
+  o: "var(--ink)", // 물건 외곽선
+  e: "var(--ink)", // 눈덩이 외곽선
+  v: "var(--snow-edge)", // 눈 테두리 하늘색 (장식)
+  w: "var(--snow)",
+  s: "var(--paper-line)", // 눈 그늘 (봉투 아래 그늘)
+  l: "var(--snow-shade)", // 쇠 밝은 면
+  h: "var(--path-deep)", // 쇠
+  b: "var(--wood-mid)", // 나무
+  B: "var(--wood)", // 나무 그늘
+  f: "var(--hero-skin)", // 손
+  F: "var(--wall-shade)",
+  r: "var(--berry)", // 털장갑, 밀랍 봉인, 우체통
+  R: "var(--roof-shade)",
+  p: "var(--hero-hat)",
+  g: "var(--gold)", // 별, 자물쇠
+  G: "var(--gold-shade)",
 };
 
 const ICONS = {
+  // 닫기: 속까지 남색(--ink)으로 꽉 채운 ✕ 도트. 흰 버튼과 빨간 버튼 위에서 모두 진하게 읽힌다
   close: [
-    "OO......OO",
-    "OOO....OOO",
-    ".OOO..OOO.",
-    "..OOOOOO..",
-    "...OOOO...",
-    "...OOOO...",
-    "..OOOOOO..",
-    ".OOO..OOO.",
-    "OOO....OOO",
-    "OO......OO",
+    "oo......oo",
+    "ooo....ooo",
+    ".ooo..ooo.",
+    "..oooooo..",
+    "...oooo...",
+    "...oooo...",
+    "..oooooo..",
+    ".ooo..ooo.",
+    "ooo....ooo",
+    "oo......oo",
   ],
   check: [
-    ".........OO",
-    "........OOO",
-    ".......OOO.",
-    "OO....OOO..",
-    "OOO..OOO...",
-    ".OOOOOO....",
-    "..OOOO.....",
-    "...OO......",
+    ".........oo",
+    "........ooo",
+    ".......ooo.",
+    "oo....ooo..",
+    "ooo..ooo...",
+    ".oooooo....",
+    "..oooo.....",
+    "...oo......",
   ],
   // 깎기: 쇠 날 + 나무 손잡이 끌
   carve: [
@@ -116,20 +121,22 @@ const ICONS = {
     "..oBo..",
     "..ooo..",
   ],
+  // 되돌리기: 흰 면 + 아랫줄 그늘 + 남색 외곽의 굽은 화살표 (다른 채운 아이콘과 같은 무게)
   undo: [
     "...o........",
-    "..oo........",
-    ".ooooooooo..",
-    "oooooooooooo",
-    ".ooo......oo",
-    "..oo......oo",
-    "...o......oo",
-    "..........oo",
-    ".........ooo",
-    "...ooooooooo",
-    "...oooooooo.",
+    "..owo.......",
+    ".owwoooooo..",
+    "owwwwwwwwwo.",
+    "oswwssssswwo",
+    ".oswooooowwo",
+    "..oso...owwo",
+    "...o....owwo",
+    "....ooooowwo",
+    "...owwwwwwso",
+    "...osssssso.",
+    "....oooooo..",
   ],
-  // 편지: 빨간 밀랍 봉인이 찍힌 봉투 (우체통 속 봉투와 같은 모양)
+  // 봉투(편지): 빨간 밀랍 봉인이 찍힌 봉투 (우체통 속 봉투와 같은 모양)
   letter: [
     "oooooooooooo",
     "ooowwwwwwooo",
@@ -141,34 +148,111 @@ const ICONS = {
     "osssssssssso",
     "oooooooooooo",
   ],
-  // 링크 보내기: 종이비행기
+  // 링크 보내기: 처음 종이비행기 모양 그대로, 흰 면 + 남색 외곽 + 오른쪽 아래 접힌 면 그늘
   send: [
     "..........oo",
     "........oowo",
     "......oowwwo",
-    "....oowwwwo.",
-    "..oowwwwwwo.",
-    "oowwwwwwwo..",
-    "..oowwwwwo..",
-    "....oowwso..",
-    ".....oowso..",
+    "....oowwwso.",
+    "..oowwwwsso.",
+    "oowwwwwsso..",
+    "..oowwssso..",
+    "....oowsso..",
+    ".....oosso..",
     "......oooo..",
   ],
-  // 작은 눈송이 (제목 장식)
+  // 우체통: 빨간 통 + 투입구 + 나무 기둥
+  mailbox: [
+    "..oooooooo..",
+    ".orrrrrrrro.",
+    "orrrrrrrrrro",
+    "orooooooooro",
+    "orrrrrrrrrro",
+    "orrrrrrrrrro",
+    "oRRRRRRRRRRo",
+    "oooooooooooo",
+    "....obbo....",
+    "....obbo....",
+    "....obBo....",
+    "...oooooo...",
+  ],
+  // 잠김: 금색 자물쇠
+  lock: [
+    "....oooo....",
+    "...o....o...",
+    "...o....o...",
+    "...o....o...",
+    ".oooooooooo.",
+    ".oggggggggo.",
+    ".ogggoogggo.",
+    ".ogggoogggo.",
+    ".oggggggggo.",
+    ".oGGGGGGGGo.",
+    ".oooooooooo.",
+  ],
+  // 별: 금색 (로고, 눈사람 완성, D-day)
+  star: [
+    ".....oo.....",
+    "....oggo....",
+    "....oggo....",
+    "oooooggooooo",
+    "oggggggggggo",
+    ".oggggggggo.",
+    "..oggggggo..",
+    "..oggggggo..",
+    ".oggggggggo.",
+    ".ogggooGggo.",
+    "oggoo..ooGgo",
+    "ooo......ooo",
+  ],
+  // 방향키 힌트: 흰 십자 패드
+  arrow: [
+    "....oooo....",
+    "....osso....",
+    "....oooo....",
+    "....owwo....",
+    "ooooowwooooo",
+    "owowwwwwwowo",
+    "ososswwssoso",
+    "ooooowwooooo",
+    "....osso....",
+    "....oooo....",
+    "....osso....",
+    "....oooo....",
+  ],
+  // 우표 장식 (편지지 오른쪽 위): 남색 톱니 + berry 테두리 + 금색 면 + 빨간 별
+  stamp: [
+    "o.o.o.o.o.o.o",
+    ".rrrrrrrrrrr.",
+    "orgggggggggro",
+    ".rggggrggggr.",
+    "orggggrggggro",
+    ".rgrrrrrrrgr.",
+    "orggrrrrrggro",
+    ".rgggrrrgggr.",
+    "orggrrgrrggro",
+    ".rggrgggrggr.",
+    "orGGGGGGGGGro",
+    ".rrrrrrrrrrr.",
+    "o.o.o.o.o.o.o",
+  ],
+  // 작은 눈송이 (제목 장식): 흰 면 + 남색 외곽
   snowflake: [
-    "....v....",
-    ".v..v..v.",
-    "..v.v.v..",
-    "...vvv...",
-    "vvvvvvvvv",
-    "...vvv...",
-    "..v.v.v..",
-    ".v..v..v.",
-    "....v....",
+    ".....o.....",
+    "..o.owo.o..",
+    ".owoowoowo.",
+    "..owowowo..",
+    ".ooowwwooo.",
+    "owwwwwwwwwo",
+    ".ooowswooo.",
+    "..oswswso..",
+    ".osoosooso.",
+    "..o.oso.o..",
+    ".....o.....",
   ],
   // 페이지 넘기기 화살표
-  prev: ["...oo", "..ooo", ".oooo", "ooooo", ".oooo", "..ooo", "...oo"],
-  next: ["oo...", "ooo..", "oooo.", "ooooo", "oooo.", "ooo..", "oo..."],
+  prev: ["....oo", "...ooo", "..oooo", ".ooooo", "oooooo", "oooooo", ".ooooo", "..oooo", "...ooo", "....oo"],
+  next: ["oo....", "ooo...", "oooo..", "ooooo.", "oooooo", "oooooo", "ooooo.", "oooo..", "ooo...", "oo...."],
   // 붓 크기: 꺾쇠 안에 작은 눈 / 큰 눈
   brushSmall: [
     "ooo......ooo",
@@ -200,7 +284,10 @@ const ICONS = {
   ],
 } satisfies Record<string, string[]>;
 
-export type PixelIconName = keyof typeof ICONS;
+/** 같은 그림을 다른 이름으로도 부른다: 지시서의 `envelope`은 기존 `letter`와 같은 봉투다 */
+const ALIASES = { envelope: "letter" } as const satisfies Record<string, keyof typeof ICONS>;
+
+export type PixelIconName = keyof typeof ICONS | keyof typeof ALIASES;
 
 type Props = {
   name: PixelIconName;
@@ -209,9 +296,18 @@ type Props = {
   className?: string;
 };
 
+/** 아이콘 칸: 모든 아이콘을 12x12 격자 가운데에 놓아 크기와 정렬을 맞춘다(더 큰 그림은 그대로) */
+const GRID = 12;
+
 export function PixelIcon({ name, scale = 3, className }: Props) {
-  const rows = ICONS[name];
-  const width = Math.max(...rows.map((r) => r.length));
+  const key = name in ALIASES ? ALIASES[name as keyof typeof ALIASES] : (name as keyof typeof ICONS);
+  const rows: readonly string[] = ICONS[key];
+  const glyphW = Math.max(...rows.map((r) => r.length));
+  const glyphH = rows.length;
+  const width = Math.max(GRID, glyphW);
+  const height = Math.max(GRID, glyphH);
+  const ox = Math.floor((width - glyphW) / 2);
+  const oy = Math.floor((height - glyphH) / 2);
   const rects: Array<{ x: number; y: number; w: number; color: string }> = [];
   // 같은 색이 가로로 이어지면 사각형 하나로 합친다
   rows.forEach((row, y) => {
@@ -224,7 +320,7 @@ export function PixelIcon({ name, scale = 3, className }: Props) {
       }
       let end = x + 1;
       while (end < row.length && row[end] === row[x]) end++;
-      rects.push({ x, y, w: end - x, color });
+      rects.push({ x: x + ox, y: y + oy, w: end - x, color });
       x = end;
     }
   });
@@ -233,13 +329,13 @@ export function PixelIcon({ name, scale = 3, className }: Props) {
     <svg
       aria-hidden
       width={width * scale}
-      height={rows.length * scale}
-      viewBox={`0 0 ${width} ${rows.length}`}
+      height={height * scale}
+      viewBox={`0 0 ${width} ${height}`}
       shapeRendering="crispEdges"
       className={className}
     >
       {rects.map((r, i) => (
-        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.color} />
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} style={{ fill: r.color }} />
       ))}
     </svg>
   );

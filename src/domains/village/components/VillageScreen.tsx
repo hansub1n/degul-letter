@@ -176,7 +176,7 @@ export function VillageScreen() {
         header={
           isOwner ? (
             <div className="flex justify-end p-1">
-              <PixelButton icon="send" label="친구에게 링크 보내기" onClick={shareLink} />
+              <PixelButton iconOnly icon="send" aria-label="친구에게 링크 보내기" onClick={shareLink} />
             </div>
           ) : undefined
         }

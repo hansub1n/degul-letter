@@ -100,11 +100,12 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
       />
 
       <div className="pointer-events-none absolute inset-x-4 top-4 flex items-start justify-between gap-3">
-        <PixelButton icon="close" label="나가기" className="pointer-events-auto" onClick={onCancel} />
+        <PixelButton iconOnly icon="close" aria-label="나가기" className="pointer-events-auto" onClick={onCancel} />
         <HintPill className="mt-1.5 min-w-0">{active?.hint}</HintPill>
         <PixelButton
+          iconOnly
           icon="check"
-          label="완료"
+          aria-label="완료"
           className="pointer-events-auto"
           onClick={() => onDone(cloneSculpt(sculptRef.current))}
         />
@@ -113,9 +114,10 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
       <div className="pointer-events-none absolute inset-x-4 bottom-5 flex justify-center gap-3">
         {TOOLS.map((t) => (
           <PixelButton
+            iconOnly
             key={t.id}
             icon={t.icon}
-            label={t.label}
+            aria-label={t.label}
             active={tool === t.id}
             className="pointer-events-auto"
             onClick={() => setTool(t.id)}
@@ -123,12 +125,13 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
         ))}
         <span aria-hidden className="w-2" />
         <PixelButton
+          iconOnly
           icon={size === 1 ? "brushSmall" : "brushLarge"}
-          label={size === 1 ? "붓 크기: 작게" : "붓 크기: 크게"}
+          aria-label={size === 1 ? "붓 크기: 작게" : "붓 크기: 크게"}
           className="pointer-events-auto"
           onClick={() => setSize(size === 1 ? 3 : 1)}
         />
-        <PixelButton icon="undo" label="되돌리기" className="pointer-events-auto" onClick={undo} disabled={!canUndo} />
+        <PixelButton iconOnly icon="undo" aria-label="되돌리기" className="pointer-events-auto" onClick={undo} disabled={!canUndo} />
       </div>
     </div>
   );

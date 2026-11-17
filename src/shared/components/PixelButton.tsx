@@ -1,44 +1,67 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { PixelIcon, type PixelIconName } from "./PixelIcon";
 
-type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
-  icon: PixelIconName;
-  /** 무슨 버튼인지 (화면 읽기 도구와 마우스를 올렸을 때 보이는 설명) */
-  label: string;
-  /** 선택된 도구: 버튼이 쑥 눌려 들어간 상태로 보인다 */
+type Base = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
+  /** primary = roof 빨강(화면마다 하나), secondary = snow 재질, ghost = 테두리 없는 글자 버튼 */
+  variant?: "primary" | "secondary" | "ghost";
+  /** md = h-11, sm = h-9 */
+  size?: "md" | "sm";
+  /** 선택된 도구: 버튼이 쑥 눌려 들어간 상태로 보인다 (aria-pressed) */
   active?: boolean;
-  /** 작은 버튼 (편지 카드의 닫기처럼 내용보다 눈에 덜 띄어야 할 때) */
-  small?: boolean;
-  children?: React.ReactNode;
 };
 
+type IconOnly = Base & {
+  iconOnly: true;
+  icon: PixelIconName;
+  /** 아이콘만 있는 버튼은 화면 읽기 도구용 이름이 꼭 있어야 한다 */
+  "aria-label": string;
+  children?: never;
+};
+
+type WithText = Base & {
+  iconOnly?: false;
+  icon?: PixelIconName;
+  children: ReactNode;
+};
+
+type Props = IconOnly | WithText;
+
 /**
- * 게임 전체에서 함께 쓰는 도트 버튼: 흰 정사각형에 도트 아이콘 하나.
- * 누르면 한 칸 내려가며 그림자가 사라진다.
+ * 게임 전체에서 함께 쓰는 도트 버튼.
+ * hover 한 칸 위(그림자 2칸), 누르면 한 칸 아래(그림자 없음), 키보드 초점은 금색 링이다.
+ * 모양은 globals.css의 `.pixel-btn`이 맡는다.
  */
-export function PixelButton({
-  icon,
-  label,
-  active = false,
-  small = false,
-  className = "",
-  type = "button",
-  children,
-  ...rest
-}: Props) {
+export function PixelButton(props: Props) {
+  const {
+    variant = "secondary",
+    size = "md",
+    active = false,
+    iconOnly = false,
+    icon,
+    className = "",
+    type = "button",
+    children,
+    ...rest
+  } = props;
+  const box = variant === "ghost" ? "" : "pixel-box";
+  const height = size === "sm" ? "h-9" : "h-11";
+  const shape = iconOnly ? (size === "sm" ? "w-9" : "w-11") : size === "sm" ? "gap-[calc(var(--p)*2)] px-[calc(var(--p)*4)]" : "gap-[calc(var(--p)*2)] px-[calc(var(--p)*5)]";
+  const iconScale = iconOnly ? (size === "sm" ? 2 : 3) : 2;
+  const title = iconOnly ? (rest as { "aria-label"?: string })["aria-label"] : undefined;
+
   return (
     <button
       type={type}
-      aria-label={label}
-      title={label}
+      title={title}
       aria-pressed={active || undefined}
-      className={`pixel-box pixel-press relative inline-flex shrink-0 items-center justify-center overflow-hidden disabled:opacity-40 ${
-        small ? "h-8 w-8" : "h-12 w-12"
-      } ${active ? "pixel-box-on" : ""} ${className}`}
+      data-variant={variant}
+      className={`${box} pixel-btn text-label relative inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap ${height} ${shape} ${
+        active ? "pixel-box-on" : ""
+      } ${className}`}
       {...rest}
     >
+      {icon && <PixelIcon name={icon} scale={iconScale} className="relative shrink-0" />}
       {children}
-      <PixelIcon name={icon} scale={small ? 2 : 3} className="relative" />
     </button>
   );
 }

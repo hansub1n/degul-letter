@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelIcon } from "@/shared/components/PixelIcon";
-import { PixelTextButton } from "@/shared/components/PixelTextButton";
 import { christmasLabel, isLetterOpen } from "../lib/dday";
 
 type Props = {
@@ -71,7 +70,7 @@ export function LetterCard({ authorName, recipientName, onOpen, onClose, autoOpe
       >
         {/* 버튼 자체에 absolute를 주면 공통 스타일(relative)과 부딪혀서, 감싸는 칸으로 자리를 잡는다 */}
         <div className="absolute right-2 top-2 z-10">
-          <PixelButton small icon="close" label="닫기" onClick={onClose} />
+          <PixelButton iconOnly size="sm" icon="close" aria-label="닫기" onClick={onClose} />
         </div>
 
         {state.kind === "opened" ? (
@@ -123,9 +122,9 @@ export function LetterCard({ authorName, recipientName, onOpen, onClose, autoOpe
               <>
                 <p className="text-center text-[12px] leading-[1.7]">메리 크리스마스! 편지를 열어 볼까요?</p>
                 {state.kind === "error" && <p className="text-center text-[12px] text-[#E0574F]">{state.message}</p>}
-                <PixelTextButton className="mt-1 w-full" disabled={state.kind === "opening"} onClick={open}>
+                <PixelButton className="mt-1 w-full" disabled={state.kind === "opening"} onClick={open}>
                   {state.kind === "opening" ? "여는 중…" : "편지 열기"}
-                </PixelTextButton>
+                </PixelButton>
               </>
             )}
           </div>

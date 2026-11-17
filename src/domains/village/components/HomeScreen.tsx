@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { HintPill } from "@/shared/components/HintPill";
-import { PixelTextButton } from "@/shared/components/PixelTextButton";
+import { PixelButton } from "@/shared/components/PixelButton";
 import { createVillage, findMyVillage } from "../api";
 import type { Village } from "../types";
 
@@ -71,8 +71,8 @@ export function HomeScreen() {
         {mine && (
           <div className="flex w-full flex-col gap-3">
             <p className="text-center text-[12px]">{mine.name}의 마을</p>
-            <PixelTextButton onClick={() => router.push(`/v/${mine.code}`)}>내 마을 가기</PixelTextButton>
-            <PixelTextButton onClick={() => copyLink(mine)}>링크 복사해서 친구 부르기</PixelTextButton>
+            <PixelButton onClick={() => router.push(`/v/${mine.code}`)}>내 마을 가기</PixelButton>
+            <PixelButton onClick={() => copyLink(mine)}>링크 복사해서 친구 부르기</PixelButton>
           </div>
         )}
 
@@ -91,9 +91,9 @@ export function HomeScreen() {
               placeholder="내 닉네임"
               className="pixel-box pixel-box-flat h-11 bg-white px-3 text-[12px] text-ink outline-none"
             />
-            <PixelTextButton type="submit" disabled={!name.trim() || busy}>
+            <PixelButton type="submit" disabled={!name.trim() || busy}>
               {busy ? "만드는 중…" : "마을 만들기"}
-            </PixelTextButton>
+            </PixelButton>
           </form>
         )}
       </div>

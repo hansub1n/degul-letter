@@ -82,7 +82,7 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-2 top-2">
-          <PixelButton small icon="close" label="닫기" onClick={onClose} />
+          <PixelButton iconOnly size="sm" icon="close" aria-label="닫기" onClick={onClose} />
         </div>
 
         <div className="flex flex-col gap-1.5 pr-10">
@@ -134,14 +134,15 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
 
         {/* 페이지 넘기기: 봉투와 띄워서 따로 보이게. 페이지가 하나뿐이어도 자리는 남겨 둬서 창 크기가 항상 같다 */}
         <div className={`flex items-center justify-center gap-4 ${pageCount > 1 ? "" : "invisible"}`}>
-          <PixelButton small icon="prev" label="이전 편지" disabled={current === 0} onClick={() => setPage(current - 1)} />
+          <PixelButton iconOnly size="sm" icon="prev" aria-label="이전 편지" disabled={current === 0} onClick={() => setPage(current - 1)} />
           <span className="w-12 text-center text-[12px] font-bold text-ink">
             {current + 1} / {pageCount}
           </span>
           <PixelButton
-            small
+            iconOnly
+            size="sm"
             icon="next"
-            label="다음 편지"
+            aria-label="다음 편지"
             disabled={current === pageCount - 1}
             onClick={() => setPage(current + 1)}
           />
