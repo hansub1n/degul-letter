@@ -1,30 +1,127 @@
 @import "tailwindcss";
 
-/* ---------- 데굴레터 팔레트 ----------
-   도트 세계와 UI가 같은 색만 쓰도록 여기 모아 둔다. */
+/* ---------- 데굴레터 팔레트 (v2: 맑은 겨울 낮) ----------
+   도트 세계와 UI가 같은 색만 쓰도록 여기 모아 둔다.
+   Canvas(render.ts)는 CSS 변수를 매 프레임 읽을 수 없어서 같은 hex를 PAL 상수로 따로 적는다.
+   여기 값을 바꾸면 render.ts의 PAL도 같이 바꾼다. */
 :root {
-  --ink: #2a2350; /* 테두리, 글자 */
-  --snow: #ffffff;
-  --snow-shade: #dce5f2;
-  --snow-edge: #a9b8d6;
-  --ground: #f2f6fb;
-  --ice: #dce5f2; /* 패널 */
-  --ice-shade: #c3cfe4;
-  --berry: #e0574f; /* 주요 버튼, 선택됨 (크리스마스 빨강) */
-  --berry-light: #ff8f87;
-  --berry-shade: #b23a34;
-  --gold: #ffc94d; /* 반짝이 같은 작은 강조 */
-  --night: #1a1730;
+  /* 땅과 눈 */
+  --ground: #dce6f3; /* 눈밭 기본색. 순백보다 한 단계 짙은 밝은 하늘빛 */
+  --ground-dot: #ccd8ea; /* 땅의 디더 점 */
+  --ground-glint: #ffffff; /* 반짝이 점 */
+  --path: #c9d3e6; /* 발자국 길 (밝은 칸) */
+  --path-deep: #b8c4dc; /* 발자국 길 (어두운 칸), 굴린 자국 */
+  --ground-shadow: #c3cee2; /* 오브젝트 그림자 (불투명) */
+  --sky: #bfd9f2; /* 홈 맨 위 하늘 띠 */
+  --snow: #ffffff; /* 쌓인 눈, 눈덩이 밝은 면, 패널 */
+  --snow-shade: #dce5f2; /* 눈 그늘 */
+  --snow-edge: #a9b8d6; /* 눈 덮인 부분의 아랫줄. 눈이 바닥에 묻히지 않게 하는 핵심 색 */
+  --ink: #2a2350; /* 글자, UI 테두리, 집·나무·우체통 외곽선 */
+  --night: #1a1730; /* 밤 모드 HUD, themeColor */
+  --veil: rgb(255 255 255 / 0.35); /* 모달 뒤 배경. 반투명은 이것 하나만 쓴다 */
+  --muted: #7d8bb0; /* 캡션, 금 */
 
-  /* 도트 1칸 크기. 마을 그림의 도트 크기와 맞춘다 */
+  /* 따뜻한 색 (불빛, 크리스마스) */
+  --roof: #c94b42; /* 주요 버튼 면, 지붕 */
+  --roof-shade: #a63a33; /* 주요 버튼 안쪽 아랫줄, 눌림 */
+  --roof-edge: #7a2723; /* 지붕 테두리 */
+  --berry: #e0574f; /* 봉인, 개수 배지, 전구 빨강 */
+  --gold: #ffc94d; /* 별, D-day 배지, 포커스 링, 전구 노랑 */
+  --gold-shade: #d9a032; /* 금색 배지의 아랫줄 */
+  --window: #ffd27a; /* 창문 불빛 */
+  --window-light: #ffebc0; /* 창문 반사 */
+  --glow-inner: #e6dcc8; /* (밤 모드) 창문 아래 빛 웅덩이 안쪽 */
+  --glow-outer: #d2d2dc; /* (밤 모드) 창문 아래 빛 웅덩이 바깥쪽 */
+
+  /* 나무와 집 */
+  --pine: #3b7660;
+  --pine-light: #4c8c6e;
+  --pine-shade: #2e5e4b;
+  --pine-edge: #264d3e;
+  --wood: #5c3a24;
+  --wood-light: #7b4e30;
+  --wood-mid: #8a5a34;
+  --wall: #f4e4c8;
+  --wall-shade: #e2cca8;
+  --paper: #fbf3e2; /* 편지지, 봉투 행 */
+  --paper-line: #c9d3e6;
+
+  /* 캐릭터 (지금 도트 그대로의 색) */
+  --hero-hat: #ff8f8f;
+  --hero-hat-shade: #e06c6c;
+  --hero-skin: #f7d7bc;
+  --hero-hair: #4a3428;
+  --hero-coat: #6e8ef0;
+  --hero-coat-shade: #4f6cc8;
+  --hero-scarf: #ffc24d;
+  --hero-cheek: #f29a9a;
+  --hero-mouth: #c0392b;
+
+  /* 도트 1칸 크기. 마을 캔버스의 기본 배율(baseScale 3)과 맞춘다 */
   --p: 3px;
+}
+
+/* 밤 모드 (선택, 기본값 아님): <html data-time="night">일 때만 바뀐다 */
+:root[data-time="night"] {
+  --ground: #bcc9df;
+  --ground-dot: #aebcd5;
+  --ground-glint: #e4ebf6;
+  --path: #a3b2ce;
+  --path-deep: #95a5c4;
+  --ground-shadow: #9daecb;
+  --veil: rgb(26 23 48 / 0.55);
 }
 
 @theme inline {
   --font-sans: var(--font-pixel), sans-serif;
+
+  --color-ground: var(--ground);
+  --color-ground-dot: var(--ground-dot);
+  --color-ground-glint: var(--ground-glint);
+  --color-path: var(--path);
+  --color-path-deep: var(--path-deep);
+  --color-ground-shadow: var(--ground-shadow);
+  --color-sky: var(--sky);
+  --color-snow: var(--snow);
+  --color-snow-shade: var(--snow-shade);
+  --color-snow-edge: var(--snow-edge);
   --color-ink: var(--ink);
-  --color-ice: var(--ice);
+  --color-night: var(--night);
+  --color-veil: var(--veil);
+  --color-muted: var(--muted);
+
+  --color-roof: var(--roof);
+  --color-roof-shade: var(--roof-shade);
+  --color-roof-edge: var(--roof-edge);
   --color-berry: var(--berry);
+  --color-gold: var(--gold);
+  --color-gold-shade: var(--gold-shade);
+  --color-window: var(--window);
+  --color-window-light: var(--window-light);
+  --color-glow-inner: var(--glow-inner);
+  --color-glow-outer: var(--glow-outer);
+
+  --color-pine: var(--pine);
+  --color-pine-light: var(--pine-light);
+  --color-pine-shade: var(--pine-shade);
+  --color-pine-edge: var(--pine-edge);
+  --color-wood: var(--wood);
+  --color-wood-light: var(--wood-light);
+  --color-wood-mid: var(--wood-mid);
+  --color-wall: var(--wall);
+  --color-wall-shade: var(--wall-shade);
+  --color-paper: var(--paper);
+  --color-paper-line: var(--paper-line);
+
+  --color-hero-hat: var(--hero-hat);
+  --color-hero-hat-shade: var(--hero-hat-shade);
+  --color-hero-skin: var(--hero-skin);
+  --color-hero-hair: var(--hero-hair);
+  --color-hero-coat: var(--hero-coat);
+  --color-hero-coat-shade: var(--hero-coat-shade);
+  --color-hero-scarf: var(--hero-scarf);
+  --color-hero-cheek: var(--hero-cheek);
+  --color-hero-mouth: var(--hero-mouth);
 }
 
 html,
@@ -40,15 +137,48 @@ body {
   font-smooth: never;
 }
 
+/* ---------- 글자 (갈무리11, 12px 배수만) ---------- */
+.text-display {
+  font-size: 36px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.text-title {
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.text-body {
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.text-label {
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.text-caption {
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 /* ---------- 도트 상자 ----------
    box-shadow 네 방향으로 1칸 두께 테두리를 그리면 네 모서리가 비어서 계단 모서리가 된다.
-   안쪽 위는 밝게, 안쪽 아래는 어둡게 한 줄씩 넣어 볼록한 느낌을 낸다. */
+   안쪽 위는 밝게, 안쪽 아래는 어둡게 한 줄씩 넣어 볼록한 느낌을 낸다.
+   바깥 그림자는 테두리 바로 아래 1칸, 불투명한 --ink다 (blur, 반투명 없음). */
 .pixel-box {
   --box-fill: var(--snow);
-  --box-light: #ffffff;
+  --box-light: var(--snow);
   --box-shade: var(--snow-shade);
   --box-line: var(--ink);
-  --box-drop: rgba(42, 35, 80, 0.35);
+  --box-drop: var(--ink);
   background: var(--box-fill);
   box-shadow:
     0 calc(var(--p) * -1) 0 0 var(--box-line),
@@ -60,16 +190,37 @@ body {
     0 calc(var(--p) * 2) 0 0 var(--box-drop);
 }
 
+/* 재질 4가지: snow(기본) · night(밤 모드 HUD 토스트만) · wood(마을 이름 표지판) · paper(편지지) */
+.pixel-box[data-tone="night"] {
+  --box-fill: var(--night);
+  --box-light: #2e2a55;
+  --box-shade: var(--night);
+  color: var(--snow);
+}
+
+.pixel-box[data-tone="wood"] {
+  --box-fill: var(--wood-light);
+  --box-light: var(--wood-mid);
+  --box-shade: var(--wood);
+  color: var(--snow);
+}
+
+.pixel-box[data-tone="paper"] {
+  --box-fill: var(--paper);
+  --box-light: var(--snow);
+  --box-shade: var(--wall-shade);
+}
+
 /* 선택됨: 버튼이 쑥 눌려 들어간 상태. 한 칸 내려가고, 안쪽 위에 그늘이 져서 움푹해 보인다 */
 .pixel-box-on {
-  --box-fill: var(--ice);
-  --box-light: var(--ice-shade);
-  --box-shade: #edf2f9;
+  --box-fill: var(--snow-shade);
+  --box-light: var(--snow-edge);
+  --box-shade: var(--snow-shade);
   --box-drop: transparent;
   transform: translateY(var(--p));
 }
 
-
+/* 입력칸 전용: 바깥 그림자 없음 */
 .pixel-box-flat {
   --box-drop: transparent;
 }
