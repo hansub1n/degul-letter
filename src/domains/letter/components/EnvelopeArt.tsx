@@ -1,58 +1,81 @@
-// 우체통 안에 놓인 도트 봉투 (20x15 칸).
-// 크림색 봉투 + 부드러운 갈색 테두리 + V자 덮개 + 둥근 빨간 밀랍 봉인.
-// 읽은 편지는 봉인이 뜯기고 줄 그어진 편지지가 위로 빠져나온다.
+// 우체통 안에 놓인 도트 봉투 (20x16 칸).
+// 다른 아이콘과 같은 진한 남색 테두리 + 흰 봉투 + 빨간 밀랍 봉인.
+// 읽은 편지는 봉인이 뜯기고 덮개가 위로 젖혀져 안쪽이 보인다.
 
-const C = {
-  line: "#C9B88F",
-  cream: "#F7EFD9",
-  shade: "#EBDFC1",
-  flap: "#DCCCA6",
-  seal: "#C8423A",
-  sealDark: "#9E2F29",
-  sealLight: "#E8746B",
-  paper: "#FFFFFF",
-  rule: "#DCE2EE",
+const PALETTE: Record<string, string> = {
+  o: "#2A2350", // 테두리
+  w: "#FFFFFF", // 봉투
+  s: "#DCE5F2", // 봉투 안쪽·아래 그늘
+  r: "#E0574F", // 봉인
+  R: "#B23A34",
+  p: "#FF8F87",
 };
 
-type Rect = { x: number; y: number; w: number; h: number; c: string };
+const SEALED = [
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "oooooooooooooooooooo",
+  "ooowwwwwwwwwwwwwwooo",
+  "owwoowwwwwwwwwwoowwo",
+  "owwwwoowwwwwwoowwwwo",
+  "owwwwwwoorroowwwwwwo",
+  "owwwwwwwrprrwwwwwwwo",
+  "owwwwwwwrrrRwwwwwwwo",
+  "owwwwwwwwRRwwwwwwwwo",
+  "owwwwwwwwwwwwwwwwwwo",
+  "osssssssssssssssssso",
+  "oooooooooooooooooooo",
+];
 
-function envelopeRects(opened: boolean): Rect[] {
-  const r: Rect[] = [];
-  const top = opened ? 6 : 2;
-  if (opened) {
-    r.push({ x: 3, y: 0, w: 14, h: 9, c: C.line });
-    r.push({ x: 4, y: 1, w: 12, h: 8, c: C.paper });
-    r.push({ x: 6, y: 3, w: 8, h: 1, c: C.rule });
-    r.push({ x: 6, y: 5, w: 6, h: 1, c: C.rule });
-  }
-  // 몸통
-  r.push({ x: 0, y: top, w: 20, h: 15 - top, c: C.line });
-  r.push({ x: 1, y: top + 1, w: 18, h: 13 - top, c: C.cream });
-  r.push({ x: 1, y: 13, w: 18, h: 1, c: C.shade });
-  // V자 덮개
-  const depth = opened ? 4 : 6;
-  for (let i = 0; i < 9; i++) {
-    const y = top + 1 + Math.round((i / 8) * depth);
-    r.push({ x: 1 + i, y, w: 1, h: 1, c: C.flap });
-    r.push({ x: 18 - i, y, w: 1, h: 1, c: C.flap });
-  }
-  if (!opened) {
-    // 둥근 밀랍 봉인 (반짝이는 점 하나)
-    r.push({ x: 9, y: 6, w: 2, h: 1, c: C.seal });
-    r.push({ x: 8, y: 7, w: 4, h: 2, c: C.seal });
-    r.push({ x: 9, y: 9, w: 2, h: 1, c: C.sealDark });
-    r.push({ x: 8, y: 9, w: 1, h: 1, c: C.sealDark });
-    r.push({ x: 11, y: 9, w: 1, h: 1, c: C.sealDark });
-    r.push({ x: 9, y: 7, w: 1, h: 1, c: C.sealLight });
-  }
-  return r;
+const OPENED = [
+  ".........oo.........",
+  ".......oossoo.......",
+  ".....oossssssoo.....",
+  "...oossssssssssoo...",
+  ".oossssssssssssssoo.",
+  "oooooooooooooooooooo",
+  "ooossssssssssssssooo",
+  "owwoossssssssssoowwo",
+  "owwwwoossssssoowwwwo",
+  "owwwwwwoossoowwwwwwo",
+  "owwwwwwwwoowwwwwwwwo",
+  "owwwwwwwwwwwwwwwwwwo",
+  "owwwwwwwwwwwwwwwwwwo",
+  "owwwwwwwwwwwwwwwwwwo",
+  "osssssssssssssssssso",
+  "oooooooooooooooooooo",
+];
+
+type Rect = { x: number; y: number; w: number; c: string };
+
+/** 같은 색이 가로로 이어지면 사각형 하나로 합친다 */
+function toRects(rows: readonly string[]): Rect[] {
+  const rects: Rect[] = [];
+  rows.forEach((row, y) => {
+    let x = 0;
+    while (x < row.length) {
+      const c = PALETTE[row[x]];
+      if (!c) {
+        x++;
+        continue;
+      }
+      let end = x + 1;
+      while (end < row.length && row[end] === row[x]) end++;
+      rects.push({ x, y, w: end - x, c });
+      x = end;
+    }
+  });
+  return rects;
 }
 
 export function EnvelopeArt({ opened = false, scale = 3 }: { opened?: boolean; scale?: number }) {
   return (
-    <svg aria-hidden width={20 * scale} height={15 * scale} viewBox="0 0 20 15" shapeRendering="crispEdges">
-      {envelopeRects(opened).map((r, i) => (
-        <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.c} />
+    <svg aria-hidden width={20 * scale} height={16 * scale} viewBox="0 0 20 16" shapeRendering="crispEdges">
+      {toRects(opened ? OPENED : SEALED).map((r, i) => (
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.c} />
       ))}
     </svg>
   );

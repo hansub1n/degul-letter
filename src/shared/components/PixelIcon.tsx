@@ -7,7 +7,7 @@ const PALETTE: Record<string, string> = {
   v: "#A9B8D6", // 눈 테두리 하늘색 (장식)
   o: "#2A2350", // 물건 테두리
   w: "#FFFFFF",
-  s: "#C9D5EA", // 눈 그늘
+  s: "#C9D5EA", // 눈 그늘 (봉투 아래 그늘)
   e: "#2A2350", // 눈덩이 테두리
   l: "#E3E8F3", // 쇠 밝은 면
   h: "#B8C2D8", // 쇠
@@ -129,15 +129,16 @@ const ICONS = {
     "...ooooooooo",
     "...oooooooo.",
   ],
-  // 편지: 빨간 봉인이 찍힌 봉투
+  // 편지: 빨간 밀랍 봉인이 찍힌 봉투 (우체통 속 봉투와 같은 모양)
   letter: [
     "oooooooooooo",
-    "oowwwwwwwwoo",
-    "owowwwwwwowo",
-    "owwowwwwowwo",
-    "owwworrowwwo",
-    "owwwwrrwwwwo",
+    "ooowwwwwwooo",
+    "owwoowwoowwo",
+    "owwwrprrwwwo",
+    "owwwrrrRwwwo",
+    "owwwwRRwwwwo",
     "owwwwwwwwwwo",
+    "osssssssssso",
     "oooooooooooo",
   ],
   // 링크 보내기: 종이비행기

@@ -88,7 +88,7 @@ export function HomeScreen() {
               value={name}
               maxLength={10}
               onChange={(e) => setName(e.target.value)}
-              placeholder="내 닉네임 (예: 얄루얄루)"
+              placeholder="내 닉네임"
               className="pixel-box pixel-box-flat h-11 bg-white px-3 text-[12px] text-ink outline-none"
             />
             <PixelTextButton type="submit" disabled={!name.trim() || busy}>
