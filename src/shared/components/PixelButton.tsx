@@ -15,7 +15,8 @@ type IconOnly = Base & {
   icon: PixelIconName;
   /** 아이콘만 있는 버튼은 화면 읽기 도구용 이름이 꼭 있어야 한다 */
   "aria-label": string;
-  children?: never;
+  /** 아이콘 뒤에 깔 장식 (부수기 게이지 등). 글자는 넣지 않는다 */
+  children?: ReactNode;
 };
 
 type WithText = Base & {
@@ -60,8 +61,9 @@ export function PixelButton(props: Props) {
       } ${className}`}
       {...rest}
     >
+      {iconOnly && children}
       {icon && <PixelIcon name={icon} scale={iconScale} className="relative shrink-0" />}
-      {children}
+      {!iconOnly && children}
     </button>
   );
 }

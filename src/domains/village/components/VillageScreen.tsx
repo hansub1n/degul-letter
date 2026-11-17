@@ -11,8 +11,8 @@ import {
   LetterCard,
   openLetter,
 } from "@/domains/letter";
-import { HintPill } from "@/shared/components/HintPill";
 import { PixelButton } from "@/shared/components/PixelButton";
+import { PixelToast } from "@/shared/components/PixelToast";
 import { ensureUserId } from "@/shared/lib/session";
 import { deleteSnowman, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
@@ -23,7 +23,7 @@ import { VillageTitle } from "./VillageTitle";
 const FINISH_DIALOG_DELAY_MS = 2000;
 
 type Loaded = { village: Village; saved: SavedSnowman[]; myId: string };
-type PendingSave = { draft: SnowmanDraft; markSaved: MarkSaved };
+type PendingSave = { stackId: number; draft: SnowmanDraft; markSaved: MarkSaved };
 
 /** 공유 링크(/v/[code])로 들어온 마을. 저장된 눈사람을 불러와 세우고, 새로 완성한 눈사람과 편지를 저장한다. */
 export function VillageScreen() {
@@ -31,6 +31,8 @@ export function VillageScreen() {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
+  // 완성했지만 아직 편지를 넣지 않은 눈사람 (창을 취소한 경우). 다시 다가가면 "편지 쓰기"가 뜬다.
+  const [drafts, setDrafts] = useState<Map<number, PendingSave>>(() => new Map());
   const [status, setStatus] = useState<string | null>(null);
   // 눈사람 ID → 편지 ID. 편지 개수를 세고, 눈사람을 부술 때 편지도 지우는 데 쓴다.
   // 마을에 온 편지 목록 (눈사람 ID → 편지 ID, 보낸 사람). 우체통 목록·편지 수·부술 때 편지 지우기에 쓴다.
@@ -74,18 +76,18 @@ export function VillageScreen() {
   if (problem) {
     return (
       <Center>
-        <HintPill>
+        <PixelToast placement="inline">
           {problem === "notFound"
             ? "마을을 찾을 수 없어요. 링크를 다시 확인해 주세요."
             : "마을을 불러오지 못했어요. 잠시 후 다시 들어와 주세요."}
-        </HintPill>
+        </PixelToast>
       </Center>
     );
   }
   if (!loaded) {
     return (
       <Center>
-        <HintPill>마을로 가는 중…</HintPill>
+        <PixelToast placement="inline">마을로 가는 중…</PixelToast>
       </Center>
     );
   }
@@ -93,7 +95,8 @@ export function VillageScreen() {
   const { village, saved, myId } = loaded;
   const isOwner = village.ownerId === myId;
 
-  const save = async ({ draft, markSaved }: PendingSave, name: string, letter: string) => {
+  const save = async (job: PendingSave, name: string, letter: string) => {
+    const { draft, markSaved } = job;
     setStatus("눈사람을 세우는 중…");
     try {
       // 편지를 먼저 묻고, 그 ID를 눈사람에 적어 둔다
@@ -106,6 +109,8 @@ export function VillageScreen() {
       setStatus(letterId ? "편지는 12월 25일에 열려요 ⛄" : "마을에 눈사람을 세웠어요!");
     } catch (e) {
       console.error(e);
+      // 저장에 실패하면 다시 "편지 쓰기"로 시도할 수 있게 남겨 둔다
+      setDrafts((m) => new Map(m).set(job.stackId, job));
       setStatus("저장하지 못했어요. 인터넷 연결을 확인해 주세요.");
     }
   };
@@ -149,8 +154,15 @@ export function VillageScreen() {
         saved={saved}
         myId={myId}
         // 마을로 돌아오는 확대(0.5초)와 "완성!" 축하가 끝난 뒤에 이름·편지 창을 띄운다
-        onSnowmanFinished={(draft, markSaved) => {
-          window.setTimeout(() => setPending({ draft, markSaved }), FINISH_DIALOG_DELAY_MS);
+        onSnowmanFinished={(stackId, draft, markSaved) => {
+          const job = { stackId, draft, markSaved };
+          setDrafts((m) => new Map(m).set(stackId, job));
+          window.setTimeout(() => setPending(job), FINISH_DIALOG_DELAY_MS);
+        }}
+        unsentIds={[...drafts.keys()]}
+        onWriteLetter={(stackId) => {
+          const job = drafts.get(stackId);
+          if (job) setPending(job);
         }}
         onSavedSnowmanBroken={(id) => void removeSaved(id)}
         isOwner={isOwner}
@@ -175,17 +187,13 @@ export function VillageScreen() {
         }
         header={
           isOwner ? (
-            <div className="flex justify-end p-1">
-              <PixelButton iconOnly icon="send" aria-label="친구에게 링크 보내기" onClick={shareLink} />
+            <div className="flex justify-end p-[var(--p)]">
+              <PixelButton variant="primary" iconOnly icon="send" aria-label="링크 보내기" onClick={shareLink} />
             </div>
           ) : undefined
         }
       />
-      {status && (
-        <HintPill role="status" className="fixed bottom-6 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap">
-          {status}
-        </HintPill>
-      )}
+      {status && <PixelToast key={status}>{status}</PixelToast>}
       {mailboxOpen && (
         <LetterBox
           recipientName={village.name}
@@ -214,8 +222,15 @@ export function VillageScreen() {
           onSubmit={({ name, letter }) => {
             const job = pending;
             setPending(null);
+            setDrafts((m) => {
+              const next = new Map(m);
+              next.delete(job.stackId);
+              return next;
+            });
             void save(job, name, letter);
           }}
+          // 취소·Esc: 저장하지 않고 닫는다. 눈사람은 그대로 두고, 다시 다가가면 "편지 쓰기"로 열 수 있다.
+          onCancel={() => setPending(null)}
         />
       )}
     </>
@@ -223,5 +238,5 @@ export function VillageScreen() {
 }
 
 function Center({ children }: { children: React.ReactNode }) {
-  return <div className="fixed inset-0 flex items-center justify-center bg-[#F2F6FB] px-6">{children}</div>;
+  return <div className="fixed inset-0 flex items-center justify-center bg-ground px-[calc(var(--p)*6)]">{children}</div>;
 }

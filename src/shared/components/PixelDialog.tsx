@@ -72,7 +72,11 @@ export function PixelDialog({
     const first =
       initialFocusRef?.current ??
       body?.querySelector<HTMLElement>("input, textarea, select") ??
-      panel.querySelector<HTMLElement>(`[data-dialog-body] ${FOCUSABLE}, [data-dialog-footer] ${FOCUSABLE}`) ??
+      panel.querySelector<HTMLElement>(
+        FOCUSABLE.split(", ")
+          .flatMap((sel) => [`[data-dialog-body] ${sel}`, `[data-dialog-footer] ${sel}`])
+          .join(", "),
+      ) ??
       panel;
     first.focus({ preventScroll: true });
 

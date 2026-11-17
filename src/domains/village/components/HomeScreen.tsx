@@ -2,8 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { HintPill } from "@/shared/components/HintPill";
+import { useChristmasLabel } from "@/domains/letter";
+import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
+import { PixelField } from "@/shared/components/PixelField";
+import { PixelIcon } from "@/shared/components/PixelIcon";
+import { PixelPanel } from "@/shared/components/PixelPanel";
+import { PixelToast } from "@/shared/components/PixelToast";
 import { createVillage, findMyVillage } from "../api";
 import type { Village } from "../types";
 
@@ -14,6 +19,7 @@ export function HomeScreen() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const dday = useChristmasLabel();
 
   useEffect(() => {
     let alive = true;
@@ -57,52 +63,62 @@ export function HomeScreen() {
   };
 
   return (
-    <main className="fixed inset-0 flex items-center justify-center bg-[#F2F6FB] px-6">
-      <div className="pixel-box pixel-box-flat flex w-full max-w-[340px] flex-col items-center gap-4 px-5 py-6 text-ink">
-        <h1 className="text-[24px] font-bold leading-none">데굴레터</h1>
-        <p className="text-center text-[12px] leading-[1.6]">
-          친구들이 내 마을에 눈사람을 세우고
-          <br />
-          크리스마스에 열어 볼 편지를 남겨요
-        </p>
+    <main className="fixed inset-0 flex items-center justify-center bg-ground px-[calc(var(--p)*6)]">
+      <PixelPanel
+        as="section"
+        aria-labelledby="home-title"
+        pad={6}
+        className="flex w-full max-w-[360px] flex-col items-center gap-[calc(var(--p)*4)] text-ink"
+      >
+        <h1 id="home-title" className="text-display flex items-center gap-[calc(var(--p)*3)]">
+          데굴레터
+          <PixelIcon name="star" scale={3} />
+        </h1>
+        <p className="text-caption -mt-[var(--p)] text-center">친구 마을에 눈사람과 편지를</p>
 
-        {mine === undefined && <p className="text-[12px]">불러오는 중…</p>}
+        {mine === undefined && <p className="text-caption">불러오는 중…</p>}
 
         {mine && (
-          <div className="flex w-full flex-col gap-3">
-            <p className="text-center text-[12px]">{mine.name}의 마을</p>
-            <PixelButton onClick={() => router.push(`/v/${mine.code}`)}>내 마을 가기</PixelButton>
-            <PixelButton onClick={() => copyLink(mine)}>링크 복사해서 친구 부르기</PixelButton>
+          <div className="flex w-full flex-col gap-[calc(var(--p)*4)]">
+            <p className="text-label text-center">{mine.name}의 마을</p>
+            <PixelButton variant="primary" className="w-full" onClick={() => router.push(`/v/${mine.code}`)}>
+              내 마을 가기
+            </PixelButton>
+            <PixelButton icon="send" className="w-full" onClick={() => copyLink(mine)}>
+              링크 복사해서 친구 부르기
+            </PixelButton>
           </div>
         )}
 
         {mine === null && (
           <form
-            className="flex w-full flex-col gap-3"
+            className="flex w-full flex-col gap-[calc(var(--p)*4)]"
             onSubmit={(e) => {
               e.preventDefault();
               void create();
             }}
           >
-            <input
+            <PixelField
+              label="내 닉네임"
               value={name}
               maxLength={10}
+              autoComplete="nickname"
               onChange={(e) => setName(e.target.value)}
-              placeholder="내 닉네임"
-              className="pixel-box pixel-box-flat h-11 bg-white px-3 text-[12px] text-ink outline-none"
             />
-            <PixelButton type="submit" disabled={!name.trim() || busy}>
+            <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || busy}>
               {busy ? "만드는 중…" : "마을 만들기"}
             </PixelButton>
           </form>
         )}
-      </div>
 
-      {message && (
-        <HintPill role="status" className="fixed bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
-          {message}
-        </HintPill>
-      )}
+        {dday && (
+          <PixelBadge tone="gold" icon="star">
+            크리스마스 {dday}
+          </PixelBadge>
+        )}
+      </PixelPanel>
+
+      {message && <PixelToast>{message}</PixelToast>}
     </main>
   );
 }

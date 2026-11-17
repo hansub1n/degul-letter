@@ -3,4 +3,5 @@ export { createLetter, deleteLetter, openLetter } from "./api";
 export { LetterBox, type LetterSummary } from "./components/LetterBox";
 export { LetterCard } from "./components/LetterCard";
 export { christmasLabel, daysUntilChristmas, isLetterOpen } from "./lib/dday";
+export { useChristmasLabel } from "./hooks/useChristmasLabel";
 export { LETTER_MAX_LENGTH } from "./types";

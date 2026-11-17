@@ -3,14 +3,23 @@
 import { useState } from "react";
 import { LETTER_MAX_LENGTH } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
+import { PixelDialog } from "@/shared/components/PixelDialog";
+import { PixelField } from "@/shared/components/PixelField";
 
 type Submit = (result: { name: string; letter: string }) => void;
 
-type Props =
+type Props = (
   /** 친구: 닉네임을 정하고, 마을 주인에게 편지를 남긴다 */
-  | { mode: "visitor"; recipient: string; onSubmit: Submit }
+  | { mode: "visitor"; recipient: string }
   /** 마을 주인: 닉네임을 정하고, 크리스마스의 나에게 편지를 남긴다 */
-  | { mode: "owner"; onSubmit: Submit };
+  | { mode: "owner" }
+) & {
+  onSubmit: Submit;
+  /** 취소·Esc: 저장하지 않고 닫는다 (눈사람 옆 말풍선의 "편지 쓰기"로 다시 열 수 있다) */
+  onCancel: () => void;
+};
+
+const FORM_ID = "finish-dialog-form";
 
 /** 눈사람을 완성하면 뜨는 창 */
 export function FinishDialog(props: Props) {
@@ -19,62 +28,66 @@ export function FinishDialog(props: Props) {
   const [letter, setLetter] = useState("");
   const owner = props.mode === "owner";
   const name = nickname.trim();
+  const ready = Boolean(name && letter.trim());
 
   // 눈사람 하나 = 편지 한 통. 친구도 주인도 편지를 꼭 쓴다.
   const submit = () => {
-    if (!name || !letter.trim()) return;
+    if (!ready) return;
     props.onSubmit({ name, letter: letter.trim() });
   };
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-[#1A173066] px-5">
+    <PixelDialog
+      title="눈사람 완성!"
+      icon="star"
+      onClose={props.onCancel}
+      closeOnVeil={false}
+      footer={
+        <>
+          <PixelButton className="flex-1" onClick={props.onCancel}>
+            취소
+          </PixelButton>
+          <PixelButton
+            variant="primary"
+            type="submit"
+            form={FORM_ID}
+            icon="envelope"
+            aria-label="편지 넣고 눈사람 세우기"
+            className="flex-1"
+            disabled={!ready}
+          >
+            보내기
+          </PixelButton>
+        </>
+      }
+    >
       <form
-        className="pixel-box pixel-box-flat flex w-full max-w-[340px] flex-col gap-3 p-4 text-ink"
+        id={FORM_ID}
+        className="flex flex-col gap-[calc(var(--p)*4)]"
         onSubmit={(e) => {
           e.preventDefault();
           submit();
         }}
       >
-        <label className="flex flex-col gap-2">
-          <span className="text-[12px] font-bold">닉네임</span>
-          <input
-            autoFocus
-            value={nickname}
-            maxLength={10}
-            onChange={(e) => setNickname(e.target.value)}
-            placeholder="눈사람과 편지에 쓰여요"
-            className="pixel-box pixel-box-flat h-11 bg-white px-3 text-[12px] outline-none"
-          />
-        </label>
-
-        <label className="flex flex-col gap-2">
-          <span className="text-[12px] font-bold">
-            {owner ? "크리스마스의 나에게 남길 편지" : `${props.recipient}에게 남길 편지`}
-          </span>
-          <textarea
-            value={letter}
-            maxLength={LETTER_MAX_LENGTH}
-            onChange={(e) => setLetter(e.target.value)}
-            placeholder={
-              owner
-                ? "한 줄이어도 좋아요. 친구들 편지와 함께 12월 25일에 열려요."
-                : "한 줄이어도 좋아요. 12월 25일에 열려요."
-            }
-            rows={6}
-            className="pixel-box pixel-box-flat resize-none bg-white px-3 py-2 text-[12px] leading-[1.6] outline-none"
-          />
-          <span className="self-end text-[12px] text-[#8E86B8]">
-            {letter.length}/{LETTER_MAX_LENGTH}
-          </span>
-        </label>
-
-        <div className="flex flex-col gap-2">
-          <PixelButton type="submit" disabled={!name || !letter.trim()}>
-            편지 넣고 눈사람 세우기
-          </PixelButton>
-
-        </div>
+        <PixelField
+          label="닉네임"
+          value={nickname}
+          maxLength={10}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="눈사람과 편지에 쓰여요"
+        />
+        <PixelField
+          multiline
+          tone="paper"
+          label={owner ? "크리스마스의 나에게" : `${props.recipient}에게`}
+          hint={`${letter.length}/${LETTER_MAX_LENGTH}`}
+          value={letter}
+          maxLength={LETTER_MAX_LENGTH}
+          onChange={(e) => setLetter(e.target.value)}
+          placeholder={owner ? "한 줄이어도 좋아요. 친구들 편지와 함께 12월 25일에 열려요." : "한 줄이어도 좋아요. 12월 25일에 열려요."}
+          rows={5}
+        />
       </form>
-    </div>
+    </PixelDialog>
   );
 }

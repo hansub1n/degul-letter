@@ -424,3 +424,17 @@ body {
     transition: none;
   }
 }
+
+/* 흰 글자 + --ink 1칸 외곽선 (나무 표지판의 마을 이름) */
+.text-outline-ink {
+  color: var(--snow);
+  text-shadow:
+    var(--p) 0 var(--ink),
+    calc(var(--p) * -1) 0 var(--ink),
+    0 var(--p) var(--ink),
+    0 calc(var(--p) * -1) var(--ink),
+    var(--p) var(--p) var(--ink),
+    calc(var(--p) * -1) var(--p) var(--ink),
+    var(--p) calc(var(--p) * -1) var(--ink),
+    calc(var(--p) * -1) calc(var(--p) * -1) var(--ink);
+}

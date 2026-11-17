@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { HintPill } from "@/shared/components/HintPill";
 import { PixelButton } from "@/shared/components/PixelButton";
 import type { PixelIconName } from "@/shared/components/PixelIcon";
+import { PixelToast } from "@/shared/components/PixelToast";
 import { cloneSculpt, strokeLine, type Sculpt, type SculptTool } from "../lib/sculpt";
 
 type Props = {
@@ -99,10 +99,13 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
         onPointerCancel={onPointerEnd}
       />
 
-      <div className="pointer-events-none absolute inset-x-4 top-4 flex items-start justify-between gap-3">
+      <div className="pointer-events-none absolute inset-x-[calc(var(--p)*4)] top-[calc(var(--p)*4)] flex items-start justify-between gap-[calc(var(--p)*4)]">
         <PixelButton iconOnly icon="close" aria-label="나가기" className="pointer-events-auto" onClick={onCancel} />
-        <HintPill className="mt-1.5 min-w-0">{active?.hint}</HintPill>
+        <PixelToast key={tool} placement="inline" className="mt-[var(--p)] min-w-0">
+          {active?.hint}
+        </PixelToast>
         <PixelButton
+          variant="primary"
           iconOnly
           icon="check"
           aria-label="완료"
@@ -111,7 +114,7 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
         />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-4 bottom-5 flex justify-center gap-3">
+      <div className="pointer-events-none absolute inset-x-[calc(var(--p)*4)] bottom-[calc(var(--p)*6)] flex justify-center gap-[calc(var(--p)*4)]">
         {TOOLS.map((t) => (
           <PixelButton
             iconOnly
@@ -123,7 +126,7 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
             onClick={() => setTool(t.id)}
           />
         ))}
-        <span aria-hidden className="w-2" />
+        <span aria-hidden className="w-[calc(var(--p)*2)]" />
         <PixelButton
           iconOnly
           icon={size === 1 ? "brushSmall" : "brushLarge"}
