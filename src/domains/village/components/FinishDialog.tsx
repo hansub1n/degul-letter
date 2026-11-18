@@ -66,7 +66,11 @@ export function FinishDialog(props: Props) {
       closeOnVeil={!confirming}
       cover={
         confirming ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-veil p-[calc(var(--p)*4)]">
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center p-[calc(var(--p)*4)]"
+            // 창은 항상 흰 눈 재질이라, 마을 위 흰 베일 대신 밤 모드와 같은 --night 40% 베일로 본문을 가라앉힌다
+            style={{ background: "color-mix(in srgb, var(--night) 40%, transparent)" }}
+          >
             <div
               role="alertdialog"
               aria-modal="true"
