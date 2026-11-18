@@ -68,10 +68,10 @@ export function HomeScreen() {
 
   const form = (
     <>
-      {mine === undefined && <p className="text-caption">불러오는 중…</p>}
+      {mine === undefined && <p className="m-auto text-caption">불러오는 중…</p>}
 
       {mine && (
-        <div className="flex w-full flex-col gap-[calc(var(--p)*4)]">
+        <div className="flex w-full flex-1 flex-col justify-center gap-[calc(var(--p)*4)]">
           <p className="text-label text-center">{mine.name}의 마을</p>
           <PixelButton
             variant="primary"
@@ -140,16 +140,16 @@ export function HomeScreen() {
         <PixelPanel
           tone="wood"
           pad={6}
-          className="relative -mt-[calc(var(--p)*4)] flex w-full flex-col items-center gap-[calc(var(--p)*4)]"
+          className="home-board relative -mt-[calc(var(--p)*4)] flex w-full flex-col items-center gap-[calc(var(--p)*4)]"
           style={{ paddingTop: "calc(var(--p) * 8)" }}
         >
           <span aria-hidden className="home-snowcap" />
-          <p className="text-caption text-center leading-[1.6]">
+          <p className="shrink-0 text-caption text-center leading-[1.6]">
             친구들이 내 마을에 눈사람을 세우고
             <br />
             크리스마스에 열어 볼 편지를 남겨요
           </p>
-          {form}
+          <div className="home-board-body">{form}</div>
         </PixelPanel>
         <div aria-hidden className="relative flex w-full justify-between px-[calc(var(--p)*15)]">
           <span className="home-post" />

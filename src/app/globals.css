@@ -724,6 +724,21 @@ body {
 
 /* ---------- 홈: 눈에 박힌 나무 표지판 ---------- */
 
+/* 아래 나무판 높이를 세 상태에서 같게 둔다.
+   돌아온 사람 판(220px)이 제일 높아서, 3px 격자에 맞춰 74칸(222px)으로 올린다. */
+.home-board {
+  height: calc(var(--p) * 74);
+}
+
+.home-board-body {
+  display: flex;
+  flex: 1 1 0%;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
+
 /* 표지판 다리 두 개 (나무 + 남색 테두리)와 눈 둔덕 */
 .home-post {
   display: block;
