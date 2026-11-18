@@ -106,7 +106,8 @@ export function VillageScreen() {
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
       }
-      setStatus(letterId ? "편지는 12월 25일에 열려요 ⛄" : "마을에 눈사람을 세웠어요!");
+      if (!letterId) setStatus("마을에 눈사람을 세웠어요!");
+      else setStatus(isLetterOpen() ? "편지를 넣었어요. 지금 바로 열 수 있어요" : "편지를 넣었어요. 12월 25일에 열려요");
     } catch (e) {
       console.error(e);
       // 저장에 실패하면 다시 "편지 쓰기"로 시도할 수 있게 남겨 둔다

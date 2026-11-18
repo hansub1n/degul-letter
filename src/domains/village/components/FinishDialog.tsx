@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LETTER_MAX_LENGTH } from "@/domains/letter";
+import { isLetterOpen, LETTER_MAX_LENGTH } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
@@ -84,7 +84,13 @@ export function FinishDialog(props: Props) {
           value={letter}
           maxLength={LETTER_MAX_LENGTH}
           onChange={(e) => setLetter(e.target.value)}
-          placeholder={owner ? "한 줄이어도 좋아요. 친구들 편지와 함께 12월 25일에 열려요." : "한 줄이어도 좋아요. 12월 25일에 열려요."}
+          placeholder={
+            isLetterOpen()
+              ? "한 줄이어도 좋아요. 지금 바로 열어 볼 수 있어요."
+              : owner
+                ? "한 줄이어도 좋아요. 친구들 편지와 함께 12월 25일에 열려요."
+                : "한 줄이어도 좋아요. 12월 25일에 열려요."
+          }
           rows={5}
         />
       </form>

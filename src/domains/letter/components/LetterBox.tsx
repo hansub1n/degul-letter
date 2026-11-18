@@ -40,7 +40,7 @@ type Props = {
 
 /**
  * 집 옆 우체통: 마을에 온 편지를 편지지 행으로 모아 본다.
- * 12/25 전에는 자물쇠와 "잠김", 12/25부터는 행마다 "열기" 버튼이 생긴다.
+ * 12/25 전에는 자물쇠와 "잠김", 12/25부터는 행마다 "열기" 버튼이 생긴다. 읽은 편지는 봉인 도트가 빠진다.
  */
 export function LetterBox({ recipientName, letters, openLetter, onClose }: Props) {
   const openable = isLetterOpen();
@@ -73,7 +73,12 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
       badge={String(letters.length)}
       caption={openable ? "메리 크리스마스! 편지를 열어 보세요" : `12월 25일에 열 수 있어요 · ${christmasLabel()}`}
       onClose={onClose}
-      footer={<p className="text-caption w-full text-center">눈사람을 세우면 편지를 넣을 수 있어요</p>}
+      // 우체통은 마을 주인만 연다. 크리스마스 전에 편지가 있으면 링크를 더 보내 보라고만 하고, 당일부터는 위 안내로 충분하다
+      footer={
+        !openable && letters.length > 0 ? (
+          <p className="text-caption w-full text-center">링크를 보내면 편지가 더 모여요</p>
+        ) : undefined
+      }
     >
       {letters.length === 0 ? (
         <div className="flex flex-col items-center gap-[calc(var(--p)*3)] py-[calc(var(--p)*6)] text-center">
@@ -96,9 +101,13 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
                 className="relative flex min-h-[calc(var(--p)*16)] items-center gap-[calc(var(--p)*3)]"
                 style={{ padding: "calc(var(--p) * 3) calc(var(--p) * 4)" }}
               >
-                {/* 봉인 도트: 오른쪽 위와 왼쪽 아래 모서리 (시안 03) */}
-                <span aria-hidden className="absolute right-[var(--p)] top-[var(--p)] size-[calc(var(--p)*2)] bg-berry" />
-                <span aria-hidden className="absolute bottom-[var(--p)] left-[var(--p)] size-[calc(var(--p)*2)] bg-berry" />
+                {/* 봉인 도트: 오른쪽 위와 왼쪽 아래 모서리 (시안 03). 읽은 편지는 봉인이 풀려 도트를 뗀다 */}
+                {!opened && (
+                  <>
+                    <span aria-hidden className="absolute right-[var(--p)] top-[var(--p)] size-[calc(var(--p)*2)] bg-berry" />
+                    <span aria-hidden className="absolute bottom-[var(--p)] left-[var(--p)] size-[calc(var(--p)*2)] bg-berry" />
+                  </>
+                )}
                 <span className={`text-label min-w-0 flex-1 truncate ${opened ? "text-muted" : ""}`}>{letter.authorName}</span>
                 {openable ? (
                   <PixelButton size="sm" onClick={() => setReading(letter)}>
