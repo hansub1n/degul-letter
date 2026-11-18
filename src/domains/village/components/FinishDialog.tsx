@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
-import { PixelIcon } from "@/shared/components/PixelIcon";
+import { LeaveConfirm } from "./LeaveConfirm";
 
 type Submit = (result: { name: string; letter: string }) => void;
 
@@ -27,19 +27,17 @@ export function FinishDialog(props: Props) {
   // 한 폰을 여러 사람이 돌려 쓸 수 있으니 닉네임은 매번 빈칸에서 새로 쓴다
   const [nickname, setNickname] = useState("");
   const [letter, setLetter] = useState("");
-  const [confirming, setConfirming] = useState(false);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const keepWritingRef = useRef<HTMLButtonElement>(null);
   const panelHeightRef = useRef(0);
   const [panelMinHeight, setPanelMinHeight] = useState<number | undefined>();
-  const messageId = useId();
   const owner = props.mode === "owner";
   const name = nickname.trim();
   const ready = Boolean(name && letter.trim());
 
   // 쓰기 화면의 창 높이를 재 두고, 확인 화면에서도 같은 크기를 유지한다
   useLayoutEffect(() => {
-    if (confirming) return;
+    if (confirmingLeave) return;
     const panel = formRef.current?.closest<HTMLElement>('[role="dialog"]');
     if (!panel) return;
     const measure = () => {
@@ -49,16 +47,16 @@ export function FinishDialog(props: Props) {
     const ro = new ResizeObserver(measure);
     ro.observe(panel);
     return () => ro.disconnect();
-  }, [confirming]);
+  }, [confirmingLeave]);
 
   const requestClose = () => {
     const panel = formRef.current?.closest<HTMLElement>('[role="dialog"]');
     const height = panel?.offsetHeight || panelHeightRef.current;
     if (height) setPanelMinHeight(height);
-    setConfirming(true);
+    setConfirmingLeave(true);
   };
   const keepWriting = () => {
-    setConfirming(false);
+    setConfirmingLeave(false);
     // 적어 둔 글은 그대로 두고, 이전에 쓰던 입력칸으로 초점을 되돌린다
     requestAnimationFrame(() => {
       const form = formRef.current;
@@ -69,11 +67,6 @@ export function FinishDialog(props: Props) {
     });
   };
 
-  useEffect(() => {
-    if (!confirming) return;
-    keepWritingRef.current?.focus({ preventScroll: true });
-  }, [confirming]);
-
   // 눈사람 하나 = 편지 한 통. 친구도 주인도 편지를 꼭 쓴다.
   const submit = () => {
     if (!ready) return;
@@ -82,14 +75,14 @@ export function FinishDialog(props: Props) {
 
   return (
     <PixelDialog
-      title={confirming ? "눈사람이 녹아 버려요" : "눈사람 완성!"}
-      icon={confirming ? undefined : "star"}
-      hideHeader={confirming}
+      title={confirmingLeave ? "눈사람이 녹아 버려요" : "눈사람 완성!"}
+      icon={confirmingLeave ? undefined : "star"}
+      hideHeader={confirmingLeave}
       closeOnVeil
-      onClose={confirming ? keepWriting : requestClose}
-      minHeight={confirming ? panelMinHeight : undefined}
+      onClose={confirmingLeave ? keepWriting : requestClose}
+      minHeight={confirmingLeave ? panelMinHeight : undefined}
       footer={
-        confirming ? undefined : (
+        confirmingLeave ? undefined : (
           <PixelButton
             variant="primary"
             type="submit"
@@ -104,41 +97,15 @@ export function FinishDialog(props: Props) {
         )
       }
     >
-      {confirming && (
-        <div
-          className="flex min-h-full flex-1 flex-col items-center justify-center text-center"
-          role="group"
-          aria-describedby={messageId}
-        >
-          <div className="flex w-full flex-col items-center gap-[calc(var(--p)*4)]">
-            <PixelIcon name="melt" scale={3} fit />
-            <h2 className="text-title text-center">
-              눈사람이
-              <br />
-              녹아 버려요
-            </h2>
-            <p id={messageId} className="text-caption">
-              편지를 남겨야 마을에 눈사람이 남아요
-            </p>
-            <div className="flex w-full flex-col items-center gap-[calc(var(--p)*6)]">
-              <PixelButton ref={keepWritingRef} variant="primary" className="w-full" onClick={keepWriting}>
-                계속 쓰기
-              </PixelButton>
-              <button
-                type="button"
-                className="pixel-btn text-caption underline decoration-[2px] underline-offset-4"
-                onClick={props.onCancel}
-              >
-                그냥 나가기
-              </button>
-            </div>
-          </div>
+      {confirmingLeave && (
+        <div className="flex min-h-full flex-1 flex-col items-center justify-center">
+          <LeaveConfirm onKeepWriting={keepWriting} onLeave={props.onCancel} />
         </div>
       )}
       <form
           ref={formRef}
           id={FORM_ID}
-          className={`flex flex-col gap-[calc(var(--p)*4)] ${confirming ? "hidden" : ""}`}
+          className={`flex flex-col gap-[calc(var(--p)*4)] ${confirmingLeave ? "hidden" : ""}`}
           onSubmit={(e) => {
             e.preventDefault();
             submit();
