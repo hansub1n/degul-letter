@@ -505,7 +505,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: calc(var(--p) * 4);
-  padding-top: calc(var(--p) * 3);
+  /* 봉투 타일 바깥 그림자(아래 2칸) 아래로 6칸(18px) 더 띄워, 넘김 단추가 편지와 겹치지 않게 한다 */
+  padding-top: calc(var(--p) * 8);
 }
 
 /* 안 읽은 봉투는 한 칸씩 들썩인다. 타일마다 박자를 엇갈리게(--bob-delay) 해서 한꺼번에 뛰지 않는다 */
