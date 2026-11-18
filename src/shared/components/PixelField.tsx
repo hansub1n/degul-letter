@@ -37,12 +37,12 @@ export function PixelField(props: Props) {
           id={id}
           data-tone={paper ? "paper" : "snow"}
           className={`pixel-box pixel-box-flat pixel-field text-body w-full resize-none px-[calc(var(--p)*4)] ${
-            paper ? "pixel-paper-lines pr-[calc(var(--p)*24)]" : "py-[calc(var(--p)*3)]"
+            paper ? "pixel-paper-lines pr-[calc(var(--p)*25)]" : "py-[calc(var(--p)*3)]"
           }`}
           style={paper ? { lineHeight: "24px", paddingTop: 0, paddingBottom: 0 } : undefined}
           {...rest}
         />
-        {paper && <LetterStamp className="absolute right-[calc(var(--p)*3)] top-[calc(var(--p)*3)]" />}
+        {paper && <LetterStamp className="absolute right-[calc(var(--p)*3)] top-[calc(var(--p)*2)]" />}
       </div>
     );
   } else {

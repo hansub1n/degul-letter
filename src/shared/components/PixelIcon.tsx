@@ -288,49 +288,35 @@ const ICONS = {
     "....osso....",
     "....oooo....",
   ],
-  // 편지지 우표: 남색 톱니 + berry 테두리 + 하늘색 면 + 눈사람
+  // 편지지 우표 (9x10칸 = 27x30px): 흰 톱니 + berry 테두리 + 하늘색 면 + 눈사람
   stamp: [
-    "o.o.o.o.o.o.o.o.o",
-    ".rrrrrrrrrrrrrrr.",
-    "orcccccccccccccro",
-    ".rcccccwwwcccccr.",
-    "orccccwwwwwccccro",
-    ".rccccwowowccccr.",
-    "orccccwwwwwccccro",
-    ".rcccccwwwcccccr.",
-    "orcccwwwwwwwcccro",
-    ".rccwwwwwwwwwccr.",
-    "orccwwwwswwwwwcro",
-    ".rcccwwwssswwwcr.",
-    "orcccccssssscccro",
-    ".rcccccccccccccr.",
-    "orcccccccccccccro",
-    ".rrrrrrrrrrrrrrr.",
-    "o.o.o.o.o.o.o.o.o",
+    "w.w.w.w.w",
+    ".rrrrrrr.",
+    "wrccwccrw",
+    ".rcwwwcr.",
+    "wrwowowrw",
+    ".rwwgwwr.",
+    "wrwwwwwrw",
+    ".rwsoswr.",
+    "wrrrrrrrw",
+    ".w.w.w.w.",
   ],
-  // 12.25 소인 고리. 날짜 글자는 LetterStamp가 가운데에 얹는다
+  // 12.25 소인 고리 (14x14칸 = 42px). 안지름 36px에 12px "12.25"(34px)가 들어간다
   postmark: [
-    ".....................",
-    ".......mmmmmmm.......",
-    ".....mmmm...mmmm.....",
-    "....mm.........mm....",
-    "...mm...........mm...",
-    "..mm.............mm..",
-    "..m...............m..",
-    ".mm...............mm.",
-    ".mm...............mm.",
-    ".m.................m.",
-    ".m.................m.",
-    ".m.................m.",
-    ".mm...............mm.",
-    ".mm...............mm.",
-    "..m...............m..",
-    "..mm.............mm..",
-    "...mm...........mm...",
-    "....mm.........mm....",
-    ".....mmmm...mmmm.....",
-    ".......mmmmmmm.......",
-    ".....................",
+    "......mm......",
+    "....mm..mm....",
+    "...m......m...",
+    "..m........m..",
+    ".m..........m.",
+    ".m..........m.",
+    "m............m",
+    "m............m",
+    ".m..........m.",
+    ".m..........m.",
+    "..m........m..",
+    "...m......m...",
+    "....mm..mm....",
+    "......mm......",
   ],
   // 작은 눈송이 (제목 장식): 흰 면 + 남색 외곽
   snowflake: [
@@ -389,19 +375,21 @@ type Props = {
   name: PixelIconName;
   /** 도트 한 칸의 크기(px) */
   scale?: number;
+  /** true면 12칸 격자에 맞추지 않고 그림 크기 그대로 쓴다 (우표처럼 칸이 정해진 장식) */
+  fit?: boolean;
   className?: string;
 };
 
 /** 아이콘 칸: 모든 아이콘을 12x12 격자 가운데에 놓아 크기와 정렬을 맞춘다(더 큰 그림은 그대로) */
 const GRID = 12;
 
-export function PixelIcon({ name, scale = 3, className }: Props) {
+export function PixelIcon({ name, scale = 3, fit = false, className }: Props) {
   const key = name in ALIASES ? ALIASES[name as keyof typeof ALIASES] : (name as keyof typeof ICONS);
   const rows: readonly string[] = ICONS[key];
   const glyphW = Math.max(...rows.map((r) => r.length));
   const glyphH = rows.length;
-  const width = Math.max(GRID, glyphW);
-  const height = Math.max(GRID, glyphH);
+  const width = fit ? glyphW : Math.max(GRID, glyphW);
+  const height = fit ? glyphH : Math.max(GRID, glyphH);
   const ox = Math.floor((width - glyphW) / 2);
   const oy = Math.floor((height - glyphH) / 2);
   const rects: Array<{ x: number; y: number; w: number; color: string }> = [];

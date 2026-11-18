@@ -761,22 +761,37 @@ body {
 :root[data-time="night"] .home-snowcap::before {
   background: var(--snow-moon);
 }
-/* 편지지 우표 + 12.25 소인. 소인은 우표 왼쪽 아래를 덮고 편지지 줄 위로 살짝 겹친다 */
+/* 편지지 우표 + 12.25 소인.
+   우표는 9×10칸(27×30px). 소인 고리는 12×12칸(36px)이고 우표 왼쪽 아래를 덮되, 우표 위에 그린다.
+   읽기 칸에서는 .letter-stamp-slot 이 오른쪽을 띄워 글이 우표·소인과 겹치지 않게 한다. */
 .letter-stamp {
-  width: calc(17 * 2px);
-  height: calc(17 * 2px);
+  display: block;
+  width: calc(var(--p) * 9);
+  height: calc(var(--p) * 10);
+  overflow: visible;
+}
+
+.letter-stamp > svg {
+  display: block;
+  position: relative;
+  z-index: 0;
 }
 
 .letter-postmark {
   position: absolute;
-  left: calc(var(--p) * -12);
-  top: calc(var(--p) * 5);
+  z-index: 2;
+  /* 14칸 고리를 우표 왼쪽 아래와 3칸만 겹치게 */
+  left: calc(var(--p) * -11);
+  top: calc(var(--p) * 2);
   display: block;
+  width: calc(var(--p) * 14);
+  height: calc(var(--p) * 14);
 }
 
 .letter-postmark-date {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -784,5 +799,22 @@ body {
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
-  /* 돌리면 갈무리 12px이 뭉개져, 소인은 바르게 찍는다 */
+  white-space: nowrap;
+}
+
+/* 읽기 칸: 소인+우표 자리(너비 20칸, 높이 두 줄=16칸)를 오른쪽에 띄운다 */
+.letter-stamp-slot {
+  float: right;
+  position: relative;
+  z-index: 1;
+  width: calc(var(--p) * 20);
+  height: calc(var(--p) * 16);
+  margin-left: calc(var(--p) * 3);
+  overflow: visible;
+}
+
+.letter-stamp-slot .letter-stamp {
+  position: absolute;
+  right: 0;
+  top: 0;
 }

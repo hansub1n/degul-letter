@@ -63,19 +63,23 @@ export function LetterCard({ authorName, recipientName, onOpen, onClose, autoOpe
   return (
     <PixelDialog title={`${authorName}의 편지`} icon="envelope" align="start" onClose={onClose}>
       {state.kind === "opened" ? (
-        <PixelPanel tone="paper" pad={5} className="relative flex flex-col">
-          {/* 쓰기 칸과 같은 눈사람 우표 + 12.25 소인 */}
-          <LetterStamp className="absolute right-[calc(var(--p)*3)] top-[calc(var(--p)*3)]" />
-          <p className="text-label pr-[calc(var(--p)*24)]" style={{ lineHeight: "24px" }}>
-            To. {recipientName}
-          </p>
-          {/* 줄 그은 편지지: 짧은 편지라도 6줄 높이를 유지한다 */}
-          <div className="pixel-paper-lines text-body max-h-[45vh] min-h-[144px] overflow-y-auto whitespace-pre-wrap break-words pr-[calc(var(--p)*24)]">
-            {state.content}
+        <PixelPanel tone="paper" pad={5} className="letter-paper relative">
+          {/* 스크롤은 바깥에 두고, 안쪽은 일반 흐름이라 글이 우표 자리를 피해 흐른다 */}
+          <div className="max-h-[45vh] overflow-y-auto">
+            <div className="letter-stamp-slot">
+              <LetterStamp />
+            </div>
+            <p className="text-label" style={{ lineHeight: "24px" }}>
+              To. {recipientName}
+            </p>
+            {/* 줄 그은 편지지: 짧은 편지라도 6줄 높이를 유지한다. 위 두 줄은 우표 자리를 피해 짧아진다. */}
+            <div className="pixel-paper-lines text-body min-h-[144px] whitespace-pre-wrap break-words">
+              {state.content}
+            </div>
+            <p className="text-label text-right" style={{ lineHeight: "24px" }}>
+              From. {authorName}
+            </p>
           </div>
-          <p className="text-label self-end" style={{ lineHeight: "24px" }}>
-            From. {authorName}
-          </p>
         </PixelPanel>
       ) : (
         <PixelPanel tone="paper" pad={6} className="flex flex-col items-center gap-[calc(var(--p)*4)] text-center">
