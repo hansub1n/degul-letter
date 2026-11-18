@@ -400,6 +400,28 @@ body {
   --ink: var(--roof-muted-shade);
 }
 
+/* 소나무 초록 확인 단추: 크림 기호. 테두리·바깥 그림자는 다른 단추와 같이 남색(--ink).
+   --ink를 크림으로 바꾸면 아이콘은 밝아지지만, --box-line/--box-drop은 남색에 고정한다. */
+.pixel-btn[data-variant="pine"] {
+  --box-fill: var(--pine);
+  --box-light: var(--pine-light);
+  --box-shade: var(--pine-shade);
+  --box-line: #2a2350;
+  --box-drop: #2a2350;
+  --ink: var(--snow);
+  color: var(--snow);
+}
+
+.pixel-btn[data-variant="pine"]:disabled {
+  --box-fill: var(--pine-shade);
+  --box-light: var(--pine-shade);
+  --box-shade: var(--pine-edge);
+  --box-line: #2a2350;
+  --box-drop: transparent;
+  --ink: var(--snow-shade);
+  color: var(--snow-shade);
+}
+
 /* 입력칸: flat 상자. 초점이 오면 버튼과 같은 금색 링 */
 .pixel-field {
   outline: none;

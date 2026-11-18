@@ -105,7 +105,7 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
           {active?.hint}
         </PixelToast>
         <PixelButton
-          variant="primary"
+          variant="pine"
           iconOnly
           icon="check"
           aria-label="완료"
