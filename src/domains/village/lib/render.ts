@@ -950,6 +950,8 @@ export function paintBackdrop(
   groundPal = pal;
   const w = Math.ceil(width / scale);
   const h = Math.ceil(height / scale);
+  // 숨긴 탭·화면 회전 중에는 창 크기가 0이 된다. 그대로 그리면 createImageData가 IndexSizeError를 낸다
+  if (w <= 0 || h <= 0) return;
   const cx = Math.round(w / 2);
   const house = { x: cx, y: BACKDROP_HOUSE_BASE };
   const wide = w >= BACKDROP_CARD_HALF * 2 + 40;

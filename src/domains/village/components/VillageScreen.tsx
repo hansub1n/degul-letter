@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   christmasLabel,
   createLetter,
@@ -114,6 +114,9 @@ export function VillageScreen() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [drafts, pending]);
 
+  // 편지를 아직 안 넣은 눈사람 ID. drafts가 바뀔 때만 새 배열을 만들어, VillageGame이 매 렌더 다시 받지 않게 한다
+  const unsentIds = useMemo(() => [...drafts.keys()], [drafts]);
+
   if (problem) {
     return (
       <Center>
@@ -212,7 +215,7 @@ export function VillageScreen() {
           setDrafts((m) => new Map(m).set(stackId, job));
           window.setTimeout(() => setPending(job), FINISH_DIALOG_DELAY_MS);
         }}
-        unsentIds={[...drafts.keys()]}
+        unsentIds={unsentIds}
         onWriteLetter={(stackId) => {
           const job = drafts.get(stackId);
           if (job) setPending(job);

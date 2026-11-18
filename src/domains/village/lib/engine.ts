@@ -123,7 +123,7 @@ export function createVillageGame({
   window.addEventListener("resize", onShow);
   window.addEventListener("pageshow", onShow);
   document.addEventListener("visibilitychange", onShow);
-  requestAnimationFrame(onShow);
+  const firstShowFrame = requestAnimationFrame(onShow);
 
   let nearbyKey = "";
   let chargeStart: number | null = null;
@@ -385,6 +385,7 @@ export function createVillageGame({
     },
     destroy() {
       cancelAnimationFrame(rafId);
+      cancelAnimationFrame(firstShowFrame);
       resizeObserver.disconnect();
       window.removeEventListener("resize", onShow);
       window.removeEventListener("pageshow", onShow);
