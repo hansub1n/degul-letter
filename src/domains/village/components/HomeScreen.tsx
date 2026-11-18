@@ -125,7 +125,7 @@ export function HomeScreen() {
     >
       <HomeBackdrop />
 
-      {/* 눈에 박힌 나무 표지판: 위 판자에 이름과 D-day 꼬리표, 아래 흰 판에 입력, 다리 두 개가 눈 둔덕에 꽂힌다 */}
+      {/* 눈에 박힌 나무 표지판: 위 판자에 이름과 D-day 꼬리표, 아래도 같은 나무 판(결·옹이)에 크림 입력칸, 다리 두 개가 눈 둔덕에 꽂힌다 */}
       <section
         aria-labelledby="home-title"
         className={`relative flex w-full max-w-[360px] shrink-0 flex-col items-center ${leaving ? "pixel-leave" : ""}`}
@@ -137,8 +137,9 @@ export function HomeScreen() {
         </PixelPanel>
         {dDayTag && <div className="relative z-20 -mt-[var(--p)]">{dDayTag}</div>}
         <PixelPanel
+          tone="wood"
           pad={6}
-          className="relative -mt-[calc(var(--p)*4)] flex w-full flex-col items-center gap-[calc(var(--p)*4)] text-ink"
+          className="relative -mt-[calc(var(--p)*4)] flex w-full flex-col items-center gap-[calc(var(--p)*4)]"
           style={{ paddingTop: "calc(var(--p) * 8)" }}
         >
           <p className="text-caption text-center">친구 마을에 눈사람과 편지를</p>

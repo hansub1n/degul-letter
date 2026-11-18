@@ -44,6 +44,7 @@
   --wood: #5c3a24;
   --wood-light: #7b4e30;
   --wood-mid: #8a5a34;
+  --wood-deep: #3e2716; /* 나무 결 틈, 옹이. public/textures/wood.png 과 같은 값 */
   --wall: #f4e4c8;
   --wall-shade: #e2cca8;
   --paper: #fbf3e2; /* 편지지, 봉투 행 */
@@ -113,6 +114,7 @@
   --color-wood: var(--wood);
   --color-wood-light: var(--wood-light);
   --color-wood-mid: var(--wood-mid);
+  --color-wood-deep: var(--wood-deep);
   --color-wall: var(--wall);
   --color-wall-shade: var(--wall-shade);
   --color-paper: var(--paper);
@@ -210,7 +212,48 @@ body {
   --box-light: var(--wood-mid);
   --box-shade: var(--wood);
   color: var(--snow);
+  position: relative;
+  background-color: var(--wood-light);
 }
+
+/* 나무 질감: 판자 줄·결·옹이. 위아래 1칸 베벨은 질감 위에 다시 그린다.
+   image-rendering 은 가상 요소에만 두어 안쪽 글자·아이콘에 상속되지 않게 한다. */
+.pixel-box[data-tone="wood"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/textures/wood.png");
+  background-size: calc(var(--p) * 96) calc(var(--p) * 32);
+  background-repeat: repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+  box-shadow:
+    inset 0 var(--p) 0 0 var(--box-light),
+    inset 0 calc(var(--p) * -1) 0 0 var(--box-shade);
+}
+
+.pixel-box[data-tone="wood"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 나무 판 위 글자: 제목은 흰 글자+외곽선, 이름표는 크림, 안내 문장은 벽 색 */
+.pixel-box[data-tone="wood"] .text-label {
+  color: var(--snow);
+}
+
+.pixel-box[data-tone="wood"] .text-caption {
+  color: var(--wall);
+}
+
+/* 나무 판 안 입력칸은 크림 편지지 면으로 남겨 글을 읽기 쉽게 */
+.pixel-box[data-tone="wood"] .pixel-field {
+  --box-fill: var(--paper);
+  --box-light: var(--snow);
+  --box-shade: var(--wall-shade);
+  color: var(--ink);
+}
+
 
 .pixel-box[data-tone="paper"] {
   --box-fill: var(--paper);
