@@ -766,8 +766,8 @@ body {
    읽기 칸에서는 .letter-stamp-slot 이 오른쪽을 띄워 글이 우표·소인과 겹치지 않게 한다. */
 .letter-stamp {
   display: block;
-  width: calc(var(--p) * 9);
-  height: calc(var(--p) * 10);
+  width: 26px;
+  height: 26px;
   overflow: visible;
 }
 
@@ -780,12 +780,12 @@ body {
 .letter-postmark {
   position: absolute;
   z-index: 2;
-  /* 14칸 고리를 우표 왼쪽 아래와 3칸만 겹치게 */
-  left: calc(var(--p) * -11);
-  top: calc(var(--p) * 2);
+  /* 42px 고리를 26px 우표 왼쪽 아래와 8px만 겹치게. 눈사람 얼굴은 가리지 않는다 */
+  left: -34px;
+  top: 10px;
   display: block;
-  width: calc(var(--p) * 14);
-  height: calc(var(--p) * 14);
+  width: 42px;
+  height: 42px;
 }
 
 .letter-postmark-date {
@@ -802,13 +802,13 @@ body {
   white-space: nowrap;
 }
 
-/* 읽기 칸: 소인+우표 자리(너비 20칸, 높이 두 줄=16칸)를 오른쪽에 띄운다 */
+/* 읽기 칸: 소인+우표 자리(60×52)를 오른쪽에 띄운다. 첫 두 줄(48px)보다 4px 길다 */
 .letter-stamp-slot {
   float: right;
   position: relative;
   z-index: 1;
-  width: calc(var(--p) * 20);
-  height: calc(var(--p) * 16);
+  width: 60px;
+  height: 52px;
   margin-left: calc(var(--p) * 3);
   overflow: visible;
 }
