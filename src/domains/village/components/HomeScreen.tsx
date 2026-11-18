@@ -22,6 +22,8 @@ export function HomeScreen() {
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
   const [leaving, setLeaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  /** 닉네임 없이 "마을 만들기"를 눌렀을 때 입력칸 아래 안내 */
+  const [nameError, setNameError] = useState(false);
   const dday = useChristmasLabel();
 
   useEffect(() => {
@@ -42,7 +44,13 @@ export function HomeScreen() {
 
   const create = async () => {
     const trimmed = name.trim();
-    if (!trimmed || busy) return;
+    if (busy) return;
+    // 버튼을 흐린 분홍으로 꺼 두지 않고, 빈칸으로 누르면 입력칸 아래에서 알려 준다
+    if (!trimmed) {
+      setNameError(true);
+      document.getElementById("home-nickname")?.focus();
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
@@ -91,19 +99,33 @@ export function HomeScreen() {
 
       {mine === null && (
         <form
-          className="flex w-full flex-col gap-[calc(var(--p)*4)]"
+          className="flex w-full flex-col gap-[calc(var(--p)*6)]"
           onSubmit={(e) => {
             e.preventDefault();
             void create();
           }}
         >
-          <PixelField
-            label="내 닉네임"
-            value={name}
-            maxLength={10}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || busy}>
+          <div className="flex flex-col gap-[calc(var(--p)*2)]">
+            <PixelField
+              id="home-nickname"
+              label="내 닉네임"
+              placeholder="마을 이름이 돼요"
+              value={name}
+              maxLength={10}
+              aria-invalid={nameError || undefined}
+              aria-describedby={nameError ? "home-nickname-error" : undefined}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError) setNameError(false);
+              }}
+            />
+            {nameError && (
+              <p id="home-nickname-error" role="alert" className="text-label">
+                닉네임을 적어 주세요
+              </p>
+            )}
+          </div>
+          <PixelButton variant="primary" type="submit" className="w-full" disabled={busy}>
             {busy ? "만드는 중…" : "마을 만들기"}
           </PixelButton>
         </form>
@@ -142,7 +164,11 @@ export function HomeScreen() {
           style={{ paddingTop: "calc(var(--p) * 8)" }}
         >
           <span aria-hidden className="home-snowcap" />
-          <p className="text-caption text-center">친구 마을에 눈사람과 편지를</p>
+          <p className="text-label text-center leading-[1.6]">
+            친구들이 내 마을에 눈사람을 세우고
+            <br />
+            크리스마스에 열어 볼 편지를 남겨요
+          </p>
           {form}
         </PixelPanel>
         <div aria-hidden className="relative flex w-full justify-between px-[calc(var(--p)*15)]">
