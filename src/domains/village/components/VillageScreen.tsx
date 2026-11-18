@@ -18,6 +18,7 @@ import { ensureUserId } from "@/shared/lib/session";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { FinishDialog } from "./FinishDialog";
+import { MyVillageSign } from "./MyVillageSign";
 import { VillageGame, type MarkSaved } from "./VillageGame";
 import { VillageSign } from "./VillageSign";
 
@@ -217,17 +218,14 @@ export function VillageScreen() {
                 onClick={shareLink}
               />
             ) : (
-              <PixelButton
-                variant="primary"
-                className="pointer-events-auto ml-auto shrink-0"
+              <MyVillageSign
+                hasVillage={Boolean(myVillage)}
                 onClick={() => {
                   if (isModalLocked()) return;
                   if (myVillage) router.push(`/v/${myVillage.code}`);
                   else router.push("/");
                 }}
-              >
-                {myVillage ? "내 마을 가기" : "내 마을 만들기"}
-              </PixelButton>
+              />
             )}
           </div>
         }

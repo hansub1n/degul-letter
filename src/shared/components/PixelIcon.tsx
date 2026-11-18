@@ -342,6 +342,17 @@ const ICONS = {
     "..o.oso.o..",
     ".....o.....",
   ],
+  // 작은 집: 눈 지붕·흰 벽 + 나무 문 + 남색 외곽. 표지판 글자 옆에서는 scale 2·fit 로 쓴다
+  house: [
+    "...oo...",
+    "..owwo..",
+    ".owwwwo.",
+    "oooooooo",
+    "owwbbwwo",
+    "owwbbwwo",
+    "owwbbwwo",
+    "oooooooo",
+  ],
   // 페이지 넘기기 화살표
   prev: ["....oo", "...ooo", "..oooo", ".ooooo", "oooooo", "oooooo", ".ooooo", "..oooo", "...ooo", "....oo"],
   next: ["oo....", "ooo...", "oooo..", "ooooo.", "oooooo", "oooooo", "ooooo.", "oooo..", "ooo...", "oo...."],
