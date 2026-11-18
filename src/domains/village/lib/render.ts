@@ -1287,8 +1287,9 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     return { x: (x - lastCam.x) * lastCam.scale, y: (y - lastCam.y) * lastCam.scale };
   }
 
-  // 굴린 자국: 밀려난 눈 둑(한 칸 큰 타원)을 먼저 찍고, 그 위에 다진 눈 면을 찍는다.
-  // 겹치면 안쪽 둑은 면이 덮고, 둑은 양옆과 아래에만 남는다. 오래된 자국은 스며 사라진다.
+  // 굴린 자국: 타원이 아니라, 굵기가 한 단씩 늘어나는 납작한 띠로 찍는다.
+  // 위·아래 둑은 1~2칸 눈, 아래 둑 밑에는 SNOW_EDGE 한 줄. 면은 5칸마다 세로 줄무늬와 디더.
+  // 가늘어질수록 hash2 로 칸이 빠져 오래된 끝이 부스러지고, 20초가 지나면 더 스며 사라진다.
   function inTrailWorld(px: number, py: number): boolean {
     return px >= 0 && py >= 0 && px < worldWidth && py < worldHeight;
   }
@@ -1305,57 +1306,57 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     trailCtx.fillRect(px, py, 1, 1);
   }
 
-  function centreColor(px: number, py: number): string {
+  function trailHalf(r: number): number {
+    return Math.max(1, Math.round(r * 0.4));
+  }
+
+  function bankThick(half: number): number {
+    return half <= 2 ? 1 : 2;
+  }
+
+  /** 가는 앞쪽은 칸이 빠져 부스러진 꼬리처럼 보이게 한다 */
+  function sparseDrop(px: number, py: number, half: number): boolean {
+    const p = half <= 1 ? 0.5 : half <= 2 ? 0.32 : half <= 3 ? 0.14 : half <= 4 ? 0.05 : 0;
+    return p > 0 && hash2(px + 19, py + 7) < p;
+  }
+
+  function centreColor(along: number, px: number, py: number): string {
     const h = hash2(px, py);
-    const stripe = ((px % 5) + 5) % 5 === 0;
-    if (stripe) return h < 0.3 ? pathColor : pathDeepColor;
-    return h < 0.5 ? pathColor : pathDeepColor;
+    const stripe = ((along % 5) + 5) % 5 === 0;
+    // 줄무늬 칸은 pathDeep으로 세워, 5칸마다 세로 홈이 분명하게 보이게 한다
+    if (stripe) return pathDeepColor;
+    return h < 0.75 ? pathColor : pathDeepColor;
   }
 
-  function ellipseRows(cx: number, cy: number, rr: number, rh: number): Array<{ left: number; width: number; dy: number }> {
-    const rows: Array<{ left: number; width: number; dy: number }> = [];
-    for (let dy = -rh; dy <= rh; dy++) {
-      const w = Math.round(rr * Math.sqrt(Math.max(0, 1 - (dy * dy) / ((rh + 0.5) * (rh + 0.5)))));
-      rows.push({ left: cx - w, width: w * 2 + 1, dy });
-    }
-    return rows;
+  function stampVertical(cx: number, cy: number, r: number, now: number): void {
+    const half = trailHalf(r);
+    const bt = bankThick(half);
+    const put = (px: number, py: number, color: string, kind: number) => {
+      if (!sparseDrop(px, py, half)) plotTrail(px, py, color, now, kind);
+    };
+    for (let i = 0; i < bt; i++) put(cx, cy - half - bt + i, snowColor, TRAIL_KIND_BANK);
+    for (let py = cy - half; py <= cy + half; py++) put(cx, py, centreColor(cx, cx, py), TRAIL_KIND_CENTRE);
+    for (let i = 1; i <= bt; i++) put(cx, cy + half + i, snowColor, TRAIL_KIND_BANK);
+    put(cx, cy + half + bt + 1, snowEdgeColor, TRAIL_KIND_BANK);
   }
 
-  function stampTrail(x: number, y: number, r: number, now: number): void {
-    const rr = Math.max(2, r * 0.6);
-    const rh = Math.max(1, Math.ceil(rr * 0.5));
+  function stampHorizontal(cx: number, cy: number, r: number, now: number): void {
+    const half = trailHalf(r);
+    const bt = bankThick(half);
+    const put = (px: number, py: number, color: string, kind: number) => {
+      if (!sparseDrop(px, py, half)) plotTrail(px, py, color, now, kind);
+    };
+    for (let i = 0; i < bt; i++) put(cx - half - bt + i, cy, snowColor, TRAIL_KIND_BANK);
+    for (let px = cx - half; px <= cx + half; px++) put(px, cy, centreColor(cy, px, cy), TRAIL_KIND_CENTRE);
+    for (let i = 1; i <= bt; i++) put(cx + half + i, cy, snowColor, TRAIL_KIND_BANK);
+    put(cx + half + bt + 1, cy, snowEdgeColor, TRAIL_KIND_BANK);
+  }
+
+  function stampTrail(x: number, y: number, r: number, now: number, dx: number, dy: number): void {
     const cx = Math.round(x);
     const cy = Math.round(y);
-    const rrBank = rr + 1;
-    const rhBank = rh + 1;
-    const bank = ellipseRows(cx, cy, rrBank, rhBank);
-
-    for (const row of bank) {
-      const py = cy + row.dy;
-      const color = row.dy === rhBank ? snowEdgeColor : snowColor;
-      for (let px = row.left; px < row.left + row.width; px++) plotTrail(px, py, color, now, TRAIL_KIND_BANK);
-    }
-    const bottom = bank[bank.length - 1];
-    const shadeY = cy + bottom.dy + 1;
-    for (let px = bottom.left; px < bottom.left + bottom.width; px++) {
-      plotTrail(px, shadeY, snowEdgeColor, now, TRAIL_KIND_BANK);
-    }
-
-    const crumbs = ellipseRows(cx, cy, rr + 2, rh + 2);
-    for (const row of crumbs) {
-      const py = cy + row.dy;
-      const bankRow = bank.find((b) => b.dy === row.dy);
-      for (let px = row.left; px < row.left + row.width; px++) {
-        if (bankRow && px >= bankRow.left && px < bankRow.left + bankRow.width) continue;
-        if (py === shadeY && px >= bottom.left && px < bottom.left + bottom.width) continue;
-        if (hash2(px, py) < 0.07) plotTrail(px, py, snowColor, now, TRAIL_KIND_BANK);
-      }
-    }
-
-    for (const row of ellipseRows(cx, cy, rr, rh)) {
-      const py = cy + row.dy;
-      for (let px = row.left; px < row.left + row.width; px++) plotTrail(px, py, centreColor(px, py), now, TRAIL_KIND_CENTRE);
-    }
+    if (Math.abs(dx) >= Math.abs(dy)) stampVertical(cx, cy, r, now);
+    else stampHorizontal(cx, cy, r, now);
   }
 
   function paintTrail(x: number, y: number, r: number): void {
@@ -1365,15 +1366,25 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const dy = y - lastStamp.y;
       const dist = Math.hypot(dx, dy);
       const newBall = r + 3 < lastStamp.r;
-      if (!newBall && dist > 1.5 && dist < 24) {
-        const steps = Math.ceil(dist);
-        for (let i = 1; i < steps; i++) {
+      if (!newBall && dist > 0 && dist < 24) {
+        const steps = Math.max(1, Math.ceil(dist));
+        for (let i = 1; i <= steps; i++) {
           const t = i / steps;
-          stampTrail(lastStamp.x + dx * t, lastStamp.y + dy * t, lastStamp.r + (r - lastStamp.r) * t, now);
+          stampTrail(
+            lastStamp.x + dx * t,
+            lastStamp.y + dy * t,
+            lastStamp.r + (r - lastStamp.r) * t,
+            now,
+            dx,
+            dy,
+          );
         }
+      } else {
+        stampTrail(x, y, r, now, dx, dy);
       }
+    } else {
+      stampTrail(x, y, r, now, 1, 0);
     }
-    stampTrail(x, y, r, now);
     lastStamp = { x, y, r };
   }
 
@@ -1400,10 +1411,30 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   }
 
   if (process.env.NODE_ENV !== "production") {
-    (window as Window & { __degulAgeTrails?: (seconds: number) => void }).__degulAgeTrails = (seconds) => {
+    (window as Window & { __degulAgeTrails?: (startSeconds: number, endSeconds?: number) => void }).__degulAgeTrails = (
+      startSeconds,
+      endSeconds,
+    ) => {
       const now = performance.now() / 1000;
+      if (endSeconds == null) {
+        for (const i of trailLive) {
+          if (trailTime[i] !== 0) trailTime[i] = now - startSeconds;
+        }
+        return;
+      }
+      let minX = worldWidth;
+      let maxX = 0;
       for (const i of trailLive) {
-        if (trailTime[i] !== 0) trailTime[i] = now - seconds;
+        if (trailTime[i] === 0) continue;
+        const px = i % worldWidth;
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+      }
+      const span = Math.max(1, maxX - minX);
+      for (const i of trailLive) {
+        if (trailTime[i] === 0) continue;
+        const t = (i % worldWidth - minX) / span;
+        trailTime[i] = now - (startSeconds + (endSeconds - startSeconds) * t);
       }
     };
   }
