@@ -589,15 +589,17 @@ body {
   }
 }
 
-/* D-day 배지의 별: 4초마다 한 번 깜빡인다 */
+/* D-day 배지의 호랑가시: 4초마다 한 번 반짝인다.
+   아이콘을 통째로 숨기면 왼쪽에 빈 칸만 남아, 빠진 것처럼 보이니 밝기만 바꾼다. */
 @keyframes pixel-twinkle {
   0%,
-  94% {
-    opacity: 1;
-  }
-  95%,
+  92%,
   100% {
-    opacity: 0;
+    filter: none;
+  }
+  93%,
+  97% {
+    filter: brightness(1.7);
   }
 }
 
