@@ -311,6 +311,23 @@ body {
   animation: title-in-out 3.4s steps(12, end) forwards;
 }
 
+/* 인트로 표지판이 사라질 때 왼쪽 위 작은 이름 판이 따라 나타난다 */
+@keyframes nameplate-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--p) * -1));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nameplate-in {
+  animation: nameplate-in 360ms steps(4, end) 2.6s both;
+}
+
+
 /* ---------- 공통 컴포넌트 (3단계) ---------- */
 
 /* 버튼: hover 한 칸 위 + 그림자 2칸, active 한 칸 아래 + 그림자 없음, focus는 금색 링.

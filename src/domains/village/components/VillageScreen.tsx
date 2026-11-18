@@ -18,6 +18,7 @@ import { deleteSnowman, getVillageByCode, listSnowmen, saveSnowman } from "../ap
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { FinishDialog } from "./FinishDialog";
 import { VillageGame, type MarkSaved } from "./VillageGame";
+import { VillageNameplate } from "./VillageNameplate";
 import { VillageTitle } from "./VillageTitle";
 
 const FINISH_DIALOG_DELAY_MS = 2000;
@@ -187,11 +188,19 @@ export function VillageScreen() {
           />
         }
         header={
-          isOwner ? (
-            <div className="flex justify-end p-[var(--p)]">
-              <PixelButton variant="primary" iconOnly icon="send" aria-label="링크 보내기" onClick={shareLink} />
-            </div>
-          ) : undefined
+          <div className="pointer-events-none flex items-start justify-between gap-[calc(var(--p)*3)] p-[var(--p)]">
+            <VillageNameplate name={`${village.name}의 마을`} />
+            {isOwner && (
+              <PixelButton
+                variant="primary"
+                iconOnly
+                icon="send"
+                aria-label="링크 보내기"
+                className="pointer-events-auto shrink-0"
+                onClick={shareLink}
+              />
+            )}
+          </div>
         }
       />
       {status && <PixelToast key={status}>{status}</PixelToast>}
