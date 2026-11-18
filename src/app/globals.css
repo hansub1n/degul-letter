@@ -10,7 +10,9 @@
   --ground-dot: #ccd8ea; /* 땅의 디더 점 */
   --ground-glint: #ffffff; /* 반짝이 점 */
   --path: #c9d3e6; /* 발자국 길 (밝은 칸) */
-  --path-deep: #b8c4dc; /* 발자국 길 (어두운 칸), 굴린 자국 */
+  --path-deep: #b8c4dc; /* 발자국 길 (어두운 칸) */
+  --track: #d2dced; /* 눈덩이 굴린 자국: 다진 눈. 땅보다 살짝 어둡고 길보다 밝다 */
+  --track-edge: #a9b8d6; /* 굴린 자국 홈 가장자리 (낮에는 snow-edge와 같음) */
   --ground-shadow: #c3cee2; /* 오브젝트 그림자 (불투명) */
   --sky: #bfd9f2; /* 홈 맨 위 하늘 띠 */
   --snow: #ffffff; /* 쌓인 눈, 눈덩이 밝은 면, 패널 */
@@ -75,6 +77,8 @@
   --path: #3e4275;
   --path-deep: #363a6a;
   --ground-shadow: #33366a;
+  --track: #44487d; /* 밤의 다진 눈 자국. 밤 땅보다 살짝 어둡고 길보다 밝다 */
+  --track-edge: #363a6a; /* 밤 굴린 자국 홈 (path-deep과 같음) */
   --veil: rgb(26 23 48 / 0.4); /* 밤 땅이 이미 어두워서 베일은 옅게 */
 }
 
@@ -86,6 +90,8 @@
   --color-ground-glint: var(--ground-glint);
   --color-path: var(--path);
   --color-path-deep: var(--path-deep);
+  --color-track: var(--track);
+  --color-track-edge: var(--track-edge);
   --color-ground-shadow: var(--ground-shadow);
   --color-sky: var(--sky);
   --color-snow: var(--snow);
@@ -254,7 +260,6 @@ body {
   color: var(--ink);
 }
 
-
 .pixel-box[data-tone="paper"] {
   --box-fill: var(--paper);
   --box-light: var(--snow);
@@ -326,7 +331,6 @@ body {
 .nameplate-in {
   animation: nameplate-in 360ms steps(4, end) 2.6s both;
 }
-
 
 /* ---------- 공통 컴포넌트 (3단계) ---------- */
 
@@ -481,7 +485,6 @@ body {
   gap: calc(var(--p) * 4);
   padding-top: calc(var(--p) * 3);
 }
-
 
 /* 안 읽은 봉투는 한 칸씩 들썩인다. 타일마다 박자를 엇갈리게(--bob-delay) 해서 한꺼번에 뛰지 않는다 */
 .envelope-bob {

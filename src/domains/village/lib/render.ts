@@ -95,6 +95,8 @@ const PAL = {
   groundGlint: "#FFFFFF",
   path: "#C9D3E6",
   pathDeep: "#B8C4DC",
+  track: "#D2DCED",
+  trackEdge: "#A9B8D6",
   groundShadow: "#B8C4DC",
   snow: "#FFFFFF",
   snowShade: "#DCE5F2",
@@ -152,6 +154,8 @@ const PAL_NIGHT = {
   groundGlint: "#8E95C8",
   path: "#3E4275",
   pathDeep: "#363A6A",
+  track: "#44487D",
+  trackEdge: "#363A6A",
   groundShadow: "#33366A",
 } as const;
 /** 창문 빛 웅덩이 (바깥 → 안쪽). 밤 땅 위에서 따뜻하게 보이는 색 */
@@ -1267,13 +1271,30 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     return { x: (x - lastCam.x) * lastCam.scale, y: (y - lastCam.y) * lastCam.scale };
   }
 
+  // 굴린 자국: 다진 눈을 매끈한 면으로 찍고, 가장자리에 1칸 홈을 두어 점점이 찍힌 길과 구분한다. 길 위에 덧그린다.
   function paintTrail(x: number, y: number, r: number): void {
     const rr = Math.max(2, r * 0.6);
-    const rh = Math.ceil(rr * 0.5);
-    groundCtx.fillStyle = PAL.pathDeep;
+    const rh = Math.max(1, Math.ceil(rr * 0.5));
+    const fill = night ? PAL_NIGHT.track : PAL.track;
+    const edge = night ? PAL_NIGHT.trackEdge : PAL.trackEdge;
+    const cx = Math.round(x);
+    const cy = Math.round(y);
     for (let dy = -rh; dy <= rh; dy++) {
       const w = Math.round(rr * Math.sqrt(Math.max(0, 1 - (dy * dy) / ((rh + 0.5) * (rh + 0.5)))));
-      groundCtx.fillRect(Math.round(x - w), Math.round(y + dy), w * 2 + 1, 1);
+      const left = cx - w;
+      const width = w * 2 + 1;
+      const onRim = dy === -rh || dy === rh || w <= 1;
+      if (onRim) {
+        groundCtx.fillStyle = edge;
+        groundCtx.fillRect(left, cy + dy, width, 1);
+      } else {
+        groundCtx.fillStyle = edge;
+        groundCtx.fillRect(left, cy + dy, 1, 1);
+        groundCtx.fillStyle = fill;
+        groundCtx.fillRect(left + 1, cy + dy, width - 2, 1);
+        groundCtx.fillStyle = edge;
+        groundCtx.fillRect(left + width - 1, cy + dy, 1, 1);
+      }
     }
   }
 
