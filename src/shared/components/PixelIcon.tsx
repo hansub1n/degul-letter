@@ -374,6 +374,31 @@ const ICONS = {
     "o..........o",
     "ooo......ooo",
   ],
+  // 녹는 눈사람: 처진 팔과 밑동 물웅덩이. 편지 없이 나가려 할 때 확인 화면에 쓴다
+  melt: [
+    "........oooooo........",
+    "......oowwwwwwoo......",
+    ".....owwwwwwwwwwo.....",
+    ".....owwwoowoowwo.....",
+    ".....owwwwwwwwwwo.....",
+    ".....owwwwrrwwwwo.....",
+    ".....owwwosssowwo.....",
+    "......oowwwwwwoo......",
+    ".......oowwwwoo.......",
+    "..ooo...owwwwo...ooo..",
+    ".obbo...owwwwwo..obbo.",
+    ".o.o....owwrwwwo..o.o.",
+    ".o......owwwwrwo...o..",
+    "........owssssswo.....",
+    ".......owssssssswo....",
+    "......owssssssssswo...",
+    ".....owssssssssssswo..",
+    "....owssssssssssssswo.",
+    "....oossvvvvvvvvvsoo..",
+    ".....oovo.oo..oovoo...",
+    "......o..o..o..o......",
+    ".........o............",
+  ],
 } satisfies Record<string, string[]>;
 
 /** 같은 그림을 다른 이름으로도 부른다: 지시서의 `envelope`은 기존 `letter`와 같은 봉투다 */

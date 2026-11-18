@@ -5,6 +5,7 @@ import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
+import { PixelIcon } from "@/shared/components/PixelIcon";
 
 type Submit = (result: { name: string; letter: string }) => void;
 
@@ -15,7 +16,7 @@ type Props = (
   | { mode: "owner" }
 ) & {
   onSubmit: Submit;
-  /** 취소·Esc: 저장하지 않고 닫는다 (눈사람 옆 말풍선의 "편지 쓰기"로 다시 열 수 있다) */
+  /** 확인 화면에서 "그냥 나가기": 저장하지 않고 닫는다 (눈사람 옆 말풍선의 "편지 쓰기"로 다시 열 수 있다) */
   onCancel: () => void;
 };
 
@@ -60,97 +61,86 @@ export function FinishDialog(props: Props) {
 
   return (
     <PixelDialog
-      title="눈사람 완성!"
-      icon="star"
+      title={confirming ? "눈사람이 녹아 버려요" : "눈사람 완성!"}
+      icon={confirming ? undefined : "star"}
+      wrapTitle={confirming}
       onClose={confirming ? keepWriting : requestClose}
-      closeOnVeil={!confirming}
-      cover={
-        confirming ? (
-          <div
-            className="absolute inset-0 z-10 flex items-center justify-center p-[calc(var(--p)*4)]"
-            // 창은 항상 흰 눈 재질이라, 마을 위 흰 베일 대신 밤 모드와 같은 --night 40% 베일로 본문을 가라앉힌다
-            style={{ background: "color-mix(in srgb, var(--night) 40%, transparent)" }}
-          >
-            <div
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby={messageId}
-              data-tone="snow"
-              className="pixel-box pixel-rise flex w-full max-w-[280px] flex-col gap-[calc(var(--p)*4)] text-ink"
-              style={{ padding: "calc(var(--p) * 5)" }}
-            >
-              <p id={messageId} className="text-body text-center">
-                편지 없이 나가면 눈사람이 녹아 사라져요
-              </p>
-              <div className="flex gap-[calc(var(--p)*4)]">
-                <PixelButton className="flex-1" onClick={props.onCancel}>
-                  나가기
-                </PixelButton>
-                <PixelButton ref={keepWritingRef} variant="primary" className="flex-1" onClick={keepWriting}>
-                  계속 쓰기
-                </PixelButton>
-              </div>
-            </div>
-          </div>
-        ) : null
-      }
+      closeOnVeil={!confirming ? true : false}
       footer={
-        <>
-          <PixelButton className="flex-1" onClick={requestClose}>
-            취소
-          </PixelButton>
+        confirming ? (
+          <div className="flex w-full flex-col items-center gap-[calc(var(--p)*3)]">
+            <PixelButton ref={keepWritingRef} variant="primary" className="w-full" onClick={keepWriting}>
+              계속 쓰기
+            </PixelButton>
+            <button
+              type="button"
+              className="pixel-btn text-caption underline decoration-[2px] underline-offset-4"
+              onClick={props.onCancel}
+            >
+              그냥 나가기
+            </button>
+          </div>
+        ) : (
           <PixelButton
             variant="primary"
             type="submit"
             form={FORM_ID}
             icon="envelope"
             aria-label="편지 넣고 눈사람 세우기"
-            className="flex-1"
+            className="w-full"
             disabled={!ready}
           >
             보내기
           </PixelButton>
-        </>
+        )
       }
     >
+      {confirming && (
+        <div className="flex flex-col items-center gap-[calc(var(--p)*4)] text-center" role="group" aria-describedby={messageId}>
+          <PixelIcon name="melt" scale={3} fit />
+          <p id={messageId} className="text-body">
+            편지를 남겨야 마을에 눈사람이 남아요
+          </p>
+        </div>
+      )}
       <form
-        ref={formRef}
-        id={FORM_ID}
-        className="flex flex-col gap-[calc(var(--p)*4)]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <PixelField
-          label="닉네임"
-          value={nickname}
-          maxLength={10}
-          onChange={(e) => setNickname(e.target.value)}
-          placeholder="눈사람과 편지에 쓰여요"
-        />
-        <PixelField
-          multiline
-          tone="paper"
-          adornment={
-            <span className="absolute right-[calc(var(--p)*2)] top-[calc(var(--p)*2)]">
-              <LetterStamp />
-            </span>
-          }
-          label={owner ? "크리스마스의 나에게" : `${props.recipient}에게`}
-          hint={`${letter.length}/${LETTER_MAX_LENGTH}`}
-          value={letter}
-          maxLength={LETTER_MAX_LENGTH}
-          onChange={(e) => setLetter(e.target.value)}
-          placeholder={
-            isLetterOpen()
-              ? "한 줄이어도 좋아요. 지금 바로 열어 볼 수 있어요."
-              : owner
-                ? "한 줄이어도 좋아요. 친구들 편지와 함께 12월 25일에 열려요."
-                : "한 줄이어도 좋아요. 12월 25일에 열려요."
-          }
-          rows={5}
-        />
+          ref={formRef}
+          id={FORM_ID}
+          className={`flex flex-col gap-[calc(var(--p)*4)] ${confirming ? "hidden" : ""}`}
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+        >
+          <PixelField
+            label="닉네임"
+            value={nickname}
+            maxLength={10}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="눈사람과 편지에 쓰여요"
+          />
+          <PixelField
+            multiline
+            tone="paper"
+            adornment={
+              <span className="absolute right-[calc(var(--p)*2)] top-[calc(var(--p)*2)]">
+                <LetterStamp />
+              </span>
+            }
+            label={owner ? "크리스마스의 나에게" : `${props.recipient}에게`}
+            hint={`${letter.length}/${LETTER_MAX_LENGTH}`}
+            value={letter}
+            maxLength={LETTER_MAX_LENGTH}
+            onChange={(e) => setLetter(e.target.value)}
+            placeholder={
+              isLetterOpen()
+                ? "한 줄이어도 좋아요. 지금 바로 열어 볼 수 있어요."
+                : owner
+                  ? "한 줄이어도 좋아요. 친구들 편지와 함께 12월 25일에 열려요."
+                  : "한 줄이어도 좋아요. 12월 25일에 열려요."
+            }
+            rows={5}
+          />
       </form>
     </PixelDialog>
   );

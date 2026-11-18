@@ -25,6 +25,8 @@ type Props = {
   initialFocusRef?: React.RefObject<HTMLElement | null>;
   /** 창 전체를 덮는 확인 상자 등. 있으면 본문·푸터는 inert가 된다 */
   cover?: ReactNode;
+  /** 긴 제목을 한 줄로 자르지 않고 줄바꿈한다 */
+  wrapTitle?: boolean;
   className?: string;
   children?: ReactNode;
 };
@@ -48,6 +50,7 @@ export function PixelDialog({
   footer,
   initialFocusRef,
   cover,
+  wrapTitle = false,
   className = "",
   children,
 }: Props) {
@@ -146,7 +149,7 @@ export function PixelDialog({
             {centered && <span aria-hidden />}
             <div className={`flex min-w-0 items-center gap-[calc(var(--p)*2)] ${centered ? "justify-center" : ""}`}>
               {icon && !centered && <PixelIcon name={icon} scale={2} className="shrink-0" />}
-              <h2 id={titleId} className="text-title min-w-0 truncate">
+              <h2 id={titleId} className={`text-title min-w-0 ${wrapTitle ? "text-center whitespace-normal" : "truncate"}`}>
                 {title}
               </h2>
               {/* 가운데 정렬(시안 04)에서는 아이콘이 제목 오른쪽에 온다 */}
