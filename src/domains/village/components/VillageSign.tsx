@@ -14,6 +14,12 @@ const STEPS = "steps(8, end)";
 
 type Phase = "intro" | "moving" | "done";
 
+/**
+ * 조각 모드에 들어가면 헤더가 내려갔다가 다시 붙는다. 그때 인트로가 처음부터
+ * 다시 뜨지 않도록, 이 페이지에서 이미 인트로를 띄운 마을은 이름 판으로 바로 시작한다.
+ */
+const introShown = new Set<string>();
+
 type Props = {
   name: string;
   subtitle: string;
@@ -54,7 +60,9 @@ function invertTransform(first: DOMRect, last: DOMRect, scale: boolean): string 
  * 끝나기 전에는 따로 그리지 않는다.
  */
 export function VillageSign({ name, subtitle }: Props) {
-  const [phase, setPhase] = useState<Phase>("intro");
+  const [phase, setPhase] = useState<Phase>(() => (introShown.has(name) ? "done" : "intro"));
+  /** 처음부터 이름 판으로 붙은 경우 — 인트로 타이머와 페이드인을 건너뛴다 */
+  const skipIntro = useRef(phase === "done");
   const reducedRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -158,6 +166,8 @@ export function VillageSign({ name, subtitle }: Props) {
 
   useEffect(() => {
     reducedRef.current = prefersReducedMotion();
+    if (skipIntro.current) return;
+    introShown.add(name);
     cancelTimers();
     timers.current.push(
       window.setTimeout(() => {
@@ -190,9 +200,12 @@ export function VillageSign({ name, subtitle }: Props) {
       cancelTimers();
       cancelAnims();
     };
+    // 마운트할 때 한 번만 인트로를 시작한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useLayoutEffect(() => {
+    if (phase === "done" && skipIntro.current) return;
     if (phase === "done" && reducedRef.current) {
       const root = rootRef.current;
       if (!root) return;
