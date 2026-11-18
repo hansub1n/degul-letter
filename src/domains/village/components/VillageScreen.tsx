@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   christmasLabel,
   createLetter,
@@ -11,15 +11,17 @@ import {
   LetterCard,
   openLetter,
 } from "@/domains/letter";
+import { InviteTicket } from "@/shared/components/InviteTicket";
 import { PixelButton } from "@/shared/components/PixelButton";
+import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
 import { ensureUserId } from "@/shared/lib/session";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { FinishDialog } from "./FinishDialog";
-import { MyVillageSign } from "./MyVillageSign";
-import { VillageGame, type MarkSaved } from "./VillageGame";
+import { LeaveConfirm } from "./LeaveConfirm";
+import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { VillageSign } from "./VillageSign";
 
 const FINISH_DIALOG_DELAY_MS = 2000;
@@ -31,6 +33,8 @@ type PendingSave = { stackId: number; draft: SnowmanDraft; markSaved: MarkSaved 
 export function VillageScreen() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
+  const gameApiRef = useRef<VillageGameApi | null>(null);
+  const [leaveTo, setLeaveTo] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
@@ -171,9 +175,20 @@ export function VillageScreen() {
     }
   };
 
+  const goOrConfirm = (to: string) => {
+    if (isModalLocked()) return;
+    const unsaved = drafts.size > 0 || pending !== null || Boolean(gameApiRef.current?.hasUnsavedWork());
+    if (unsaved) {
+      setLeaveTo(to);
+      return;
+    }
+    router.push(to);
+  };
+
   return (
     <>
       <VillageGame
+        apiRef={gameApiRef}
         saved={saved}
         myId={myId}
         // 마을로 돌아오는 확대(0.5초)와 "완성!" 축하가 끝난 뒤에 이름·편지 창을 띄운다
@@ -217,14 +232,18 @@ export function VillageScreen() {
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={shareLink}
               />
+            ) : myVillage ? (
+              <PixelButton
+                variant="primary"
+                className="pointer-events-auto ml-auto shrink-0"
+                onClick={() => goOrConfirm(`/v/${myVillage.code}`)}
+              >
+                내 마을 가기
+              </PixelButton>
             ) : (
-              <MyVillageSign
-                hasVillage={Boolean(myVillage)}
-                onClick={() => {
-                  if (isModalLocked()) return;
-                  if (myVillage) router.push(`/v/${myVillage.code}`);
-                  else router.push("/");
-                }}
+              <InviteTicket
+                className="pointer-events-auto ml-auto shrink-0"
+                onClick={() => goOrConfirm("/")}
               />
             )}
           </div>
@@ -270,6 +289,20 @@ export function VillageScreen() {
           // 취소·Esc: 저장하지 않고 닫는다. 눈사람은 그대로 두고, 다시 다가가면 "편지 쓰기"로 열 수 있다.
           onCancel={() => setPending(null)}
         />
+      )}
+      {leaveTo && (
+        <PixelDialog title="눈사람이 녹아 버려요" hideHeader closeOnVeil onClose={() => setLeaveTo(null)}>
+          <div className="flex min-h-full w-full flex-1 flex-col justify-center self-stretch">
+            <LeaveConfirm
+              onKeepWriting={() => setLeaveTo(null)}
+              onLeave={() => {
+                const to = leaveTo;
+                setLeaveTo(null);
+                router.push(to);
+              }}
+            />
+          </div>
+        </PixelDialog>
       )}
     </>
   );

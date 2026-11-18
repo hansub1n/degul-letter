@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { isModalLocked, onModalLockChange } from "@/shared/lib/modalLock";
 import { SculptEditor } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
@@ -53,6 +53,12 @@ type Props = {
   header?: ReactNode;
   /** 화면 위에 덮어 띄울 것 (입장 타이틀 등). 조작을 막지 않는다 */
   overlay?: ReactNode;
+  /** 저장 전 눈사람 작업이 있는지 확인할 손잡이 */
+  apiRef?: MutableRefObject<VillageGameApi | null>;
+};
+
+export type VillageGameApi = {
+  hasUnsavedWork: () => boolean;
 };
 
 export type MarkSaved = (rowId: string, authorName: string, hasLetter: boolean) => void;
@@ -70,6 +76,7 @@ export function VillageGame({
   mailCount = 0,
   header,
   overlay,
+  apiRef,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -127,6 +134,16 @@ export function VillageGame({
   useEffect(() => {
     gameRef.current?.setUnsentIds(unsentIds);
   }, [unsentIds]);
+
+  useEffect(() => {
+    if (!apiRef) return;
+    apiRef.current = {
+      hasUnsavedWork: () => Boolean(sculpting) || Boolean(gameRef.current?.hasUnsavedWork()),
+    };
+    return () => {
+      apiRef.current = null;
+    };
+  }, [apiRef, sculpting]);
 
   // 모달이 열려 있으면 헤더·말풍선·캔버스까지 뒤 레이어를 통째로 막는다 (베일 뒤로 클릭이 새지 않게)
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { sculptFromBalls, type Sculpt } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
-import { BREAK_HOLD_SECONDS, HIT_STOP_SECONDS } from "./constants";
+import { BALL_START_RADIUS, BREAK_HOLD_SECONDS, HIT_STOP_SECONDS } from "./constants";
 import { distance, easeInOutCubic } from "./geometry";
 import { createInput } from "./input";
 import {
@@ -77,6 +77,8 @@ export type VillageGame = {
   setMailCount(count: number): void;
   /** 부수기 버튼을 누르기 시작하면 true, 떼면 false. 누르는 동안 눈사람이 떨리고 금이 간다. */
   setBreakCharging(charging: boolean): void;
+  /** 아직 저장하지 않은 눈사람을 만드는 중인지 (굴리기·쌓기·조각, 완성 후 미저장) */
+  hasUnsavedWork(): boolean;
   destroy(): void;
 };
 
@@ -364,6 +366,12 @@ export function createVillageGame({
     },
     setBreakCharging(charging) {
       chargeStart = charging ? performance.now() : null;
+    },
+    hasUnsavedWork() {
+      if (editing || world.lift) return true;
+      return world.stacks.some(
+        (s) => !s.saved && (s.finished || s.balls.length > 1 || s.balls.some((b) => b.r > BALL_START_RADIUS)),
+      );
     },
     destroy() {
       cancelAnimationFrame(rafId);
