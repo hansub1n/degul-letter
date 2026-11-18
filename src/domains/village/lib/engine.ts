@@ -14,7 +14,7 @@ import {
 } from "./render";
 import { ballHeights, breakStack, findNearbySnowman, finishStack, stackHeadY, stackTopHeight, step } from "./rules";
 import type { GameEvent, Stack } from "./types";
-import { createWorld, MAILBOX_POSITION } from "./world";
+import { createWorld, DOOR_POSITION, HOUSE_POSITION, MAILBOX_POSITION } from "./world";
 
 /**
  * 근처 눈사람. finished면 조각은 끝났고, mine이면 부술 수 있다.
@@ -43,6 +43,8 @@ export type VillageGameOptions = {
   onNearbyChange?: (snowman: NearbySnowman | null) => void;
   /** 마을 주인이 우체통 가까이 왔는지 (바뀔 때만 알린다) */
   onMailboxNearChange?: (near: boolean) => void;
+  /** 마을 주인이 집 문 앞에 왔는지 (로그아웃 말풍선) */
+  onDoorNearChange?: (near: boolean) => void;
 };
 
 /** 조각을 시작할 눈사람과, 쌓은 모양 그대로 만든 조각 재료 */
@@ -101,6 +103,7 @@ export function createVillageGame({
   onEvent,
   onNearbyChange,
   onMailboxNearChange,
+  onDoorNearChange,
 }: VillageGameOptions): VillageGame {
   const world = createWorld(saved, myId);
   // 개발 중 브라우저 콘솔에서 상태를 들여다보기 위한 손잡이 (배포 빌드에는 들어가지 않는다)
@@ -139,6 +142,7 @@ export function createVillageGame({
   let unsentMarkerLayer: HTMLElement | null = null;
   let unsentIds: readonly number[] = [];
   let lastMailboxNear = false;
+  let lastDoorNear = false;
   let mailCount = 0;
   // 완성 축하: 완성되면 기다렸다가(pending) 카메라가 마을로 다 돌아오면 시작한다
   let pendingCelebrate: number | null = null;
@@ -233,13 +237,17 @@ export function createVillageGame({
     // 조각 중이거나 완성 축하 중에는 말풍선을 띄우지 않는다 ("완성!" 글자를 가리지 않게)
     const celebrating = celebrate !== null || pendingCelebrate !== null;
     const nearby = sculptMode || celebrating || world.lift ? null : findNearbySnowman(world, isOwner);
-    // 마을 주인이 우체통 가까이 오면 (눈사람 말풍선이 없을 때만) 우체통 위에 말풍선을 띄운다
-    const mailboxNear =
-      isOwner &&
-      !nearby &&
-      !sculptMode &&
-      !celebrating &&
-      distance(world.player.x, world.player.y, MAILBOX_POSITION.x, MAILBOX_POSITION.y) < 20;
+    // 마을 주인이 우체통·집 문 가까이 오면 (눈사람 말풍선이 없을 때만) 그 위에 말풍선을 띄운다.
+    // 둘 다 가까우면 더 가까운 쪽 하나만 띄운다.
+    const spotsOpen = isOwner && !nearby && !sculptMode && !celebrating;
+    const toMailbox = distance(world.player.x, world.player.y, MAILBOX_POSITION.x, MAILBOX_POSITION.y);
+    const toDoor = distance(world.player.x, world.player.y, DOOR_POSITION.x, DOOR_POSITION.y);
+    const mailboxNear = spotsOpen && toMailbox < 20 && toMailbox <= toDoor;
+    const doorNear = spotsOpen && toDoor < 20 && toDoor < toMailbox;
+    if (doorNear !== lastDoorNear) {
+      lastDoorNear = doorNear;
+      onDoorNearChange?.(doorNear);
+    }
     if (mailboxNear !== lastMailboxNear) {
       lastMailboxNear = mailboxNear;
       onMailboxNearChange?.(mailboxNear);
@@ -310,6 +318,8 @@ export function createVillageGame({
     });
     if (nearby) placeAnchorOnStack(nearby);
     else if (mailboxNear) placeAnchor(MAILBOX_POSITION.x + 1, MAILBOX_POSITION.y - 18);
+    // 집 말풍선은 지붕(굴뚝) 꼭대기 위에 띄워, 문 앞 캐릭터와 집을 가리지 않는다 (집 그림 맨 윗줄 = 바닥선 - 43)
+    else if (doorNear) placeAnchor(HOUSE_POSITION.x, HOUSE_POSITION.y - 44);
     placeUnsentMarkers(nearby, sculptMode || celebrating);
     rafId = requestAnimationFrame(frame);
   };

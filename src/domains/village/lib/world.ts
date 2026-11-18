@@ -9,6 +9,8 @@ import type { Obstacle, World } from "./types";
 export const HOUSE_POSITION = { x: 240, y: 120 };
 /** 집 오른쪽 우체통: 마을에 온 편지가 모두 모이는 곳 */
 export const MAILBOX_POSITION = { x: 280, y: 132 };
+/** 집 문 가운데 발밑 (집 그림에서 문은 집 중심 오른쪽 6칸, 문 아랫단이 집 바닥선) */
+export const DOOR_POSITION = { x: HOUSE_POSITION.x + 6, y: HOUSE_POSITION.y };
 
 /** 기본 카메라에서 왼쪽 위 이름 판·오른쪽 위 공유 단추와 겹치지 않게, 윗줄 두 그루([150, 100], [330, 100])는 조금 아래로 두었다. */
 export const TREE_POSITIONS: ReadonlyArray<readonly [number, number]> = [

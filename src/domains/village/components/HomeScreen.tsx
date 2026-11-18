@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { isLoggedIn, LoginMethods, startKakaoLogin } from "@/domains/auth";
+import { isLoggedIn, LoginMethods, LogoutConfirm, startKakaoLogin } from "@/domains/auth";
 import { useChristmasLabel } from "@/domains/letter";
 import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelField } from "@/shared/components/PixelField";
+import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
@@ -27,6 +28,7 @@ export function HomeScreen() {
   /** 카카오 로그인으로 계정을 지키고 있는지. 마을은 로그인해야 만들 수 있다 */
   const [loggedIn, setLoggedIn] = useState<boolean | undefined>(undefined);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   /** 썰매가 빠져나간 뒤(또는 로딩이 300ms 안에 끝나 안 보인 뒤)에만 폼·버튼을 보여 준다 */
   const [loaderDone, setLoaderDone] = useState(false);
   const onLoaderFinished = useCallback(() => setLoaderDone(true), []);
@@ -197,7 +199,20 @@ export function HomeScreen() {
         <span aria-hidden className="home-mound" />
       </section>
 
+      {/* 표지판 밖 아래 눈밭: 공용 컴퓨터(PC방 등)에서 다음 사람이 내 마을에 들어오지 못하게 */}
+      {loaderDone && mine && loggedIn && (
+        <button
+          type="button"
+          className="home-logout text-label relative z-10 mt-[calc(var(--p)*5)] shrink-0"
+          onClick={() => setLogoutOpen(true)}
+        >
+          <PixelIcon name="houseDoor" scale={2} />
+          로그아웃
+        </button>
+      )}
+
       {message && <PixelToast>{message}</PixelToast>}
+      {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
     </main>
   );
 }

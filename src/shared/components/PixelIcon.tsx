@@ -28,6 +28,8 @@ const PALETTE: Record<string, string> = {
   L: "var(--paper-line)",
   c: "var(--sky)", // 우표 하늘색 면
   m: "var(--muted)", // 소인
+  y: "var(--window)", // 집 안 불빛
+  Y: "var(--window-light)",
 };
 
 const ICONS = {
@@ -166,6 +168,20 @@ const ICONS = {
     "....oowsso..",
     ".....oosso..",
     "......oooo..",
+  ],
+  // 집 로그아웃: 반쯤 열린 문 안에서 불빛이 새어 나온다
+  houseDoor: [
+    "oooooooo....",
+    "oYYyyyyoo...",
+    "oYyyyyyobo..",
+    "oyyyyyyobbo.",
+    "oyyyyyyobbo.",
+    "oyyyyyyogbo.",
+    "oyyyyyyobbo.",
+    "oyyyyyyobbo.",
+    "oyyyyyyobo..",
+    "oyyyyyyoo...",
+    "oooooooo....",
   ],
   // 우체통: 빨간 통 + 투입구 + 나무 기둥
   mailbox: [

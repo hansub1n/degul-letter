@@ -400,6 +400,41 @@ body {
   text-decoration-skip-ink: none;
 }
 
+/* 첫 화면 표지판 아래 눈밭의 로그아웃: 평소에는 아이콘까지 흐린 글자, 가리키면 진해진다 */
+.home-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--p) * 2);
+  padding: calc(var(--p) * 2) calc(var(--p) * 3);
+  color: var(--muted);
+  transition: color 80ms steps(2, end);
+}
+
+/* 평소에는 아이콘도 글자처럼 흐리게 */
+.home-logout svg {
+  filter: grayscale(1);
+  opacity: 0.5;
+  transition: filter 80ms steps(2, end), opacity 80ms steps(2, end);
+}
+
+.home-logout:hover,
+.home-logout:active,
+.home-logout:focus-visible {
+  color: var(--ink);
+}
+
+.home-logout:hover svg,
+.home-logout:active svg,
+.home-logout:focus-visible svg {
+  filter: none;
+  opacity: 1;
+}
+
+.home-logout:focus-visible {
+  outline: var(--p) solid var(--gold);
+  outline-offset: var(--p);
+}
+
 @media (hover: hover) {
   .pixel-box.pixel-btn:hover:not(:disabled):not(.pixel-box-on) {
     transform: translateY(calc(var(--p) * -1));
