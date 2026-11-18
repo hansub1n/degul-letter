@@ -5,6 +5,7 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { Account, AppwriteException, Client, ID, TablesDB, Users } from "node-appwrite";
+import { KAKAO_LABEL } from "@/shared/lib/serverAccount";
 
 export class AuthError extends Error {
   constructor(
@@ -151,21 +152,29 @@ async function resolveUser(kakaoId: string, currentUserId: string | null): Promi
   const { databaseId } = config();
   const client = admin();
   const tables = new TablesDB(client);
+  const users = new Users(client);
   const rowId = `kakao_${kakaoId}`;
+  let userId: string;
   try {
     const row = (await tables.getRow({ databaseId, tableId: IDENTITIES, rowId })) as unknown as { userId: string };
-    return row.userId;
+    userId = row.userId;
   } catch (e) {
     if (!(e instanceof AppwriteException && e.code === 404)) throw e;
+    userId = currentUserId ?? (await users.create({ userId: ID.unique() })).$id;
+    await tables.createRow({ databaseId, tableId: IDENTITIES, rowId, data: { userId } });
   }
-
-  const users = new Users(client);
-  const userId = currentUserId ?? (await users.create({ userId: ID.unique() })).$id;
-  // 이 계정이 로그인으로 지켜지고 있다는 표시 (브라우저에서 "로그인했는지" 확인할 때 쓴다)
-  const user = await users.get({ userId });
-  await users.updatePrefs({ userId, prefs: { ...user.prefs, kakao: true } });
-  await tables.createRow({ databaseId, tableId: IDENTITIES, rowId, data: { userId } });
+  await markKakao(users, userId);
   return userId;
+}
+
+/**
+ * 카카오로 로그인한 계정이라는 표시. 라벨은 서버 키로만 붙일 수 있어서(브라우저에서 못 바꿈)
+ * 마을 만들기 같은 서버 확인에 쓴다. 표시가 없던 예전 계정도 다음 로그인 때 붙는다.
+ */
+async function markKakao(users: Users, userId: string): Promise<void> {
+  const user = await users.get({ userId });
+  if (user.labels.includes(KAKAO_LABEL)) return;
+  await users.updateLabels({ userId, labels: [...user.labels, KAKAO_LABEL] });
 }
 
 /**
