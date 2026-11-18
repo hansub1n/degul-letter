@@ -1089,9 +1089,23 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   groundPal = night ? { ...PAL_DAY, ...PAL_NIGHT } : PAL_DAY;
   const reducedMotion = prefersReducedMotion();
   const ground = makeGround(worldWidth, worldHeight, groundPal);
-  const groundCtx = context2d(ground);
-  // 굴린 자국이 칠해진 칸. 겹치는 찍기의 진짜 바깥 칸에만 홈을 남기기 위해 쓴다
-  const trailMark = new Uint8Array(worldWidth * worldHeight);
+  // 굴린 자국은 땅과 따로 두어, 그림자와 눈덩이 아래에 그리고 오래된 자국은 스며 사라지게 한다
+  const trail = document.createElement("canvas");
+  trail.width = worldWidth;
+  trail.height = worldHeight;
+  const trailCtx = context2d(trail);
+  const trailTime = new Float32Array(worldWidth * worldHeight);
+  const trailKind = new Uint8Array(worldWidth * worldHeight);
+  const TRAIL_KIND_BANK = 1;
+  const TRAIL_KIND_CENTRE = 2;
+  const trailLive: number[] = [];
+  let lastStamp: { x: number; y: number; r: number } | null = null;
+  const TRAIL_FADE_AFTER = 20;
+  const TRAIL_FADE_FOR = 12;
+  const pathColor = night ? PAL_NIGHT.path : PAL.path;
+  const pathDeepColor = night ? PAL_NIGHT.pathDeep : PAL.pathDeep;
+  const snowColor = night ? NIGHT_SNOW : PAL.snow;
+  const snowEdgeColor = night ? NIGHT_SNOW_EDGE : SNOW_EDGE;
   // 밤에는 마을 그림에 달빛 색을 곱하고, 캐릭터는 덜 어둡게 곱한다
   const moonlit = (sprite: HTMLCanvasElement) => (night ? tinted(sprite, NIGHT_MUL) : sprite);
   const hero = (sprite: HTMLCanvasElement) => (night ? tinted(sprite, NIGHT_MUL_HERO) : sprite);
@@ -1273,42 +1287,125 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     return { x: (x - lastCam.x) * lastCam.scale, y: (y - lastCam.y) * lastCam.scale };
   }
 
-  // 굴린 자국: 다진 눈을 매끈한 면으로 찍고, 가장자리에 1칸 홈을 두어 점점이 찍힌 길과 구분한다. 길 위에 덧그린다.
-  // 매 프레임 찍기가 거의 겹치므로, 홈은 "지금까지 자국의 진짜 바깥"에만 남긴다. 안쪽은 면 색을 유지한다.
-  function paintTrail(x: number, y: number, r: number): void {
-    const rr = Math.max(2, r * 0.6);
-    const rh = Math.max(1, Math.ceil(rr * 0.5));
-    const fill = night ? PAL_NIGHT.track : PAL.track;
-    const edge = night ? PAL_NIGHT.trackEdge : PAL.trackEdge;
-    const cx = Math.round(x);
-    const cy = Math.round(y);
+  // 굴린 자국: 밀려난 눈 둑(한 칸 큰 타원)을 먼저 찍고, 그 위에 다진 눈 면을 찍는다.
+  // 겹치면 안쪽 둑은 면이 덮고, 둑은 양옆과 아래에만 남는다. 오래된 자국은 스며 사라진다.
+  function inTrailWorld(px: number, py: number): boolean {
+    return px >= 0 && py >= 0 && px < worldWidth && py < worldHeight;
+  }
+
+  function plotTrail(px: number, py: number, color: string, now: number, kind: number): void {
+    if (!inTrailWorld(px, py)) return;
+    const i = py * worldWidth + px;
+    // 새 둑이 앞서 찍힌 다진 면을 덮으면 자국 전체가 흰 눈으로 남는다. 면은 둑을 덮고, 둑은 면을 덮지 않는다.
+    if (trailKind[i] === TRAIL_KIND_CENTRE && kind !== TRAIL_KIND_CENTRE) return;
+    if (trailTime[i] === 0) trailLive.push(i);
+    trailTime[i] = now;
+    trailKind[i] = kind;
+    trailCtx.fillStyle = color;
+    trailCtx.fillRect(px, py, 1, 1);
+  }
+
+  function centreColor(px: number, py: number): string {
+    const h = hash2(px, py);
+    const stripe = ((px % 5) + 5) % 5 === 0;
+    if (stripe) return h < 0.3 ? pathColor : pathDeepColor;
+    return h < 0.5 ? pathColor : pathDeepColor;
+  }
+
+  function ellipseRows(cx: number, cy: number, rr: number, rh: number): Array<{ left: number; width: number; dy: number }> {
     const rows: Array<{ left: number; width: number; dy: number }> = [];
     for (let dy = -rh; dy <= rh; dy++) {
       const w = Math.round(rr * Math.sqrt(Math.max(0, 1 - (dy * dy) / ((rh + 0.5) * (rh + 0.5)))));
       rows.push({ left: cx - w, width: w * 2 + 1, dy });
     }
-    const inWorld = (px: number, py: number) => px >= 0 && py >= 0 && px < worldWidth && py < worldHeight;
-    const marked = (px: number, py: number) => inWorld(px, py) && trailMark[py * worldWidth + px] === 1;
+    return rows;
+  }
 
-    groundCtx.fillStyle = fill;
-    for (const row of rows) {
-      groundCtx.fillRect(row.left, cy + row.dy, row.width, 1);
+  function stampTrail(x: number, y: number, r: number, now: number): void {
+    const rr = Math.max(2, r * 0.6);
+    const rh = Math.max(1, Math.ceil(rr * 0.5));
+    const cx = Math.round(x);
+    const cy = Math.round(y);
+    const rrBank = rr + 1;
+    const rhBank = rh + 1;
+    const bank = ellipseRows(cx, cy, rrBank, rhBank);
+
+    for (const row of bank) {
       const py = cy + row.dy;
-      if (py < 0 || py >= worldHeight) continue;
-      const x0 = Math.max(0, row.left);
-      const x1 = Math.min(worldWidth, row.left + row.width);
-      trailMark.fill(1, py * worldWidth + x0, py * worldWidth + x1);
+      const color = row.dy === rhBank ? snowEdgeColor : snowColor;
+      for (let px = row.left; px < row.left + row.width; px++) plotTrail(px, py, color, now, TRAIL_KIND_BANK);
+    }
+    const bottom = bank[bank.length - 1];
+    const shadeY = cy + bottom.dy + 1;
+    for (let px = bottom.left; px < bottom.left + bottom.width; px++) {
+      plotTrail(px, shadeY, snowEdgeColor, now, TRAIL_KIND_BANK);
     }
 
-    groundCtx.fillStyle = edge;
-    for (const row of rows) {
+    const crumbs = ellipseRows(cx, cy, rr + 2, rh + 2);
+    for (const row of crumbs) {
       const py = cy + row.dy;
+      const bankRow = bank.find((b) => b.dy === row.dy);
       for (let px = row.left; px < row.left + row.width; px++) {
-        if (!inWorld(px, py)) continue;
-        if (marked(px - 1, py) && marked(px + 1, py) && marked(px, py - 1) && marked(px, py + 1)) continue;
-        groundCtx.fillRect(px, py, 1, 1);
+        if (bankRow && px >= bankRow.left && px < bankRow.left + bankRow.width) continue;
+        if (py === shadeY && px >= bottom.left && px < bottom.left + bottom.width) continue;
+        if (hash2(px, py) < 0.07) plotTrail(px, py, snowColor, now, TRAIL_KIND_BANK);
       }
     }
+
+    for (const row of ellipseRows(cx, cy, rr, rh)) {
+      const py = cy + row.dy;
+      for (let px = row.left; px < row.left + row.width; px++) plotTrail(px, py, centreColor(px, py), now, TRAIL_KIND_CENTRE);
+    }
+  }
+
+  function paintTrail(x: number, y: number, r: number): void {
+    const now = performance.now() / 1000;
+    if (lastStamp) {
+      const dx = x - lastStamp.x;
+      const dy = y - lastStamp.y;
+      const dist = Math.hypot(dx, dy);
+      const newBall = r + 3 < lastStamp.r;
+      if (!newBall && dist > 1.5 && dist < 24) {
+        const steps = Math.ceil(dist);
+        for (let i = 1; i < steps; i++) {
+          const t = i / steps;
+          stampTrail(lastStamp.x + dx * t, lastStamp.y + dy * t, lastStamp.r + (r - lastStamp.r) * t, now);
+        }
+      }
+    }
+    stampTrail(x, y, r, now);
+    lastStamp = { x, y, r };
+  }
+
+  function fadeTrails(now: number): void {
+    let write = 0;
+    for (let read = 0; read < trailLive.length; read++) {
+      const i = trailLive[read];
+      const age = now - trailTime[i];
+      let keep = true;
+      if (age > TRAIL_FADE_AFTER) {
+        const fade = Math.min(1, (age - TRAIL_FADE_AFTER) / TRAIL_FADE_FOR);
+        const px = i % worldWidth;
+        const py = (i / worldWidth) | 0;
+        if (hash2(px, py) < fade) {
+          trailTime[i] = 0;
+          trailKind[i] = 0;
+          trailCtx.clearRect(px, py, 1, 1);
+          keep = false;
+        }
+      }
+      if (keep) trailLive[write++] = i;
+    }
+    trailLive.length = write;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    (window as Window & { __degulAgeTrails?: (seconds: number) => void }).__degulAgeTrails = (seconds) => {
+      const now = performance.now() / 1000;
+      for (const i of trailLive) {
+        if (trailTime[i] !== 0) trailTime[i] = now - seconds;
+      }
+    };
   }
 
   /** 금 간 자국: 공 윗부분에서 아래로 지그재그로 내려간다 */
@@ -1439,8 +1536,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     if (!celebrate) lastCelebrateId = null;
     const hop = celebrate ? hopAt(celebrate.t) : { h: 0, sx: 1, sy: 1 };
 
+    fadeTrails(performance.now() / 1000);
     rect(px, groundPal.ground, 0, 0, pw, ph);
     px.drawImage(ground, -camX, -camY);
+    px.drawImage(trail, -camX, -camY);
     const hx = Math.round(HOUSE_POSITION.x - 24 - camX);
     const hy = Math.round(HOUSE_POSITION.y - 43 - camY);
     if (night) paintWindowGlow(px, hx + 16, hy + 47);
