@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PixelToast } from "@/shared/components/PixelToast";
 import { hashInt } from "@/shared/lib/hash";
 
-// 마을을 불러오는 동안의 화면: 눈밭 위에 발자국이 아래에서 위로 하나씩 찍힌다 (문구 없음).
+// 마을을 불러오는 동안의 화면: 눈밭 위에 발자국이 아래에서 위로 찍히고, 가운데 조금 위에 안내 문구가 뜬다.
 // 1칸 = 3px(--p). 색은 globals.css 팔레트와 같은 hex (캔버스는 CSS 변수를 못 읽는다).
 
 const P = 3;
@@ -23,13 +24,14 @@ const FOOT = [".ee.", "eddd", "eddd", "dddd", ".dd.", "....", ".ee.", ".dd."];
 const FOOT_COLOR: Record<string, string> = { e: "#A9B8D6", d: "#B8C4DC" };
 
 type Props = {
-  /** 화면 읽기 프로그램용 이름 (화면에는 안 보인다) */
+  /** 화면에 띄우는 안내 문구 */
   label?: string;
   className?: string;
 };
 
-export function FootstepsLoader({ label = "마을로 가는 중", className = "" }: Props) {
+export function FootstepsLoader({ label = "마을로 가는 중…", className = "" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const toastRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
   // 짧은 로딩은 숨긴다
@@ -73,6 +75,14 @@ export function FootstepsLoader({ label = "마을로 가는 중", className = ""
         }
       }
     };
+
+    // 안내 문구 아래(칸)에서 발자국을 멈춘다. 토스트와 겹치지 않게 몇 칸 여백을 둔다.
+    const toastStopY = () => {
+      const el = toastRef.current;
+      if (!el) return 10;
+      return Math.ceil(el.getBoundingClientRect().bottom / P) + 4;
+    };
+
     resize();
     window.addEventListener("resize", resize);
 
@@ -100,14 +110,16 @@ export function FootstepsLoader({ label = "마을로 가는 중", className = ""
       ctx.putImageData(ground, 0, 0);
 
       const startY = h - 24;
-      const count = Math.max(1, Math.ceil((startY - 10) / STEP_GAP));
+      // 발자국은 안내 문구 아래에서 멈춘다
+      const count = Math.max(1, Math.floor((startY - toastStopY()) / STEP_GAP) + 1);
       const elapsed = now - start;
       // 발이 4칸이라 기준을 2칸 왼쪽으로, 처음 몇 걸음이 한쪽으로 치우치지 않게 흔들림 위상을 맞춘다
       const footX = (k: number) => Math.round(w / 2 - 2 + Math.sin((k - 3) / 4) * 6 + (k % 2 ? SIDE : -SIDE));
 
       if (reduced) {
         // 움직임 줄이기: 발자국 여섯 개를 멈춘 채로 보여 준다
-        for (let k = 0; k < 6; k++) drawFoot(k, footX(k), startY - k * STEP_GAP, 0);
+        const n = Math.min(6, count);
+        for (let k = 0; k < n; k++) drawFoot(k, footX(k), startY - k * STEP_GAP, 0);
       } else {
         const shown = Math.floor(elapsed / INTERVAL_MS);
         for (let i = Math.max(0, shown - Math.ceil(LIFE_MS / INTERVAL_MS)); i <= shown; i++) {
@@ -128,8 +140,18 @@ export function FootstepsLoader({ label = "마을로 가는 중", className = ""
   }, [visible]);
 
   return (
-    <div className={`fixed inset-0 bg-ground ${className}`} role="status" aria-label={label}>
-      {visible && <canvas ref={canvasRef} aria-hidden className="absolute inset-0 block [image-rendering:pixelated]" />}
+    <div className={`fixed inset-0 bg-ground ${className}`}>
+      {visible && (
+        <>
+          <canvas ref={canvasRef} aria-hidden className="absolute inset-0 block [image-rendering:pixelated]" />
+          <div
+            ref={toastRef}
+            className="pointer-events-none absolute inset-x-0 top-[42%] z-10 flex justify-center px-[calc(var(--p)*6)]"
+          >
+            <PixelToast placement="inline">{label}</PixelToast>
+          </div>
+        </>
+      )}
     </div>
   );
 }
