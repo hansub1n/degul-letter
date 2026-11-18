@@ -5,7 +5,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 
 /**
  * 마을에 들어오면 위쪽에 나무 표지판이 떴다가 사라진다 (게임에서 새 지역에 들어갈 때처럼).
- * 표지판에는 마을 이름과 크리스마스 리본만, 안내 문구는 표지판 아래 토스트로 따로 띄운다.
+ * 표지판에는 마을 이름과 크리스마스 꼬리표만, 안내 문구는 표지판 아래 토스트로 따로 띄운다.
  */
 export function VillageTitle({ name, subtitle }: { name: string; subtitle: string }) {
   return (
@@ -14,8 +14,8 @@ export function VillageTitle({ name, subtitle }: { name: string; subtitle: strin
         <PixelPanel tone="wood" style={{ padding: "calc(var(--p) * 2) calc(var(--p) * 6)" }}>
           <p className="text-display text-outline-ink">{name}</p>
         </PixelPanel>
-        {/* 리본은 표지판 아래쪽 가장자리에 걸친다 */}
-        <PixelBadge tone="ribbon" className="relative z-10 -mt-[var(--p)]">
+        {/* D-day 꼬리표는 표지판 아래쪽 가장자리에 걸친다 */}
+        <PixelBadge icon="holly" data-twinkle className="relative z-10 -mt-[var(--p)]">
           크리스마스 {christmasLabel()}
         </PixelBadge>
       </div>

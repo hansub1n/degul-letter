@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelIcon } from "@/shared/components/PixelIcon";
@@ -83,7 +84,9 @@ export function LetterCard({ authorName, recipientName, onOpen, onClose, autoOpe
                 <br />
                 12월 25일에 열 수 있어요.
               </p>
-              <p className="text-title text-roof">{christmasLabel()}</p>
+              <PixelBadge icon="holly" data-twinkle>
+                크리스마스 {christmasLabel()}
+              </PixelBadge>
             </>
           ) : (
             <>

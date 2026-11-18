@@ -18,7 +18,7 @@ type Props = HTMLAttributes<HTMLParagraphElement> & {
  */
 export function PixelToast({ icon, placement = "fixed", className = "", style, children, ...rest }: Props) {
   const where =
-    placement === "fixed" ? "fixed left-1/2 z-40 -translate-x-1/2 max-w-[calc(100vw-24px)]" : "relative flex min-w-0 justify-center";
+    placement === "fixed" ? "fixed left-1/2 z-40 w-max -translate-x-1/2 max-w-[calc(100vw-24px)]" : "relative flex min-w-0 justify-center";
   return (
     <div
       className={where}

@@ -148,7 +148,7 @@ export function PixelDialog({
               {icon && centered && <PixelIcon name={icon} scale={2} className="shrink-0" />}
               {badge != null &&
                 (typeof badge === "string" || typeof badge === "number" ? (
-                  <PixelBadge tone="berry">{badge}</PixelBadge>
+                  <PixelBadge>{badge}</PixelBadge>
                 ) : (
                   badge
                 ))}

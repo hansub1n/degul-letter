@@ -22,6 +22,8 @@ const PALETTE: Record<string, string> = {
   p: "var(--hero-hat)",
   g: "var(--gold)", // 별, 자물쇠
   G: "var(--gold-shade)",
+  n: "var(--pine-light)", // 호랑가시 잎
+  N: "var(--pine-shade)",
 };
 
 const ICONS = {
@@ -204,6 +206,18 @@ const ICONS = {
     ".ogggooGggo.",
     "oggoo..ooGgo",
     "ooo......ooo",
+  ],
+  // 호랑가시: 위에 빨간 열매 한 알, 아래로 초록 잎 두 장 (그림 아이콘: 남색 외곽선 + 아래 그늘)
+  holly: [
+    "....oooo....",
+    "...orrwro...",
+    "...orrrRo...",
+    ".ooooRRoooo.",
+    "onnnnoonnnno",
+    "onnnnnnnnnno",
+    "oNnnnoonnnNo",
+    ".oNNo..oNNo.",
+    "..oo....oo..",
   ],
   // 방향키 힌트: 흰 십자 패드
   arrow: [

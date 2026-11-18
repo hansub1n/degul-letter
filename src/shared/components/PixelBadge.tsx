@@ -2,18 +2,18 @@ import type { HTMLAttributes } from "react";
 import { PixelIcon, type PixelIconName } from "./PixelIcon";
 
 type Props = HTMLAttributes<HTMLSpanElement> & {
-  /** gold = D-day, berry = 개수(흰 글자), ribbon = 표지판 아래 빨간 리본 */
-  tone?: "gold" | "berry" | "ribbon";
+  /** 글자 앞 12px 그림 아이콘 (예: D-day의 호랑가시) */
   icon?: PixelIconName;
 };
 
-/** 작은 도트 배지. 그림자 없이 테두리와 아랫줄 그늘만 있다. */
-export function PixelBadge({ tone = "gold", icon, className = "", children, ...rest }: Props) {
-  const look = tone === "ribbon" ? "pixel-ribbon px-[calc(var(--p)*6)] py-[var(--p)]" : "pixel-box pixel-badge px-[calc(var(--p)*2)] py-0";
+/**
+ * 작은 도트 꼬리표. 모든 배지(D-day, 개수)는 이 한 가지 모양만 쓴다:
+ * 흰 편지지 면 + 남색 글자 + 남색 테두리 + 1칸 남색 그림자.
+ */
+export function PixelBadge({ icon, className = "", children, ...rest }: Props) {
   return (
     <span
-      data-tone={tone}
-      className={`${look} text-label inline-flex items-center gap-[var(--p)] whitespace-nowrap ${className}`}
+      className={`pixel-box pixel-badge text-label inline-flex items-center gap-[var(--p)] whitespace-nowrap px-[calc(var(--p)*2)] py-0 ${className}`}
       {...rest}
     >
       {icon && <PixelIcon name={icon} scale={1} className="shrink-0" />}

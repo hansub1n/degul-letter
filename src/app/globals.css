@@ -34,6 +34,7 @@
   --window-light: #ffebc0; /* 창문 반사 */
   --glow-inner: #e6dcc8; /* (밤 모드) 창문 아래 빛 웅덩이 안쪽 */
   --glow-outer: #d2d2dc; /* (밤 모드) 창문 아래 빛 웅덩이 바깥쪽 */
+  --snow-moon: #a3a8de; /* (밤 모드) 달빛 아래 눈. render.ts의 NIGHT_MUL과 같은 값 */
 
   /* 나무와 집 */
   --pine: #3b7660;
@@ -46,6 +47,7 @@
   --wall: #f4e4c8;
   --wall-shade: #e2cca8;
   --paper: #fbf3e2; /* 편지지, 봉투 행 */
+  --tag: #fffaf0; /* 배지 꼬리표 면: 편지지보다 한 단계 희어서 크림 벽 위에서도 떠 보인다 */
   --paper-line: #c9d3e6;
 
   /* 캐릭터 (지금 도트 그대로의 색) */
@@ -363,45 +365,14 @@ body {
   line-height: 24px;
 }
 
-/* 배지 */
+/* 배지: 한 가지 꼬리표 모양만 쓴다 (D-day, 개수).
+   흰 편지지 면 + 남색 글자 + 남색 테두리 + 1칸 남색 그림자. 크림 벽·나무 판자·흰 카드 위 어디서나 떠 보인다 */
 .pixel-badge {
-  --box-drop: transparent;
-}
-
-.pixel-badge[data-tone="gold"] {
-  --box-fill: var(--gold);
-  --box-light: var(--gold);
-  --box-shade: var(--gold-shade);
+  --box-fill: var(--tag);
+  --box-light: var(--snow);
+  --box-shade: var(--wall-shade);
+  --box-drop-y: calc(var(--p) * 2);
   color: var(--ink);
-}
-
-.pixel-badge[data-tone="berry"] {
-  --box-fill: var(--berry);
-  --box-light: var(--berry);
-  --box-shade: var(--roof-shade);
-  color: var(--snow);
-}
-
-/* 리본: 양 끝을 V자로 판 계단 모양. clip-path 안쪽만 보여서 테두리 대신 아랫줄 그늘만 둔다 */
-.pixel-ribbon {
-  --r: calc(var(--p) * 2);
-  background: var(--roof);
-  box-shadow: inset 0 calc(var(--p) * -1) 0 0 var(--roof-shade);
-  color: var(--snow);
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(50% - var(--p)),
-    calc(100% - var(--p)) calc(50% - var(--p)),
-    calc(100% - var(--p)) calc(50% + var(--p)),
-    100% calc(50% + var(--p)),
-    100% 100%,
-    0 100%,
-    0 calc(50% + var(--p)),
-    var(--p) calc(50% + var(--p)),
-    var(--p) calc(50% - var(--p)),
-    0 calc(50% - var(--p))
-  );
 }
 
 /* 토스트: 낮에는 snow, 밤 모드에서는 night 재질. 2칸 아래에서 steps(3)로 올라온다 */
@@ -481,7 +452,7 @@ body {
   }
 }
 
-.pixel-badge[data-tone="gold"] svg {
+[data-twinkle] svg {
   animation: pixel-twinkle 4s steps(1, end) infinite;
 }
 
@@ -519,7 +490,7 @@ body {
   .pixel-rise,
   .pixel-bob,
   .pixel-leave,
-  .pixel-badge[data-tone="gold"] svg,
+  [data-twinkle] svg,
   .pixel-snowfall-far {
     animation: none;
   }
@@ -550,4 +521,54 @@ body {
     calc(var(--p) * -1) var(--p) var(--ink),
     var(--p) calc(var(--p) * -1) var(--ink),
     calc(var(--p) * -1) calc(var(--p) * -1) var(--ink);
+}
+
+/* ---------- 홈: 눈에 박힌 나무 표지판 ---------- */
+
+/* 표지판 다리 두 개 (나무 + 남색 테두리)와 눈 둔덕 */
+.home-post {
+  display: block;
+  width: calc(var(--p) * 4);
+  height: calc(var(--p) * 10);
+  background: var(--wood-mid);
+  box-shadow:
+    inset calc(var(--p) * -1) 0 0 0 var(--wood),
+    calc(var(--p) * -1) 0 0 0 var(--ink),
+    var(--p) 0 0 0 var(--ink);
+  margin-top: var(--p);
+}
+
+.home-mound {
+  position: relative;
+  display: block;
+  width: 92%;
+  height: calc(var(--p) * 6);
+  margin-top: calc(var(--p) * -4);
+  filter: drop-shadow(0 var(--p) 0 var(--snow-edge));
+}
+
+.home-mound::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--snow);
+  box-shadow: inset 0 calc(var(--p) * -1) 0 0 var(--snow-shade);
+  clip-path: polygon(
+    0 100%,
+    0 60%,
+    calc(var(--p) * 4) 60%,
+    calc(var(--p) * 4) 20%,
+    calc(var(--p) * 12) 20%,
+    calc(var(--p) * 12) 0,
+    calc(100% - var(--p) * 12) 0,
+    calc(100% - var(--p) * 12) 20%,
+    calc(100% - var(--p) * 4) 20%,
+    calc(100% - var(--p) * 4) 60%,
+    100% 60%,
+    100% 100%
+  );
+}
+
+:root[data-time="night"] .home-mound::before {
+  background: var(--snow-moon);
 }
