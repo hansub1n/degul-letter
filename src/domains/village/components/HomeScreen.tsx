@@ -142,6 +142,7 @@ export function HomeScreen() {
           className="relative -mt-[calc(var(--p)*4)] flex w-full flex-col items-center gap-[calc(var(--p)*4)]"
           style={{ paddingTop: "calc(var(--p) * 8)" }}
         >
+          <span aria-hidden className="home-snowcap" />
           <p className="text-caption text-center">친구 마을에 눈사람과 편지를</p>
           {form}
         </PixelPanel>

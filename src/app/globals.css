@@ -713,3 +713,51 @@ body {
 :root[data-time="night"] .home-mound::before {
   background: var(--snow-moon);
 }
+
+/* 홈 입력 판 위 눈: 시안 C의 눈 덮개만 가져와, 지금의 짙은 나무 판 위에 얹는다.
+   나무 자식의 position:relative 규칙을 이기고, 배지(z-20) 옆에 눈이 보이게 한다. */
+.pixel-box[data-tone="wood"] > .home-snowcap {
+  position: absolute;
+  left: calc(var(--p) * -1);
+  right: calc(var(--p) * -1);
+  top: calc(var(--p) * -4);
+  height: calc(var(--p) * 7);
+  pointer-events: none;
+  z-index: 3;
+  filter:
+    drop-shadow(0 calc(var(--p) * -1) 0 var(--ink))
+    drop-shadow(var(--p) 0 0 var(--ink))
+    drop-shadow(calc(var(--p) * -1) 0 0 var(--ink))
+    drop-shadow(0 var(--p) 0 var(--snow-edge));
+}
+
+.home-snowcap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--snow);
+  clip-path: polygon(
+    0 100%,
+    0 50%,
+    calc(var(--p) * 3) 50%,
+    calc(var(--p) * 3) 22%,
+    calc(var(--p) * 8) 22%,
+    calc(var(--p) * 8) 0,
+    calc(var(--p) * 18) 0,
+    calc(var(--p) * 18) 18%,
+    calc(var(--p) * 28) 18%,
+    calc(var(--p) * 28) 8%,
+    calc(100% - var(--p) * 30) 8%,
+    calc(100% - var(--p) * 30) 28%,
+    calc(100% - var(--p) * 18) 28%,
+    calc(100% - var(--p) * 18) 0,
+    calc(100% - var(--p) * 7) 0,
+    calc(100% - var(--p) * 7) 30%,
+    100% 30%,
+    100% 100%
+  );
+}
+
+:root[data-time="night"] .home-snowcap::before {
+  background: var(--snow-moon);
+}
