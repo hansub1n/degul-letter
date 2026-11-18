@@ -38,7 +38,7 @@ type Props = {
 
 /**
  * 집 옆 우체통: 마을에 온 편지를 봉투 타일로 3열 격자에 늘어놓는다.
- * 12/25 전에는 꺼진 타일(흐린 회색 + 자물쇠 + "12월 25일에 열려요"), 12/25부터는 봉인된 봉투를 눌러 연다.
+ * 12/25 전에는 격자 전체에 반투명 잠금 덮개(흐린 회색 + 자물쇠 + "12월 25일에 열려요")를 씌우고, 12/25부터는 봉인된 봉투를 눌러 연다.
  * 읽은 편지는 봉투가 열린 모습이 되고 이름이 흐려진다.
  */
 export function LetterBox({ recipientName, letters, openLetter, onClose }: Props) {
@@ -89,25 +89,33 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-3 gap-[calc(var(--p)*3)]">
-          {letters.map((letter, i) => (
-            <EnvelopeTile
-              key={letter.letterId}
-              letter={letter}
-              index={i}
-              openable={openable}
-              opened={read.has(letter.letterId)}
-              onOpen={() => setReading(letter)}
-            />
-          ))}
-        </ul>
+        // 12/25 전에는 봉투들 위에 반투명 잠금 덮개 하나를 씌운다 (봉투와 이름은 흐리게 비친다)
+        <div className="relative" style={openable ? undefined : { minHeight: "calc(var(--p) * 60)" }}>
+          <ul className="grid grid-cols-3 gap-[calc(var(--p)*3)]" aria-hidden={!openable || undefined} inert={!openable}>
+            {letters.map((letter, i) => (
+              <EnvelopeTile
+                key={letter.letterId}
+                letter={letter}
+                index={i}
+                openable={openable}
+                opened={read.has(letter.letterId)}
+                onOpen={() => setReading(letter)}
+              />
+            ))}
+          </ul>
+          {!openable && (
+            <div className="mailbox-lock pixel-box absolute inset-0 flex flex-col items-center justify-center gap-[calc(var(--p)*4)]">
+              <PixelIcon name="lock" scale={6} />
+              <p className="text-label">12월 25일에 열려요</p>
+            </div>
+          )}
+        </div>
       )}
     </PixelDialog>
   );
 }
 
-
-/** 봉투 타일 하나. 위에 큰 봉투(또는 자물쇠), 아래에 보낸 사람 이름(최대 두 줄) */
+/** 봉투 타일 하나. 위에 큰 봉투, 아래에 보낸 사람 이름(최대 두 줄). 12/25 전에는 잠금 덮개 아래에서 가만히 있다 */
 function EnvelopeTile({
   letter,
   index,
@@ -121,43 +129,27 @@ function EnvelopeTile({
   opened: boolean;
   onOpen: () => void;
 }) {
-  const label = openable
-    ? `${letter.authorName}의 편지 ${opened ? "다시 읽기" : "열기"}`
-    : `${letter.authorName}의 편지, 12월 25일에 열려요`;
+  const bob = openable && !opened;
   return (
     <li className="flex">
       <button
         type="button"
-        aria-label={label}
-        aria-disabled={!openable || undefined}
-        onClick={() => {
-          if (openable) onOpen();
-        }}
+        aria-label={`${letter.authorName}의 편지 ${opened ? "다시 읽기" : "열기"}`}
+        disabled={!openable}
+        onClick={onOpen}
         data-tone="paper"
         className="envelope-tile pixel-box flex w-full flex-col items-center gap-[calc(var(--p)*2)]"
         style={{ padding: "calc(var(--p) * 3) calc(var(--p) * 2)" }}
       >
-        {openable ? (
-          <>
-            <span
-              className={`flex ${opened ? "" : "envelope-bob"}`}
-              style={opened ? undefined : ({ "--bob-delay": `${-((index * 2) % 3) * 0.4}s` } as CSSProperties)}
-            >
-              <PixelIcon name={opened ? "envOpened" : "envSealed"} scale={3} />
-            </span>
-            <span className={`text-label w-full break-all text-center line-clamp-2 ${opened ? "text-muted" : ""}`}>
-              {letter.authorName}
-            </span>
-          </>
-        ) : (
-          <>
-            {/* 봉투 자리(높이 66px)에 자물쇠만 가운데 둔다 */}
-            <span className="flex h-[66px] items-center justify-center">
-              <PixelIcon name="lock" scale={3} />
-            </span>
-            <span className="text-caption w-full break-keep text-center">12월 25일에 열려요</span>
-          </>
-        )}
+        <span
+          className={`flex ${bob ? "envelope-bob" : ""}`}
+          style={bob ? ({ "--bob-delay": `${-((index * 2) % 3) * 0.4}s` } as CSSProperties) : undefined}
+        >
+          <PixelIcon name={opened ? "envOpened" : "envSealed"} scale={3} />
+        </span>
+        <span className={`text-label w-full break-all text-center line-clamp-2 ${opened ? "text-muted" : ""}`}>
+          {letter.authorName}
+        </span>
       </button>
     </li>
   );

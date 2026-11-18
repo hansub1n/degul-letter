@@ -375,7 +375,7 @@ body {
   color: var(--ink);
 }
 
-/* 우체통 봉투 타일: 편지지 재질 상자. 크리스마스부터 누를 수 있고, 그 전에는 꺼진 버튼처럼 흐린 회색 면 + 그림자 없음 */
+/* 우체통 봉투 타일: 편지지 재질 상자. 크리스마스부터 누를 수 있다 */
 .envelope-tile {
   cursor: pointer;
   transition: transform 80ms steps(2, end);
@@ -387,24 +387,30 @@ body {
 }
 
 @media (hover: hover) {
-  .envelope-tile:not([aria-disabled="true"]):hover {
+  .envelope-tile:not(:disabled):hover {
     transform: translateY(calc(var(--p) * -1));
     --box-drop-y: calc(var(--p) * 3);
   }
 }
 
-.envelope-tile:active:not([aria-disabled="true"]) {
+.envelope-tile:active:not(:disabled) {
   transform: translateY(var(--p));
   --box-drop: transparent;
 }
 
-.envelope-tile[aria-disabled="true"] {
-  --box-fill: color-mix(in srgb, var(--paper-line) 55%, transparent);
+.envelope-tile:disabled {
+  cursor: default;
+}
+
+/* 12/25 전 우체통 잠금 덮개: 꺼진 버튼처럼 그림자 없는 회색 면. 반투명이라 아래 봉투와 이름이 흐리게 비친다.
+   타일 그림자(아래 2칸)까지 덮도록 아래로 2칸 더 내린다 */
+.mailbox-lock {
+  --box-fill: color-mix(in srgb, var(--paper-line) 90%, transparent);
   --box-light: transparent;
   --box-shade: transparent;
   --box-drop: transparent;
-  color: var(--muted);
-  cursor: default;
+  bottom: calc(var(--p) * -2);
+  color: var(--ink);
 }
 
 /* 안 읽은 봉투는 한 칸씩 들썩인다. 타일마다 박자를 엇갈리게(--bob-delay) 해서 한꺼번에 뛰지 않는다 */
