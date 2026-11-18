@@ -2,5 +2,5 @@
 // 서버 코드(server.ts)는 서버 키가 필요해서 여기로 내보내지 않는다.
 export { isLoggedIn, logout, startKakaoLogin } from "./api";
 export { LogoutConfirm } from "./components/LogoutConfirm";
-export { LoginMethods } from "./components/LoginMethods";
+export { InviteLogin } from "./components/InviteLogin";
 export { LoginDone } from "./components/LoginDone";

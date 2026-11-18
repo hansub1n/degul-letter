@@ -2,6 +2,7 @@
 export { createLetter, deleteLetter, openLetter } from "./api";
 export { LetterBox, type LetterSummary } from "./components/LetterBox";
 export { LetterCard } from "./components/LetterCard";
+export { AirmailFrame } from "./components/AirmailFrame";
 export { LetterStamp } from "./components/LetterStamp";
 export { christmasLabel, daysUntilChristmas, isLetterOpen } from "./lib/dday";
 export { useChristmasLabel } from "./hooks/useChristmasLabel";

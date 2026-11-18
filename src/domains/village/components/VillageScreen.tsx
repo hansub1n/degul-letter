@@ -11,7 +11,7 @@ import {
   LetterCard,
   openLetter,
 } from "@/domains/letter";
-import { isLoggedIn, logout, LogoutConfirm } from "@/domains/auth";
+import { InviteLogin, isLoggedIn, logout, LogoutConfirm } from "@/domains/auth";
 import { InviteTicket } from "@/shared/components/InviteTicket";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
@@ -32,7 +32,7 @@ type Loaded = {
   saved: SavedSnowman[];
   myId: string;
   myVillage: Village | null;
-  /** 마을 주인일 때만: 카카오 로그인 상태 (로그아웃 버튼을 보여 준다) */
+  /** 카카오 로그인 상태. 주인은 로그아웃 말풍선, 방문자는 초대장(로그인 카드)을 띄울지 정한다 */
   loggedIn: boolean;
 };
 /** 마을을 떠나는 곳: 다른 화면 주소, 또는 로그아웃 */
@@ -48,6 +48,7 @@ export function VillageScreen() {
   const gameApiRef = useRef<VillageGameApi | null>(null);
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
@@ -76,6 +77,7 @@ export function VillageScreen() {
       setDrafts(new Map());
       setLeaveTo(null);
       setLogoutOpen(false);
+      setInviteOpen(false);
       setStatus(null);
       setLetters([]);
       setMailboxOpen(false);
@@ -95,13 +97,10 @@ export function VillageScreen() {
                 console.error(err);
                 return null;
               });
-        const loggedInPromise =
-          village.ownerId === myId
-            ? isLoggedIn().catch((err) => {
-                console.error(err);
-                return false;
-              })
-            : Promise.resolve(false);
+        const loggedInPromise = isLoggedIn().catch((err) => {
+          console.error(err);
+          return false;
+        });
         const [saved, myVillage, loggedIn] = await Promise.all([savedPromise, minePromise, loggedInPromise]);
         if (!alive) return;
         setLetters(
@@ -300,7 +299,13 @@ export function VillageScreen() {
             ) : (
               <InviteTicket
                 className="pointer-events-auto ml-auto shrink-0"
-                onClick={() => goOrConfirm("/")}
+                // 로그인 안 한 방문자: 마을 위에 초대장 카드를 띄워 바로 카카오로 로그인한다.
+                // 이미 로그인했으면(마을만 아직 없음) 첫 화면의 닉네임 입력으로 간다
+                onClick={() => {
+                  if (isModalLocked()) return;
+                  if (loggedIn) goOrConfirm("/");
+                  else setInviteOpen(true);
+                }}
               />
             )}
           </div>
@@ -347,6 +352,7 @@ export function VillageScreen() {
           onCancel={() => setPending(null)}
         />
       )}
+      {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
       {leaveTo && (
         <PixelDialog title="눈사람이 녹아 버려요" hideHeader closeOnVeil onClose={() => setLeaveTo(null)}>
