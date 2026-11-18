@@ -47,6 +47,8 @@ type Props = {
   onOpenLetter?: (snowman: NearbySnowman) => void;
   /** 우체통 말풍선의 편지 버튼을 눌렀을 때 (마을 주인만) */
   onOpenMailbox?: () => void;
+  /** 집 문 앞 말풍선의 "로그아웃"을 눌렀을 때 (마을 주인만) */
+  onLogout?: () => void;
   /** 우체통에 모인 편지 수 (깃발이 올라간다) */
   mailCount?: number;
   /** 화면 위쪽에 띄울 것 (링크 보내기 등) */
@@ -73,6 +75,7 @@ export function VillageGame({
   onSavedSnowmanBroken,
   onOpenLetter,
   onOpenMailbox,
+  onLogout,
   mailCount = 0,
   header,
   overlay,
@@ -84,6 +87,7 @@ export function VillageGame({
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [nearby, setNearby] = useState<NearbySnowman | null>(null);
   const [mailboxNear, setMailboxNear] = useState(false);
+  const [doorNear, setDoorNear] = useState(false);
   const [showHint, setShowHint] = useState(true);
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
@@ -116,6 +120,7 @@ export function VillageGame({
       },
       onNearbyChange: setNearby,
       onMailboxNearChange: setMailboxNear,
+      onDoorNearChange: setDoorNear,
     });
     gameRef.current = game;
     const hintTimer = window.setTimeout(() => setShowHint(false), 8000);
@@ -217,13 +222,18 @@ export function VillageGame({
         />
       )}
 
-      {(nearby || mailboxNear) && !sculpting && (
+      {(nearby || mailboxNear || (doorNear && onLogout)) && !sculpting && (
         // 눈사람 머리 위에 뜨는 말풍선. 위치는 엔진이 매 프레임 직접 옮긴다(setNearbyAnchor).
         <div ref={(el) => gameRef.current?.setNearbyAnchor(el)} className="absolute left-0 top-0 opacity-0">
           <div className="pixel-bob flex items-end gap-[calc(var(--p)*3)] pb-[calc(var(--p)*2)]">
-            {!nearby && (
+            {!nearby && mailboxNear && (
               // 우체통 말풍선: 모든 편지 보기
               <PixelButton iconOnly size="sm" icon="mailbox" aria-label="우체통 열기" onClick={() => onOpenMailbox?.()} />
+            )}
+            {!nearby && doorNear && onLogout && (
+              // 집 말풍선 (지붕 위): 공용 컴퓨터(PC방 등)에서 다음 사람이 내 마을에 들어오지 못하게
+              // 우체통처럼 아이콘만. 눌러도 바로 나가지 않고 확인 창이 떠서 뜻을 알려 준다
+              <PixelButton iconOnly size="sm" icon="houseDoor" aria-label="로그아웃" onClick={onLogout} />
             )}
             {nearby &&
               bubbleButtons(nearby, isOwner, unsentIds.includes(nearby.id)).map((kind) => (

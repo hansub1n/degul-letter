@@ -11,6 +11,7 @@ import {
   LetterCard,
   openLetter,
 } from "@/domains/letter";
+import { InviteLogin, isLoggedIn, logout, LogoutConfirm } from "@/domains/auth";
 import { InviteTicket } from "@/shared/components/InviteTicket";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
@@ -26,7 +27,18 @@ import { VillageSign } from "./VillageSign";
 
 const FINISH_DIALOG_DELAY_MS = 2000;
 
-type Loaded = { village: Village; saved: SavedSnowman[]; myId: string; myVillage: Village | null };
+type Loaded = {
+  village: Village;
+  saved: SavedSnowman[];
+  myId: string;
+  myVillage: Village | null;
+  /** 카카오 로그인 상태. 주인은 로그아웃 말풍선, 방문자는 초대장(로그인 카드)을 띄울지 정한다 */
+  loggedIn: boolean;
+};
+/** 마을을 떠나는 곳: 다른 화면 주소, 또는 로그아웃 */
+type LeaveTarget = string | typeof LOGOUT;
+const LOGOUT = Symbol("logout");
+
 type PendingSave = { stackId: number; draft: SnowmanDraft; markSaved: MarkSaved };
 
 /** 공유 링크(/v/[code])로 들어온 마을. 저장된 눈사람을 불러와 세우고, 새로 완성한 눈사람과 편지를 저장한다. */
@@ -34,7 +46,9 @@ export function VillageScreen() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
   const gameApiRef = useRef<VillageGameApi | null>(null);
-  const [leaveTo, setLeaveTo] = useState<string | null>(null);
+  const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
@@ -62,6 +76,8 @@ export function VillageScreen() {
       setPending(null);
       setDrafts(new Map());
       setLeaveTo(null);
+      setLogoutOpen(false);
+      setInviteOpen(false);
       setStatus(null);
       setLetters([]);
       setMailboxOpen(false);
@@ -81,12 +97,16 @@ export function VillageScreen() {
                 console.error(err);
                 return null;
               });
-        const [saved, myVillage] = await Promise.all([savedPromise, minePromise]);
+        const loggedInPromise = isLoggedIn().catch((err) => {
+          console.error(err);
+          return false;
+        });
+        const [saved, myVillage, loggedIn] = await Promise.all([savedPromise, minePromise, loggedInPromise]);
         if (!alive) return;
         setLetters(
           saved.flatMap((s) => (s.letterId ? [{ snowmanId: s.id, letterId: s.letterId, authorName: s.authorName }] : [])),
         );
-        setLoaded({ village, saved, myId, myVillage });
+        setLoaded({ village, saved, myId, myVillage, loggedIn });
       } catch (e) {
         console.error(e);
         if (alive) setProblem("error");
@@ -136,7 +156,7 @@ export function VillageScreen() {
     );
   }
 
-  const { village, saved, myId, myVillage } = loaded;
+  const { village, saved, myId, myVillage, loggedIn } = loaded;
   const isOwner = village.ownerId === myId;
 
   const save = async (job: PendingSave, name: string, letter: string) => {
@@ -193,14 +213,21 @@ export function VillageScreen() {
     }
   };
 
-  const goOrConfirm = (to: string) => {
+  const leaveNow = (to: LeaveTarget) => {
+    if (to === LOGOUT) void logout();
+    else router.push(to);
+  };
+
+  const hasUnsaved = () => drafts.size > 0 || pending !== null || Boolean(gameApiRef.current?.hasUnsavedWork());
+
+  /** 편지를 안 넣은 눈사람이 있으면 녹는다고 먼저 묻고, 없으면 바로 떠난다 */
+  const goOrConfirm = (to: LeaveTarget) => {
     if (isModalLocked()) return;
-    const unsaved = drafts.size > 0 || pending !== null || Boolean(gameApiRef.current?.hasUnsavedWork());
-    if (unsaved) {
+    if (hasUnsaved()) {
       setLeaveTo(to);
       return;
     }
-    router.push(to);
+    leaveNow(to);
   };
 
   return (
@@ -224,6 +251,17 @@ export function VillageScreen() {
         isOwner={isOwner}
         mailCount={letterCount}
         onOpenMailbox={() => setMailboxOpen(true)}
+        // 카카오 로그인 전에 만든 마을(익명 주인)은 로그아웃하면 마을을 잃으므로 문 말풍선을 띄우지 않는다
+        // 저장 안 한 눈사람이 있으면 "녹아 버려요"가 확인을 겸하고, 없으면 로그아웃 확인 창을 띄운다
+        onLogout={
+          loggedIn
+            ? () => {
+                if (isModalLocked()) return;
+                if (hasUnsaved()) setLeaveTo(LOGOUT);
+                else setLogoutOpen(true);
+              }
+            : undefined
+        }
         onOpenLetter={(snowman) => {
           if (snowman.savedId) setOpeningLetter({ authorName: snowman.authorName ?? "친구", savedId: snowman.savedId });
         }}
@@ -261,7 +299,13 @@ export function VillageScreen() {
             ) : (
               <InviteTicket
                 className="pointer-events-auto ml-auto shrink-0"
-                onClick={() => goOrConfirm("/")}
+                // 로그인 안 한 방문자: 마을 위에 초대장 카드를 띄워 바로 카카오로 로그인한다.
+                // 이미 로그인했으면(마을만 아직 없음) 첫 화면의 닉네임 입력으로 간다
+                onClick={() => {
+                  if (isModalLocked()) return;
+                  if (loggedIn) goOrConfirm("/");
+                  else setInviteOpen(true);
+                }}
               />
             )}
           </div>
@@ -308,6 +352,8 @@ export function VillageScreen() {
           onCancel={() => setPending(null)}
         />
       )}
+      {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
+      {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
       {leaveTo && (
         <PixelDialog title="눈사람이 녹아 버려요" hideHeader closeOnVeil onClose={() => setLeaveTo(null)}>
           <div className="flex min-h-full w-full flex-1 flex-col justify-center self-stretch">
@@ -316,7 +362,7 @@ export function VillageScreen() {
               onLeave={() => {
                 const to = leaveTo;
                 setLeaveTo(null);
-                router.push(to);
+                leaveNow(to);
               }}
             />
           </div>

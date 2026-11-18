@@ -44,3 +44,19 @@ export async function completeLogin(userId: string, secret: string): Promise<voi
   await account.createSession({ userId, secret });
   forgetUserId();
 }
+
+/**
+ * 로그아웃: 이 브라우저의 로그인을 지우고, 카카오 계정 로그인도 끊은 뒤 첫 화면으로 돌아간다.
+ * 다음에 들어오면 새 익명 계정으로 시작한다 (내 마을은 다시 카카오 로그인하면 찾을 수 있다).
+ */
+export async function logout(): Promise<void> {
+  try {
+    await getAppwrite().account.deleteSession({ sessionId: "current" });
+  } catch {
+    // 이미 세션이 없으면 그냥 넘어간다
+  }
+  forgetUserId();
+  const res = await fetch("/api/auth/kakao/logout", { method: "POST" }).catch(() => null);
+  const data = (await res?.json().catch(() => null)) as { url?: string } | null;
+  window.location.href = data?.url ?? window.location.origin;
+}

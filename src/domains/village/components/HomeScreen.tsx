@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { isLoggedIn, LoginMethods, startKakaoLogin } from "@/domains/auth";
+import { InviteLogin, isLoggedIn, LogoutConfirm } from "@/domains/auth";
 import { useChristmasLabel } from "@/domains/letter";
 import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelField } from "@/shared/components/PixelField";
+import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
@@ -26,7 +27,7 @@ export function HomeScreen() {
   const [message, setMessage] = useState<string | null>(null);
   /** 카카오 로그인으로 계정을 지키고 있는지. 마을은 로그인해야 만들 수 있다 */
   const [loggedIn, setLoggedIn] = useState<boolean | undefined>(undefined);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   /** 썰매가 빠져나간 뒤(또는 로딩이 300ms 안에 끝나 안 보인 뒤)에만 폼·버튼을 보여 준다 */
   const [loaderDone, setLoaderDone] = useState(false);
   const onLoaderFinished = useCallback(() => setLoaderDone(true), []);
@@ -69,18 +70,6 @@ export function HomeScreen() {
     }
   };
 
-  /** 카카오 로그인 뒤 이 화면으로 돌아와, 로그인한 계정의 마을이 있으면 "내 마을 가기", 없으면 닉네임 입력이 보인다 */
-  const login = async () => {
-    setLoggingIn(true);
-    setMessage(null);
-    try {
-      await startKakaoLogin("/");
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "로그인을 시작하지 못했어요");
-      setLoggingIn(false);
-    }
-  };
-
   const copyLink = async (village: Village) => {
     const url = `${window.location.origin}/v/${village.code}`;
     try {
@@ -118,16 +107,6 @@ export function HomeScreen() {
         </div>
       )}
 
-      {loaderDone && mine === null && !loggedIn && (
-        <div className="flex w-full flex-1 flex-col justify-center gap-[calc(var(--p)*4)]">
-          <p className="text-caption text-center leading-[1.6]">
-            로그인하면 어떤 기기에서든
-            <br />내 마을과 편지를 찾을 수 있어요
-          </p>
-          <LoginMethods busy={loggingIn} onKakao={() => void login()} />
-        </div>
-      )}
-
       {loaderDone && mine === null && loggedIn && (
         <form
           className="flex w-full flex-col gap-[calc(var(--p)*4)]"
@@ -152,6 +131,9 @@ export function HomeScreen() {
     </>
   );
 
+  /** 처음 온 사람(마을도 로그인도 없음): 표지판 대신 초대장 카드에서 카카오로 로그인한다 */
+  const inviting = loaderDone && mine === null && loggedIn === false;
+
   const dDayTag = dday && (
     <PixelBadge icon="holly" data-twinkle className="relative z-10">
       크리스마스 {dday}
@@ -168,6 +150,7 @@ export function HomeScreen() {
       {/* 눈에 박힌 나무 표지판: 위 판자에 이름과 D-day 꼬리표, 아래도 같은 나무 판(결·옹이)에 크림 입력칸, 다리 두 개가 눈 둔덕에 꽂힌다 */}
       <section
         aria-labelledby="home-title"
+        hidden={inviting}
         className={`relative flex w-full max-w-[360px] shrink-0 flex-col items-center ${leaving ? "pixel-leave" : ""}`}
       >
         <PixelPanel tone="wood" pad={0} className="relative z-10" style={{ padding: "calc(var(--p) * 2) calc(var(--p) * 8)" }}>
@@ -197,7 +180,21 @@ export function HomeScreen() {
         <span aria-hidden className="home-mound" />
       </section>
 
+      {/* 표지판 밖 아래 눈밭: 공용 컴퓨터(PC방 등)에서 다음 사람이 내 마을에 들어오지 못하게 */}
+      {loaderDone && mine && loggedIn && (
+        <button
+          type="button"
+          className="home-logout text-label relative z-10 mt-[calc(var(--p)*5)] shrink-0"
+          onClick={() => setLogoutOpen(true)}
+        >
+          <PixelIcon name="houseDoor" scale={2} />
+          로그아웃
+        </button>
+      )}
+
+      {inviting && <InviteLogin variant="page" />}
       {message && <PixelToast>{message}</PixelToast>}
+      {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
     </main>
   );
 }

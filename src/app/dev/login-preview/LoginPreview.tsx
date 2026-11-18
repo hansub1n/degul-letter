@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { InviteLogin } from "@/domains/auth";
 import { HomeBackdrop } from "@/domains/village/components/HomeBackdrop";
 import { PixelButton } from "@/shared/components/PixelButton";
-import { LoginLetterB } from "./LoginLetterB";
 import { LoginModalA } from "./LoginModalA";
 
 type Variant = "a" | "b";
@@ -19,7 +19,7 @@ export function LoginPreview({ variant }: { variant: Variant }) {
     <div className="relative min-h-dvh bg-ground">
       <HomeBackdrop />
       {variant === "a" && open && <LoginModalA onClose={() => setOpen(false)} />}
-      {variant === "b" && open && <LoginLetterB onClose={() => setOpen(false)} />}
+      {variant === "b" && open && <InviteLogin variant="page" onClose={() => setOpen(false)} />}
       {!open && (
         <div className="relative z-10 flex min-h-dvh items-center justify-center p-[calc(var(--p)*6)]">
           <PixelButton variant="primary" onClick={() => setOpen(true)}>

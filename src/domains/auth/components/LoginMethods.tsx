@@ -1,19 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { PixelButton } from "@/shared/components/PixelButton";
-
-/** 카카오: 말풍선. 공식 로고가 아니라 간단한 도트 표식만 쓴다. */
-const BUBBLE = [
-  ".ooooooo.",
-  "owwwwwwwo",
-  "owwwwwwwo",
-  "owwwwwwwo",
-  "owwwwwwwo",
-  ".oooooooo",
-  "...oo....",
-  "..oo.....",
-] as const;
+import kakaoLogin from "../assets/kakao_login_kr_large.svg";
 
 /** Google: 작은 지구본. 네 색 G 마크처럼 공식 로고를 흉내 내지 않는다. */
 const GLOBE = [
@@ -90,18 +80,35 @@ type Props = {
   busy?: boolean;
 };
 
-/** 로그인 수단 단추. 카카오가 주요 단추, Google은 보조 단추. */
+/** 로그인 수단 단추. 카카오는 카카오 디자인 가이드 그대로, Google은 보조 단추. */
 export function LoginMethods({ onKakao, onGoogle, busy = false }: Props) {
   return (
     <div className="flex w-full flex-col gap-[calc(var(--p)*4)]">
-      <PixelButton variant="primary" className="w-full" disabled={busy} onClick={onKakao} aria-label="카카오로 계속하기">
-        <Label mark={<PixelMark rows={BUBBLE} onPrimary />}>카카오로 계속하기</Label>
-      </PixelButton>
+      <KakaoLoginButton disabled={busy} onClick={onKakao} />
       {onGoogle && (
         <PixelButton variant="secondary" className="w-full" disabled={busy} onClick={onGoogle} aria-label="Google로 계속하기">
           <Label mark={<PixelMark rows={GLOBE} />}>Google로 계속하기</Label>
         </PixelButton>
       )}
     </div>
+  );
+}
+
+/**
+ * 카카오 로그인 버튼: 카카오가 제공하는 표준 버튼 그림을 그대로 쓴다 (가이드는 표준 디자인 사용을 권장한다).
+ * 그림은 카카오 개발자 사이트 [도구 > 리소스 다운로드 > 카카오 로그인]의 Kakao Login.zip 안 SVG/kakao_login_kr_large.svg.
+ * 가로세로 비율을 지킨 채 카드 폭에 맞춰 늘리고 줄이기만 한다 (색·모양·글자는 손대지 않는다).
+ */
+function KakaoLoginButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label="카카오 로그인"
+      className="block w-full transition-opacity disabled:opacity-60"
+    >
+      <Image src={kakaoLogin} alt="" unoptimized priority className="h-auto w-full" />
+    </button>
   );
 }
