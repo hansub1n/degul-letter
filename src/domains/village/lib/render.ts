@@ -130,6 +130,13 @@ const PAL = {
   // 아래는 그림 전용 색 (globals.css 토큰 없음)
   wallFrame: "#8A6A4A",
   chimney: "#B49C86",
+  eave: "#CDB592", // 처마 아래 벽 그늘
+  // 자기 색 외곽선 전용: 각 재질의 한 단계 더 진한 색
+  roofDeep: "#5A1C19",
+  pineDeep: "#1C3A2F",
+  woodDeep: "#3E2716",
+  chimneyDeep: "#7E6B5B",
+  slateDeep: "#33384A",
   slate: "#4A5068",
   hammerLight: "#E3E8F3",
   hammerHead: "#B8C2D8",
@@ -247,12 +254,39 @@ function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number
   ctx.fillRect(Math.round(x), Math.round(y), w, h);
 }
 
+/** 외곽선 색: 옆에 닿은 칸의 재질보다 한 단계 진한 색. 흰 눈에는 남색 대신 muted를 둘러 바탕과만 갈라 준다. */
+const OUTLINE_OF: Record<string, string> = {
+  [PAL.snow]: PAL.muted,
+  [PAL.snowShade]: PAL.muted,
+  [PAL.snowEdge]: PAL.muted,
+  [PAL.roof]: PAL.roofEdge,
+  [PAL.roofShade]: PAL.roofEdge,
+  [PAL.berry]: PAL.roofEdge,
+  [PAL.roofEdge]: PAL.roofDeep,
+  [PAL.pine]: PAL.pineEdge,
+  [PAL.pineLight]: PAL.pineEdge,
+  [PAL.pineShade]: PAL.pineEdge,
+  [PAL.pineEdge]: PAL.pineDeep,
+  [PAL.wood]: PAL.woodDeep,
+  [PAL.woodLight]: PAL.wood,
+  [PAL.woodMid]: PAL.wood,
+  [PAL.wallFrame]: PAL.wood,
+  [PAL.wall]: PAL.wallFrame,
+  [PAL.wallShade]: PAL.wallFrame,
+  [PAL.eave]: PAL.wallFrame,
+  [PAL.chimney]: PAL.chimneyDeep,
+  [PAL.gold]: PAL.goldShade,
+  [PAL.slate]: PAL.slateDeep,
+};
+
 /**
  * 스프라이트 둘레에 1px 외곽선을 두른 새 그림을 만든다. 크기가 (w+2, h+2)가 되므로
  * 그릴 때는 drawOutlined로 (-1, -1) 옮겨서 그려야 원래 발 위치가 그대로다.
- * 비어 있는 칸 중 상하좌우에 칠해진 칸이 있으면 그 색으로 칠한다. (집·나무·우체통만 쓴다)
+ * 비어 있는 칸 중 아래·오른쪽·왼쪽에 칠해진 칸이 있으면 그 칸 재질의 진한 색(OUTLINE_OF)으로 칠한다.
+ * 맨 아랫줄(땅에 닿는 쪽)에는 선을 두르지 않는다: 바닥은 그림자와 쌓인 눈(groundSnow)이 맡는다.
+ * (집·나무·우체통만 쓴다)
  */
-function outline(sprite: HTMLCanvasElement, color: string): HTMLCanvasElement {
+function outline(sprite: HTMLCanvasElement): HTMLCanvasElement {
   const w = sprite.width;
   const h = sprite.height;
   const src = context2d(sprite).getImageData(0, 0, w, h).data;
@@ -266,8 +300,8 @@ function outline(sprite: HTMLCanvasElement, color: string): HTMLCanvasElement {
     for (let y = -1; y <= h; y++) {
       for (let x = -1; x <= w; x++) {
         if (hexAt(x, y)) continue;
-        const neighbors = [hexAt(x, y + 1), hexAt(x + 1, y), hexAt(x - 1, y), hexAt(x, y - 1)];
-        if (neighbors.some(Boolean)) rect(ctx, color, x + 1, y + 1, 1, 1);
+        const next = hexAt(x, y + 1) ?? hexAt(x + 1, y) ?? hexAt(x - 1, y);
+        if (next) rect(ctx, OUTLINE_OF[next] ?? PAL.muted, x + 1, y + 1, 1, 1);
       }
     }
     ctx.drawImage(sprite, 1, 1);
@@ -277,6 +311,19 @@ function outline(sprite: HTMLCanvasElement, color: string): HTMLCanvasElement {
 /** 외곽선을 두른 그림을 원래 그림의 왼쪽 위 (x, y)에 맞춰 그린다 */
 function drawOutlined(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, x: number, y: number): void {
   ctx.drawImage(sprite, x - 1, y - 1);
+}
+
+/** 물체 밑동에 쌓인 눈: 위 한 줄은 들쭉날쭉, 가운데 한 줄은 꽉 차게, 아래 한 줄은 그늘 */
+function groundSnow(ctx: CanvasRenderingContext2D, left: number, footY: number, width: number, night = false): void {
+  // 밤에는 그림과 같은 달빛 색을 써야 밑동 눈만 하얗게 튀지 않는다
+  const snow = night ? NIGHT_SNOW : PAL.snow;
+  const edge = night ? NIGHT_SNOW_EDGE : SNOW_EDGE;
+  for (let i = 0; i < width; i++) {
+    const x = Math.round(left + i);
+    if (hash2(i, 77) < 0.55) rect(ctx, snow, x, footY - 1, 1, 1);
+    rect(ctx, snow, x, footY, 1, 1);
+    rect(ctx, edge, x, footY + 1, 1, 1);
+  }
 }
 
 function shadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rw: number): void {
@@ -355,36 +402,53 @@ const makeTreeSprite = () => outline(makeSprite(21, 30, (ctx) => {
       }
     }
   }
-}), PAL.ink);
+}));
 
 const makeHouseSprite = () => outline(makeSprite(48, 44, (ctx) => {
   // 벽
   rect(ctx, PAL.wallFrame, 5, 20, 38, 24);
   rect(ctx, PAL.wall, 6, 20, 36, 23);
   rect(ctx, PAL.wallShade, 33, 20, 9, 23);
-  // 굴뚝
+  // 처마 아래 그늘: 지붕이 벽 위로 튀어나온 느낌
+  rect(ctx, PAL.eave, 6, 20, 27, 1);
+  rect(ctx, PAL.wallFrame, 33, 20, 9, 1);
+  // 굴뚝 (그대로)
   rect(ctx, PAL.chimney, 33, 1, 5, 10);
   rect(ctx, PAL.snow, 32, 0, 7, 2);
   rect(ctx, SNOW_EDGE, 32, 1, 1, 1);
   rect(ctx, SNOW_EDGE, 38, 1, 1, 1);
-  // 지붕 (위쪽은 눈)
-  for (let row = 0; row < 19; row++) {
-    const inset = Math.round((19 - row) * 1.2);
-    for (let x = inset; x < 48 - inset; x++) {
-      const edge = x === inset || x === 47 - inset || row === 18;
-      let color: string = x > 30 ? PAL.roofShade : PAL.roof;
-      if (edge) color = PAL.roofEdge;
-      if (row < 6) color = edge ? SNOW_EDGE : PAL.snow;
-      // 눈 바로 아랫줄: 녹은 눈이 들쭉날쭉 걸린 줄 (그늘과 테두리 색이 섞인다)
-      if (row === 6 && !edge) {
-        const m = hash2(x, 3);
-        if (m < 0.3) color = PAL.snow;
-        else if (m < 0.55) color = SNOW_SHADE;
-        else if (m < 0.8) color = SNOW_EDGE;
+  // 지붕: 두 줄마다 3칸씩 고르게 내려가는 경사 (17줄, y 3~19)
+  const ROOF_ROWS = 17;
+  const inset = (row: number) => Math.max(0, 22 - Math.floor(row * 1.5));
+  const topRow = (x: number) => {
+    for (let row = 0; row < ROOF_ROWS; row++) if (x >= inset(row) && x <= 47 - inset(row)) return row;
+    return ROOF_ROWS;
+  };
+  for (let row = 0; row < ROOF_ROWS; row++) {
+    const left = inset(row);
+    for (let x = left; x <= 47 - left; x++) {
+      const edge = x === left || x === 47 - left;
+      const shaded = x > 30;
+      let color: string = shaded ? PAL.roofShade : PAL.roof;
+      // 기와 줄: 세 줄마다 한 줄 어둡게
+      if (row % 3 === 1 && row > 2) color = shaded ? PAL.roofEdge : PAL.roofShade;
+      if (edge || row === ROOF_ROWS - 1) color = PAL.roofEdge;
+      // 눈: 경사를 따라 3~4칸 두께로 쌓인다. 용마루 쪽이 조금 더 두껍고, 아랫면은 그늘
+      const depth = (x >= 17 && x <= 30 ? 4 : 3) + (hash2(x, 5) < 0.35 ? 1 : 0);
+      const k = row - topRow(x);
+      if (k < depth && row < ROOF_ROWS - 1) {
+        if (k === depth - 1 || edge) color = SNOW_EDGE;
+        else if (shaded) color = k === 0 ? PAL.snow : SNOW_SHADE;
+        else color = PAL.snow;
       }
-      rect(ctx, color, x, row + 2, 1, 1);
+      rect(ctx, color, x, row + 3, 1, 1);
     }
   }
+  // 처마 끝으로 넘친 눈
+  rect(ctx, PAL.snow, 0, 18, 3, 1);
+  rect(ctx, SNOW_EDGE, 0, 19, 2, 1);
+  rect(ctx, PAL.snow, 45, 18, 3, 1);
+  rect(ctx, SNOW_EDGE, 46, 19, 2, 1);
   // 문
   rect(ctx, PAL.wood, 26, 30, 9, 14);
   rect(ctx, PAL.woodLight, 27, 31, 7, 13);
@@ -397,7 +461,7 @@ const makeHouseSprite = () => outline(makeSprite(48, 44, (ctx) => {
   // 리스
   rect(ctx, PAL.pine, 29, 25, 3, 3);
   rect(ctx, PAL.berry, 30, 28, 1, 1);
-}), PAL.ink);
+}));
 
 /** 캐릭터 11x13 도트. 가운데 열(5)을 기준으로 좌우 대칭이고, 발 위치가 (5, 12). */
 function makePlayerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
@@ -557,7 +621,7 @@ function makeMailboxSprite(hasMail: boolean, flagUp = false): HTMLCanvasElement 
     // 기둥
     rect(ctx, PAL.wood, 4, 11, 3, 7);
     rect(ctx, PAL.woodMid, 5, 11, 1, 6);
-  }), PAL.ink);
+  }));
 }
 
 // ---------- 망치 ----------
@@ -707,7 +771,8 @@ function makeGround(
         if (h < 0.04) c = dot;
         else if (h > 0.994) c = glint;
         // 집 앞에서 아래로 이어지는 발자국 길
-        const pathX = house.x + Math.sin(y / 28) * 12;
+        // 문 가운데(집 중심에서 오른쪽 6칸)에서 시작해 굽이친다
+        const pathX = house.x + 6 + Math.sin((y - house.y) / 28) * 12;
         if (y > house.y && Math.abs(x - pathX) < 6 + Math.sin(y / 9)) {
           c = h < 0.5 ? path : pathDeep;
         }
@@ -729,11 +794,11 @@ function paintRoofLights(ctx: CanvasRenderingContext2D, hx: number, hy: number, 
   const colors = [PAL.berry, PAL.gold, PAL.pineLight];
   const period = night ? 0.5 : 1;
   const phase = Math.floor(time / period) % 2;
-  // row 18의 지붕은 x 1..46. 그 아랫줄(y = 18 + 2 + 1)에 매단다
+  // 지붕 맨 아랫줄(y 19)은 x 0..47. 바로 아래 처마 줄(y 20)에 매단다
   for (let i = 0, x = 3; x <= 44; x += 3, i++) {
     const on = i % 2 === phase;
     const off = night ? "#4A1C2E" : PAL.roofEdge;
-    rect(ctx, on ? colors[i % colors.length] : off, hx + x, hy + 21, 1, 1);
+    rect(ctx, on ? colors[i % colors.length] : off, hx + x, hy + 20, 1, 1);
   }
 }
 
@@ -1254,7 +1319,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     layers.push({
       y: HOUSE_POSITION.y,
       paint: () => {
+        // 빛은 왼쪽 위: 그림자는 오른쪽으로 조금 밀린다
+        shadow(px, HOUSE_POSITION.x + 3 - camX, HOUSE_POSITION.y + 1 - camY, 24);
         drawOutlined(px, houseSprite, hx, hy);
+        groundSnow(px, HOUSE_POSITION.x - 20 - camX, Math.round(HOUSE_POSITION.y - camY), 40, night);
         // 밤에는 창문이 따뜻하게 빛나고, 1.6초마다 한 칸 밝아졌다 돌아온다
         if (night) paintNightWindow(px, hx, hy, !reducedMotion && Math.floor(time / 0.8) % 2 === 1);
         paintRoofLights(px, hx, hy, reducedMotion ? 0 : time, night);
@@ -1262,16 +1330,24 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       },
     });
     for (const [tx, ty] of TREE_POSITIONS) {
-      layers.push({ y: ty, paint: () => drawOutlined(px, treeSprite, Math.round(tx - 10 - camX), Math.round(ty - 29 - camY)) });
+      layers.push({
+        y: ty,
+        paint: () => {
+          shadow(px, tx + 2 - camX, ty + 1 - camY, 7);
+          drawOutlined(px, treeSprite, Math.round(tx - 10 - camX), Math.round(ty - 29 - camY));
+          groundSnow(px, tx - 3 - camX, Math.round(ty - camY), 7, night);
+        },
+      });
     }
     layers.push({
       y: MAILBOX_POSITION.y,
       paint: () => {
-        shadow(px, MAILBOX_POSITION.x - camX, MAILBOX_POSITION.y - camY, 4);
+        shadow(px, MAILBOX_POSITION.x + 1 - camX, MAILBOX_POSITION.y + 1 - camY, 5);
         // 편지가 있으면 금색 깃발이 0.8초마다 한 칸 까딱인다
         const flag = !reducedMotion && Math.floor(time / 0.8) % 2 === 1;
         const sprite = overlay.mailCount > 0 ? (flag ? mailboxFullFlag : mailboxFull) : mailboxEmpty;
         drawOutlined(px, sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY));
+        groundSnow(px, MAILBOX_POSITION.x - 3 - camX, Math.round(MAILBOX_POSITION.y - camY), 7, night);
       },
     });
     for (const stack of world.stacks) {
