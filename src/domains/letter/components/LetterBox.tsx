@@ -172,11 +172,16 @@ function EnvelopeTile({
         className="envelope-tile pixel-box flex w-full flex-col items-center gap-[calc(var(--p)*2)]"
         style={{ padding: "calc(var(--p) * 3) calc(var(--p) * 2)" }}
       >
-        <span
-          className={`flex ${bob ? "envelope-bob" : ""}`}
-          style={bob ? ({ "--bob-delay": `${-((index * 2) % 3) * 0.4}s` } as CSSProperties) : undefined}
-        >
-          <PixelIcon name={opened ? "envOpened" : "envSealed"} scale={3} />
+        <span className="relative flex items-start justify-center">
+          <span
+            className={`flex ${bob ? "envelope-bob" : ""}`}
+            style={bob ? ({ "--bob-delay": `${-((index * 2) % 3) * 0.4}s` } as CSSProperties) : undefined}
+          >
+            <PixelIcon name={opened ? "envOpened" : "envSealed"} scale={3} />
+          </span>
+          {!opened && (
+            <PixelIcon name="stamp" scale={1} className="pointer-events-none absolute -right-[calc(var(--p)*1)] top-[calc(var(--p)*2)]" />
+          )}
         </span>
         <span className={`text-label w-full break-all text-center line-clamp-2 ${opened ? "text-muted" : ""}`}>
           {letter.authorName}

@@ -62,8 +62,10 @@ export function LetterCard({ authorName, recipientName, onOpen, onClose, autoOpe
   return (
     <PixelDialog title={`${authorName}의 편지`} icon="envelope" align="start" onClose={onClose}>
       {state.kind === "opened" ? (
-        <PixelPanel tone="paper" pad={5} className="flex flex-col">
-          <p className="text-label" style={{ lineHeight: "24px" }}>
+        <PixelPanel tone="paper" pad={5} className="relative flex flex-col">
+          {/* 쓰기 칸과 같은 우표를 편지지 오른쪽 위에 둔다 */}
+          <PixelIcon name="stamp" scale={2} className="pointer-events-none absolute right-[calc(var(--p)*3)] top-[calc(var(--p)*3)]" />
+          <p className="text-label pr-[calc(var(--p)*14)]" style={{ lineHeight: "24px" }}>
             To. {recipientName}
           </p>
           {/* 줄 그은 편지지: 짧은 편지라도 6줄 높이를 유지한다 */}
