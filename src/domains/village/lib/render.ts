@@ -1100,6 +1100,8 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   const TRAIL_KIND_CENTRE = 2;
   const trailLive: number[] = [];
   let lastStamp: { x: number; y: number; r: number } | null = null;
+  type TrailPoint = { x: number; y: number; r: number; t: number; dx: number; dy: number; along: number };
+  const recentTrail: TrailPoint[] = [];
   const TRAIL_FADE_AFTER = 20;
   const TRAIL_FADE_FOR = 12;
   const pathColor = night ? PAL_NIGHT.path : PAL.path;
@@ -1299,24 +1301,32 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const i = py * worldWidth + px;
     // 새 둑이 앞서 찍힌 다진 면을 덮으면 자국 전체가 흰 눈으로 남는다. 면은 둑을 덮고, 둑은 면을 덮지 않는다.
     if (trailKind[i] === TRAIL_KIND_CENTRE && kind !== TRAIL_KIND_CENTRE) return;
-    if (trailTime[i] === 0) trailLive.push(i);
-    trailTime[i] = now;
+    if (trailTime[i] === 0) {
+      trailLive.push(i);
+      trailTime[i] = now;
+    }
     trailKind[i] = kind;
     trailCtx.fillStyle = color;
     trailCtx.fillRect(px, py, 1, 1);
   }
 
   function trailHalf(r: number): number {
-    return Math.max(1, Math.round(r * 0.4));
+    // 중심 반높이. 위·아래 둑과 그늘 줄을 더하면 공 지름의 약 80%가 된다 (0.8r - 3 + 둑)
+    return Math.max(1, Math.round(r * 0.8 - 3));
   }
 
   function bankThick(half: number): number {
     return half <= 2 ? 1 : 2;
   }
 
+  function sliceExtent(r: number): number {
+    const half = trailHalf(r);
+    return half + bankThick(half) + 1;
+  }
+
   /** 가는 앞쪽은 칸이 빠져 부스러진 꼬리처럼 보이게 한다 */
   function sparseDrop(px: number, py: number, half: number): boolean {
-    const p = half <= 1 ? 0.5 : half <= 2 ? 0.32 : half <= 3 ? 0.14 : half <= 4 ? 0.05 : 0;
+    const p = half <= 1 ? 0.5 : half <= 2 ? 0.32 : half <= 3 ? 0.14 : half <= 4 ? 0.06 : 0;
     return p > 0 && hash2(px + 19, py + 7) < p;
   }
 
@@ -1328,8 +1338,25 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     return h < 0.75 ? pathColor : pathDeepColor;
   }
 
-  function stampVertical(cx: number, cy: number, r: number, now: number): void {
-    const half = trailHalf(r);
+  function clearTrailPixel(px: number, py: number): void {
+    if (!inTrailWorld(px, py)) return;
+    const i = py * worldWidth + px;
+    if (trailTime[i] === 0) return;
+    trailTime[i] = 0;
+    trailKind[i] = 0;
+    trailCtx.clearRect(px, py, 1, 1);
+  }
+
+  function compactTrailLive(): void {
+    let write = 0;
+    for (let read = 0; read < trailLive.length; read++) {
+      const i = trailLive[read];
+      if (trailTime[i] !== 0) trailLive[write++] = i;
+    }
+    trailLive.length = write;
+  }
+
+  function stampVertical(cx: number, cy: number, half: number, now: number): void {
     const bt = bankThick(half);
     const put = (px: number, py: number, color: string, kind: number) => {
       if (!sparseDrop(px, py, half)) plotTrail(px, py, color, now, kind);
@@ -1340,8 +1367,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     put(cx, cy + half + bt + 1, snowEdgeColor, TRAIL_KIND_BANK);
   }
 
-  function stampHorizontal(cx: number, cy: number, r: number, now: number): void {
-    const half = trailHalf(r);
+  function stampHorizontal(cx: number, cy: number, half: number, now: number): void {
     const bt = bankThick(half);
     const put = (px: number, py: number, color: string, kind: number) => {
       if (!sparseDrop(px, py, half)) plotTrail(px, py, color, now, kind);
@@ -1352,11 +1378,63 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     put(cx + half + bt + 1, cy, snowEdgeColor, TRAIL_KIND_BANK);
   }
 
-  function stampTrail(x: number, y: number, r: number, now: number, dx: number, dy: number): void {
-    const cx = Math.round(x);
-    const cy = Math.round(y);
-    if (Math.abs(dx) >= Math.abs(dy)) stampVertical(cx, cy, r, now);
-    else stampHorizontal(cx, cy, r, now);
+  function stampSlice(p: TrailPoint, half: number): void {
+    const cx = Math.round(p.x);
+    const cy = Math.round(p.y);
+    if (Math.abs(p.dx) >= Math.abs(p.dy)) stampVertical(cx, cy, half, p.t);
+    else stampHorizontal(cx, cy, half, p.t);
+  }
+
+  function clearSlice(p: TrailPoint, maxR: number): void {
+    const cx = Math.round(p.x);
+    const cy = Math.round(p.y);
+    const ext = sliceExtent(maxR);
+    if (Math.abs(p.dx) >= Math.abs(p.dy)) {
+      for (let py = cy - ext; py <= cy + ext; py++) clearTrailPixel(cx, py);
+    } else {
+      for (let px = cx - ext; px <= cx + ext; px++) clearTrailPixel(px, cy);
+    }
+  }
+
+  /** 공 옆은 지름의 약 80%로 유지하고, 뒤 3지름 동안 1칸씩 줄어 단이 자주 보이게 한다 */
+  function taperedHalf(p: TrailPoint, head: TrailPoint): number {
+    const full = trailHalf(head.r);
+    const hold = 2 * head.r;
+    const taperLen = 6 * head.r;
+    const d = Math.max(0, head.along - p.along);
+    if (d <= hold) return Math.max(1, full);
+    const minH = Math.max(1, Math.round(full * 0.22));
+    const t = Math.min(1, (d - hold) / Math.max(1, taperLen));
+    const drop = Math.floor(t * (full - minH) + 1e-6);
+    return Math.max(minH, full - drop);
+  }
+
+  function pushTrailPoint(x: number, y: number, r: number, now: number, dx: number, dy: number): void {
+    const prev = recentTrail[recentTrail.length - 1];
+    if (prev && Math.round(prev.x) === Math.round(x) && Math.round(prev.y) === Math.round(y)) {
+      prev.r = r;
+      prev.t = now;
+      prev.dx = dx;
+      prev.dy = dy;
+      return;
+    }
+    const along = prev ? prev.along + Math.hypot(x - prev.x, y - prev.y) : 0;
+    recentTrail.push({ x, y, r, t: now, dx, dy, along });
+  }
+
+  function redrawRecent(): void {
+    if (recentTrail.length === 0) return;
+    const head = recentTrail[recentTrail.length - 1];
+    const span = 8 * head.r;
+    let from = 0;
+    while (from < recentTrail.length && head.along - recentTrail[from].along > span + 2) from++;
+    from = Math.max(0, from - 1);
+    for (let i = from; i < recentTrail.length; i++) clearSlice(recentTrail[i], head.r);
+    compactTrailLive();
+    for (let i = from; i < recentTrail.length; i++) stampSlice(recentTrail[i], taperedHalf(recentTrail[i], head));
+    let keep = 0;
+    while (keep < recentTrail.length && head.along - recentTrail[keep].along > span) keep++;
+    if (keep > 0) recentTrail.splice(0, keep);
   }
 
   function paintTrail(x: number, y: number, r: number): void {
@@ -1366,11 +1444,12 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const dy = y - lastStamp.y;
       const dist = Math.hypot(dx, dy);
       const newBall = r + 3 < lastStamp.r;
+      if (newBall) recentTrail.length = 0;
       if (!newBall && dist > 0 && dist < 24) {
         const steps = Math.max(1, Math.ceil(dist));
         for (let i = 1; i <= steps; i++) {
           const t = i / steps;
-          stampTrail(
+          pushTrailPoint(
             lastStamp.x + dx * t,
             lastStamp.y + dy * t,
             lastStamp.r + (r - lastStamp.r) * t,
@@ -1380,12 +1459,13 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
           );
         }
       } else {
-        stampTrail(x, y, r, now, dx, dy);
+        pushTrailPoint(x, y, r, now, dx || 1, dy);
       }
     } else {
-      stampTrail(x, y, r, now, 1, 0);
+      pushTrailPoint(x, y, r, now, 1, 0);
     }
     lastStamp = { x, y, r };
+    redrawRecent();
   }
 
   function fadeTrails(now: number): void {
