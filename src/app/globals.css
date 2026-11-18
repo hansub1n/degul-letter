@@ -315,6 +315,21 @@ body {
   animation: pixel-bob 1.2s steps(1, end) infinite;
 }
 
+/* 편지 안 넣은 눈사람 위 봉투: 완전히 숨기지 않고 한 칸씩 깜빡여 남은 일을 알린다 */
+@keyframes pixel-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.pixel-blink {
+  animation: pixel-blink 1.2s steps(1, end) infinite;
+}
+
 /* 마을 표지판: 가운데에 나타난 뒤, 같은 판이 왼쪽 위 이름 판으로 줄어들며 이동한다 */
 @keyframes village-sign-enter {
   from {
@@ -640,6 +655,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pixel-rise,
   .pixel-bob,
+  .pixel-blink,
   .pixel-leave,
   [data-twinkle] svg,
   .envelope-bob,

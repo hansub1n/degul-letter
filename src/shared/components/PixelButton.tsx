@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, ReactNode } from "react";
 import { PixelIcon, type PixelIconName } from "./PixelIcon";
 
 type Base = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
@@ -32,7 +32,7 @@ type Props = IconOnly | WithText;
  * hover 한 칸 위(그림자 2칸), 누르면 한 칸 아래(그림자 없음), 키보드 초점은 금색 링이다.
  * 모양은 globals.css의 `.pixel-btn`이 맡는다.
  */
-export function PixelButton(props: Props) {
+export const PixelButton = forwardRef<HTMLButtonElement, Props>(function PixelButton(props, ref) {
   const {
     variant = "secondary",
     size = "md",
@@ -52,6 +52,7 @@ export function PixelButton(props: Props) {
 
   return (
     <button
+      ref={ref}
       type={type}
       title={title}
       aria-pressed={active || undefined}
@@ -66,4 +67,4 @@ export function PixelButton(props: Props) {
       {!iconOnly && children}
     </button>
   );
-}
+});

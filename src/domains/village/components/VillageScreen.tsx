@@ -73,6 +73,17 @@ export function VillageScreen() {
     return () => window.clearTimeout(timer);
   }, [status]);
 
+  // 편지를 넣지 않은 눈사람이 있으면 새로고침·탭 닫기 전에 브라우저가 물어보게 한다
+  useEffect(() => {
+    if (drafts.size === 0 && !pending) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [drafts, pending]);
+
   if (problem) {
     return (
       <Center>

@@ -69,6 +69,10 @@ export type VillageGame = {
    * (카메라가 계속 움직이니 React state 대신 엔진이 직접 위치만 바꾼다)
    */
   setNearbyAnchor(el: HTMLElement | null): void;
+  /** 편지 안 넣은 눈사람 머리 위 봉투를 담는 층. 엔진이 매 프레임 위치를 옮긴다 */
+  setUnsentMarkerLayer(el: HTMLElement | null): void;
+  /** 완성했지만 아직 편지를 넣지 않은 눈사람 ID */
+  setUnsentIds(ids: readonly number[]): void;
   /** 우체통에 모인 편지 수 (깃발 올리기) */
   setMailCount(count: number): void;
   /** 부수기 버튼을 누르기 시작하면 true, 떼면 false. 누르는 동안 눈사람이 떨리고 금이 간다. */
@@ -120,6 +124,8 @@ export function createVillageGame({
   let zoom = 0;
   let lastFocus: CameraFocus | null = null;
   let nearbyAnchor: HTMLElement | null = null;
+  let unsentMarkerLayer: HTMLElement | null = null;
+  let unsentIds: readonly number[] = [];
   let lastMailboxNear = false;
   let mailCount = 0;
   // 완성 축하: 완성되면 기다렸다가(pending) 카메라가 마을로 다 돌아오면 시작한다
@@ -143,6 +149,31 @@ export function createVillageGame({
     placeAnchor(stack.x, stack.sculpt ? stack.y - stack.sculpt.height : stack.y - stackTopHeight(stack));
 
   const findStack = (id: number): Stack | undefined => world.stacks.find((s) => s.id === id);
+
+  /** 편지 안 넣은 눈사람 위에 봉투 표시를 붙인다. "편지 쓰기" 말풍선이 떠 있으면 겹치지 않게 숨긴다. */
+  const placeUnsentMarkers = (nearby: Stack | null, hideAll: boolean) => {
+    const layer = unsentMarkerLayer;
+    if (!layer) return;
+    const writeBubbleOn =
+      nearby != null && nearby.finished && !nearby.saved && unsentIds.includes(nearby.id);
+    const { width, height } = renderer.size();
+    for (const el of layer.querySelectorAll<HTMLElement>("[data-unsent-id]")) {
+      const id = Number(el.dataset.unsentId);
+      const stack = Number.isFinite(id) ? findStack(id) : undefined;
+      if (!stack || hideAll || (writeBubbleOn && nearby!.id === id)) {
+        el.style.opacity = "0";
+        continue;
+      }
+      const topY = stack.sculpt ? stack.y - stack.sculpt.height : stack.y - stackTopHeight(stack);
+      const p = renderer.toScreen(stack.x, topY - 2);
+      if (p.x < -16 || p.x > width + 16 || p.y < -16 || p.y > height + 16) {
+        el.style.opacity = "0";
+        continue;
+      }
+      el.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y)}px) translate(-50%, -100%)`;
+      el.style.opacity = "1";
+    }
+  };
 
   /** 조각 칸 (0, 0)이 마을의 어느 픽셀에 그려지는지 (render.ts와 같은 반올림) */
   const sculptOrigin = (stack: Stack, sculpt: Sculpt) => ({
@@ -267,6 +298,7 @@ export function createVillageGame({
     });
     if (nearby) placeAnchorOnStack(nearby);
     else if (mailboxNear) placeAnchor(MAILBOX_POSITION.x + 1, MAILBOX_POSITION.y - 18);
+    placeUnsentMarkers(nearby, sculptMode || celebrating);
     rafId = requestAnimationFrame(frame);
   };
   rafId = requestAnimationFrame(frame);
@@ -323,6 +355,12 @@ export function createVillageGame({
     },
     setNearbyAnchor(el) {
       nearbyAnchor = el;
+    },
+    setUnsentMarkerLayer(el) {
+      unsentMarkerLayer = el;
+    },
+    setUnsentIds(ids) {
+      unsentIds = ids;
     },
     setBreakCharging(charging) {
       chargeStart = charging ? performance.now() : null;

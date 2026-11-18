@@ -23,6 +23,8 @@ type Props = {
   footer?: ReactNode;
   /** 처음 초점을 줄 요소 (없으면 본문의 첫 입력칸 → 첫 버튼 순) */
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+  /** 창 전체를 덮는 확인 상자 등. 있으면 본문·푸터는 inert가 된다 */
+  cover?: ReactNode;
   className?: string;
   children?: ReactNode;
 };
@@ -45,6 +47,7 @@ export function PixelDialog({
   closeOnVeil = true,
   footer,
   initialFocusRef,
+  cover,
   className = "",
   children,
 }: Props) {
@@ -89,7 +92,8 @@ export function PixelDialog({
       }
       if (e.key !== "Tab") return;
       const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (el) => el.offsetParent !== null || el === document.activeElement,
+        (el) =>
+          (el.offsetParent !== null || el === document.activeElement) && !el.closest("[inert]"),
       );
       if (items.length === 0) {
         e.preventDefault();
@@ -132,10 +136,11 @@ export function PixelDialog({
         aria-describedby={caption ? captionId : undefined}
         tabIndex={-1}
         data-tone="snow"
-        className={`pixel-box pixel-rise flex max-h-[calc(100dvh-36px)] w-full max-w-[360px] flex-col gap-[calc(var(--p)*4)] text-ink outline-none ${className}`}
+        className={`pixel-box pixel-rise relative flex max-h-[calc(100dvh-36px)] w-full max-w-[360px] flex-col gap-[calc(var(--p)*4)] text-ink outline-none ${className}`}
         style={{ padding: "calc(var(--p) * 5)" }}
       >
-        <div className="flex flex-col gap-[var(--p)]">
+        <div data-dialog-chrome inert={cover ? true : undefined} className="flex min-h-0 flex-col gap-[calc(var(--p)*4)]">
+          <div className="flex flex-col gap-[var(--p)]">
           {/* 헤더: 가운데 정렬이면 왼쪽에 닫기 버튼만큼 빈 칸을 둬서 제목이 창 한가운데에 온다 */}
           <div className={centered ? "grid grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-[calc(var(--p)*2)]" : "flex items-center gap-[calc(var(--p)*2)]"}>
             {centered && <span aria-hidden />}
@@ -181,6 +186,8 @@ export function PixelDialog({
             {footer}
           </div>
         )}
+        </div>
+        {cover}
       </div>
     </div>
   );

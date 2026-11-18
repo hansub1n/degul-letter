@@ -4,6 +4,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { SculptEditor } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
 import { PixelButton } from "@/shared/components/PixelButton";
+import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
 import { createVillageGame, type NearbySnowman, type SculptSeed, type VillageGame as Game } from "../lib/engine";
@@ -122,6 +123,10 @@ export function VillageGame({
   }, [mailCount]);
 
   useEffect(() => {
+    gameRef.current?.setUnsentIds(unsentIds);
+  }, [unsentIds]);
+
+  useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 1800);
     return () => window.clearTimeout(timer);
@@ -134,6 +139,23 @@ export function VillageGame({
         aria-label="눈사람 마을"
         className="block h-full w-full touch-none [image-rendering:pixelated]"
       />
+
+      {/* 편지 안 넣은 눈사람 머리 위 봉투. 위치는 엔진이 매 프레임 옮긴다. 다가가 "편지 쓰기"가 뜨면 숨긴다. */}
+      {unsentIds.length > 0 && (
+        <div
+          ref={(el) => gameRef.current?.setUnsentMarkerLayer(el)}
+          className="pointer-events-none absolute inset-0"
+          aria-hidden
+        >
+          {unsentIds.map((id) => (
+            <div key={id} data-unsent-id={id} className="absolute left-0 top-0 opacity-0">
+              <span className="pixel-blink inline-block">
+                <PixelIcon name="envelope" scale={2} />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {header && !sculpting && <div className="absolute inset-x-3 top-3">{header}</div>}
       {overlay}

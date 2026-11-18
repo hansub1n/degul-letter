@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
@@ -26,9 +26,31 @@ export function FinishDialog(props: Props) {
   // 한 폰을 여러 사람이 돌려 쓸 수 있으니 닉네임은 매번 빈칸에서 새로 쓴다
   const [nickname, setNickname] = useState("");
   const [letter, setLetter] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const keepWritingRef = useRef<HTMLButtonElement>(null);
+  const messageId = useId();
   const owner = props.mode === "owner";
   const name = nickname.trim();
   const ready = Boolean(name && letter.trim());
+
+  const requestClose = () => setConfirming(true);
+  const keepWriting = () => {
+    setConfirming(false);
+    // 적어 둔 글은 그대로 두고, 이전에 쓰던 입력칸으로 초점을 되돌린다
+    requestAnimationFrame(() => {
+      const form = formRef.current;
+      if (!form) return;
+      const letterField = form.querySelector<HTMLTextAreaElement>("textarea");
+      const nickField = form.querySelector<HTMLInputElement>("input");
+      (letterField?.value ? letterField : nickField)?.focus({ preventScroll: true });
+    });
+  };
+
+  useEffect(() => {
+    if (!confirming) return;
+    keepWritingRef.current?.focus({ preventScroll: true });
+  }, [confirming]);
 
   // 눈사람 하나 = 편지 한 통. 친구도 주인도 편지를 꼭 쓴다.
   const submit = () => {
@@ -40,11 +62,37 @@ export function FinishDialog(props: Props) {
     <PixelDialog
       title="눈사람 완성!"
       icon="star"
-      onClose={props.onCancel}
-      closeOnVeil={false}
+      onClose={confirming ? keepWriting : requestClose}
+      closeOnVeil={!confirming}
+      cover={
+        confirming ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-veil p-[calc(var(--p)*4)]">
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby={messageId}
+              data-tone="snow"
+              className="pixel-box pixel-rise flex w-full max-w-[280px] flex-col gap-[calc(var(--p)*4)] text-ink"
+              style={{ padding: "calc(var(--p) * 5)" }}
+            >
+              <p id={messageId} className="text-body text-center">
+                편지 없이 나가면 눈사람이 녹아 사라져요
+              </p>
+              <div className="flex gap-[calc(var(--p)*4)]">
+                <PixelButton className="flex-1" onClick={props.onCancel}>
+                  나가기
+                </PixelButton>
+                <PixelButton ref={keepWritingRef} variant="primary" className="flex-1" onClick={keepWriting}>
+                  계속 쓰기
+                </PixelButton>
+              </div>
+            </div>
+          </div>
+        ) : null
+      }
       footer={
         <>
-          <PixelButton className="flex-1" onClick={props.onCancel}>
+          <PixelButton className="flex-1" onClick={requestClose}>
             취소
           </PixelButton>
           <PixelButton
@@ -62,6 +110,7 @@ export function FinishDialog(props: Props) {
       }
     >
       <form
+        ref={formRef}
         id={FORM_ID}
         className="flex flex-col gap-[calc(var(--p)*4)]"
         onSubmit={(e) => {
