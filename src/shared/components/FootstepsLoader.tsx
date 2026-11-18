@@ -18,9 +18,9 @@ const GROUND = [0xdc, 0xe6, 0xf3]; // --ground
 const GROUND_DOT = [0xcc, 0xd8, 0xea]; // --ground-dot
 const GLINT = [0xff, 0xff, 0xff]; // --ground-glint
 
-// 왼발 (4x8): 앞꿈치 + 뒤꿈치. e = 위쪽 그늘(--snow-edge), d = 눌린 눈(--path)
+// 왼발 (4x8): 앞꿈치 + 뒤꿈치. e = 위쪽 그늘(--snow-edge), d = 눌린 눈(--path-deep)
 const FOOT = [".ee.", "eddd", "eddd", "dddd", ".dd.", "....", ".ee.", ".dd."];
-const FOOT_COLOR: Record<string, string> = { e: "#A9B8D6", d: "#C9D3E6" };
+const FOOT_COLOR: Record<string, string> = { e: "#A9B8D6", d: "#B8C4DC" };
 
 type Props = {
   /** 화면 읽기 프로그램용 이름 (화면에는 안 보인다) */
@@ -102,7 +102,8 @@ export function FootstepsLoader({ label = "마을로 가는 중", className = ""
       const startY = h - 24;
       const count = Math.max(1, Math.ceil((startY - 10) / STEP_GAP));
       const elapsed = now - start;
-      const footX = (k: number) => Math.round(w / 2 + Math.sin(k / 4) * 6 + (k % 2 ? SIDE : -SIDE));
+      // 발이 4칸이라 기준을 2칸 왼쪽으로, 처음 몇 걸음이 한쪽으로 치우치지 않게 흔들림 위상을 맞춘다
+      const footX = (k: number) => Math.round(w / 2 - 2 + Math.sin((k - 3) / 4) * 6 + (k % 2 ? SIDE : -SIDE));
 
       if (reduced) {
         // 움직임 줄이기: 발자국 여섯 개를 멈춘 채로 보여 준다
