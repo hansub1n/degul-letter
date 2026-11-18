@@ -49,8 +49,23 @@ export function VillageScreen() {
   const [openingLetter, setOpeningLetter] = useState<{ authorName: string; savedId: string } | null>(null);
 
   useEffect(() => {
+    // Next.js는 떠난 마을 화면을 숨기기만 하고(React Activity) 상태는 남겨 둔다.
+    // 그래서 다시 들어오면 눈사람 말풍선·미저장 초안이 남거나, 멈춘 캔버스만 보일 수 있다.
+    // 이 effect는 다시 보일 때도 다시 돌아가므로, 이전 방문 잔여 상태를 비우고 마을을 새로 불러온다.
     let alive = true;
     (async () => {
+      // setState를 effect 본문에서 바로 부르면 렌더가 한 번 더 연쇄된다. 한 박자 뒤에 비운다.
+      await Promise.resolve();
+      if (!alive) return;
+      setLoaded(null);
+      setProblem(null);
+      setPending(null);
+      setDrafts(new Map());
+      setLeaveTo(null);
+      setStatus(null);
+      setLetters([]);
+      setMailboxOpen(false);
+      setOpeningLetter(null);
       try {
         const myId = await ensureUserId();
         const village = await getVillageByCode(code);

@@ -87,8 +87,7 @@ export function VillageGame({
   const [showHint, setShowHint] = useState(true);
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
-  // 게임은 처음 한 번만 만드니, 바뀔 수 있는 값은 ref로 최신 값을 들고 있는다
-  const initial = useRef({ saved, myId, isOwner });
+  // 바뀔 수 있는 콜백은 ref로 최신 값을 들고 있는다 (게임 루프가 매 프레임 부르므로)
   const callbacks = useRef({ onSnowmanFinished, onSavedSnowmanBroken });
   useEffect(() => {
     callbacks.current = { onSnowmanFinished, onSavedSnowmanBroken };
@@ -99,9 +98,9 @@ export function VillageGame({
     if (!canvas) return;
     const game = createVillageGame({
       canvas,
-      saved: initial.current.saved,
-      myId: initial.current.myId,
-      isOwner: initial.current.isOwner,
+      saved,
+      myId,
+      isOwner,
       onEvent: (event) => {
         const text = messageFor(event);
         if (text) setToast({ text, key: performance.now() });
@@ -125,7 +124,7 @@ export function VillageGame({
       game.destroy();
       gameRef.current = null;
     };
-  }, []);
+  }, [saved, myId, isOwner]);
 
   useEffect(() => {
     gameRef.current?.setMailCount(mailCount);

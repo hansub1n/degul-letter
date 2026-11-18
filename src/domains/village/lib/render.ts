@@ -1292,6 +1292,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   }
 
   function resize(cssWidth: number, cssHeight: number, nextDpr: number): void {
+    if (cssWidth <= 0 || cssHeight <= 0) return;
     dpr = nextDpr;
     cssW = cssWidth;
     cssH = cssHeight;

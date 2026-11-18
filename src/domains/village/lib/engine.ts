@@ -109,11 +109,21 @@ export function createVillageGame({
   const renderer = createRenderer(canvas, world.width, world.height);
 
   const resize = () => {
-    renderer.resize(canvas.clientWidth, canvas.clientHeight, Math.min(window.devicePixelRatio || 1, 2));
+    // 숨긴 화면(Activity)에서는 칸 크기가 0이 된다. 그때 캔버스를 비우면,
+    // 다시 들어왔을 때 관찰자가 한 번 더 알리지 않으면 눈 밭만 남을 수 있다.
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w <= 0 || h <= 0) return;
+    renderer.resize(w, h, Math.min(window.devicePixelRatio || 1, 2));
   };
   resize();
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(canvas);
+  const onShow = () => resize();
+  window.addEventListener("resize", onShow);
+  window.addEventListener("pageshow", onShow);
+  document.addEventListener("visibilitychange", onShow);
+  requestAnimationFrame(onShow);
 
   let nearbyKey = "";
   let chargeStart: number | null = null;
@@ -376,6 +386,9 @@ export function createVillageGame({
     destroy() {
       cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
+      window.removeEventListener("resize", onShow);
+      window.removeEventListener("pageshow", onShow);
+      document.removeEventListener("visibilitychange", onShow);
       input.destroy();
     },
   };
