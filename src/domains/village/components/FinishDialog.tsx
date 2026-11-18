@@ -98,7 +98,7 @@ export function FinishDialog(props: Props) {
       }
     >
       {confirmingLeave && (
-        <div className="flex min-h-full flex-1 flex-col items-center justify-center">
+        <div className="flex min-h-full w-full flex-1 flex-col justify-center self-stretch">
           <LeaveConfirm onKeepWriting={keepWriting} onLeave={props.onCancel} />
         </div>
       )}

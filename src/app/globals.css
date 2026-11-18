@@ -376,10 +376,16 @@ body {
   color: var(--snow);
 }
 
+/* 흐린 밑줄 글자. 상자 없이 약한 동작(나가기 등)에 쓴다 */
 .pixel-btn[data-variant="ghost"] {
   background: transparent;
   box-shadow: none;
-  color: var(--ink);
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: none;
 }
 
 @media (hover: hover) {
@@ -389,7 +395,8 @@ body {
   }
 
   .pixel-btn[data-variant="ghost"]:hover:not(:disabled) {
-    background: var(--snow-shade);
+    background: transparent;
+    color: var(--ink);
   }
 }
 

@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes, ReactNode } from "react";
 import { PixelIcon, type PixelIconName } from "./PixelIcon";
 
 type Base = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
-  /** primary = roof 빨강(화면마다 하나), secondary = snow 재질, ghost = 테두리 없는 글자 버튼, pine = 소나무 초록(확인) */
+  /** primary = roof 빨강(화면마다 하나), secondary = snow 재질, ghost = 흐린 밑줄 글자, pine = 소나무 초록(확인) */
   variant?: "primary" | "secondary" | "ghost" | "pine";
   /** md = h-11, sm = h-9 */
   size?: "md" | "sm";
