@@ -12,6 +12,7 @@ import {
   openLetter,
 } from "@/domains/letter";
 import { InviteLogin, isLoggedIn, logout, LogoutConfirm } from "@/domains/auth";
+import { FootstepsLoader } from "@/shared/components/FootstepsLoader";
 import { InviteTicket } from "@/shared/components/InviteTicket";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
@@ -149,11 +150,7 @@ export function VillageScreen() {
     );
   }
   if (!loaded) {
-    return (
-      <Center>
-        <PixelToast placement="inline">마을로 가는 중…</PixelToast>
-      </Center>
-    );
+    return <FootstepsLoader />;
   }
 
   const { village, saved, myId, myVillage, loggedIn } = loaded;
