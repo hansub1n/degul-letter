@@ -319,6 +319,29 @@ function drawOutlined(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, 
   ctx.drawImage(sprite, x - 1, y - 1);
 }
 
+/** 사방 1칸 외곽선을 두른다. 조각 화면에서 눈사람이 차분한 눈밭 위에 또렷이 보이도록 쓴다 */
+function outlineAll(sprite: HTMLCanvasElement, color: string): HTMLCanvasElement {
+  const w = sprite.width;
+  const h = sprite.height;
+  const src = context2d(sprite).getImageData(0, 0, w, h).data;
+  const solid = (x: number, y: number): boolean => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    return src[(y * w + x) * 4 + 3] !== 0;
+  };
+  return makeSprite(w + 2, h + 2, (ctx) => {
+    ctx.fillStyle = color;
+    for (let y = -1; y <= h; y++) {
+      for (let x = -1; x <= w; x++) {
+        if (solid(x, y)) continue;
+        if (solid(x + 1, y) || solid(x - 1, y) || solid(x, y + 1) || solid(x, y - 1)) {
+          ctx.fillRect(x + 1, y + 1, 1, 1);
+        }
+      }
+    }
+    ctx.drawImage(sprite, 1, 1);
+  });
+}
+
 /** 물체 밑동에 쌓인 눈: 위 한 줄은 들쭉날쭉, 가운데 한 줄은 꽉 차게, 아래 한 줄은 그늘 */
 function groundSnow(ctx: CanvasRenderingContext2D, left: number, footY: number, width: number, night = false): void {
   // 밤에는 그림과 같은 달빛 색을 써야 밑동 눈만 하얗게 튀지 않는다
@@ -1134,13 +1157,17 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     getComputedStyle(document.documentElement).getPropertyValue("--font-pixel").trim() || "sans-serif";
 
   // 조각 그림은 바뀔 때(version)만 다시 그리고, 그 외에는 만들어 둔 그림을 다시 쓴다
-  const sculptSprites = new Map<number, { source: Sculpt; version: number; image: HTMLCanvasElement }>();
+  const sculptSprites = new Map<number, { source: Sculpt; version: number; image: HTMLCanvasElement; outlined: HTMLCanvasElement }>();
   function sculptSprite(id: number, sculpt: Sculpt, version = 0): HTMLCanvasElement {
     const cached = sculptSprites.get(id);
     if (cached && cached.source === sculpt && cached.version === version) return cached.image;
     const image = moonlit(makeSprite(sculpt.width, sculpt.height, (ctx) => drawSculpt(ctx, sculpt, 0, 0, 1)));
-    sculptSprites.set(id, { source: sculpt, version, image });
+    sculptSprites.set(id, { source: sculpt, version, image, outlined: outlineAll(image, INK) });
     return image;
+  }
+  function sculptOutlined(id: number, sculpt: Sculpt, version = 0): HTMLCanvasElement {
+    sculptSprite(id, sculpt, version);
+    return sculptSprites.get(id)!.outlined;
   }
 
   // 내리는 눈 두 겹: 먼 눈(1px, 느리게 40개)과 가까운 눈(2px, 빠르게 12개).
@@ -1818,6 +1845,22 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       px.fillRect(fx, fy + f.size, f.size, 1);
       px.fillStyle = PAL.snow;
       px.fillRect(fx, fy, f.size, f.size);
+    }
+
+    // 조각 화면: 확대가 끝나 갈수록 바쁜 마을(큰 점, 캐릭터, 다른 물체)을 차분한 눈밭으로 덮고
+    // 조각 중인 눈사람만 남색 외곽선과 함께 다시 그린다. 확대 자체는 그대로 둔다.
+    const studio = overlay.editing ? Math.max(0, Math.min(1, (t - 0.3) / 0.7)) : 0;
+    const studioStack = overlay.editing ? world.stacks.find((s) => s.id === overlay.editing?.stackId) : undefined;
+    if (studio > 0 && overlay.editing && studioStack) {
+      px.globalAlpha = studio;
+      rect(px, groundPal.ground, 0, 0, pw, ph);
+      px.globalAlpha = 1;
+      const sc = overlay.editing.sculpt;
+      const sx = Math.round(studioStack.x - camX);
+      const sy = Math.round(studioStack.y - camY);
+      shadow(px, sx, sy, studioStack.balls[0].r * 0.95);
+      const sprite = sculptOutlined(studioStack.id, sc, overlay.editing.version);
+      drawOutlined(px, sprite, Math.round(sx - sc.originX), Math.round(sy - (sc.height - 1)));
     }
 
     // 작은 도트 캔버스를 화면 크기로 키워서 옮긴다
