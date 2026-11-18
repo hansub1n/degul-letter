@@ -2,7 +2,7 @@
 
 import type { ButtonHTMLAttributes } from "react";
 
-// 친구 마을에 들어온 사람에게 보여 주는 "내 마을 만들기" 초대장 티켓 (46x15 칸, 1칸 = --p).
+// 친구 마을에 들어온 사람에게 보여 주는 "내 마을 만들기" 초대장 티켓 (48x17 칸, 1칸 = --p).
 // 왼쪽: 항공우편 줄무늬 + 크림색 종이 / 가운데: 점선 절취선과 위아래 둥근 홈 / 오른쪽: 빨간 손잡이에 집 아이콘.
 // 색은 globals.css 팔레트 그대로 쓴다.
 
@@ -19,8 +19,8 @@ const COLOR: Record<string, string> = {
   y: "var(--window)", // 집 창문
 };
 
-const W = 46;
-const H = 15;
+const W = 48;
+const H = 17;
 const STUB = 10;
 const PERF = W - STUB - 1; // 절취선 x
 const NOTCH_R2 = 4.5; // 홈 반지름^2
