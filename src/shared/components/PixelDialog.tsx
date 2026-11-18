@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import { acquireModalLock } from "@/shared/lib/modalLock";
 import { PixelBadge } from "./PixelBadge";
 import { PixelButton } from "./PixelButton";
 import { PixelIcon, type PixelIconName } from "./PixelIcon";
@@ -73,14 +74,13 @@ export function PixelDialog({
     onCloseRef.current = onClose;
   }, [onClose]);
 
+  // 열린 동안 뒤 마을 조작·페이지 스크롤을 잠근다. 창이 바뀌어도 카운트로 유지된다
+  useLayoutEffect(() => acquireModalLock(), []);
+
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
     const previous = document.activeElement as HTMLElement | null;
-
-    // 배경 스크롤 잠금
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
 
     // 처음 초점: 지정한 요소 → 본문 첫 입력칸 → 닫기가 아닌 첫 버튼 → 창 자체
     const body = panel.querySelector<HTMLElement>("[data-dialog-body]");
@@ -127,7 +127,6 @@ export function PixelDialog({
 
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
-      document.body.style.overflow = overflow;
       // 이전 포커스 복구
       if (previous && document.contains(previous)) previous.focus({ preventScroll: true });
     };

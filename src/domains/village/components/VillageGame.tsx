@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { isModalLocked, onModalLockChange } from "@/shared/lib/modalLock";
 import { SculptEditor } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
 import { PixelButton } from "@/shared/components/PixelButton";
@@ -71,6 +72,7 @@ export function VillageGame({
   overlay,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [nearby, setNearby] = useState<NearbySnowman | null>(null);
@@ -126,6 +128,17 @@ export function VillageGame({
     gameRef.current?.setUnsentIds(unsentIds);
   }, [unsentIds]);
 
+  // 모달이 열려 있으면 헤더·말풍선·캔버스까지 뒤 레이어를 통째로 막는다 (베일 뒤로 클릭이 새지 않게)
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const apply = (locked: boolean) => {
+      el.toggleAttribute("inert", locked);
+    };
+    apply(isModalLocked());
+    return onModalLockChange(apply);
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 1800);
@@ -133,7 +146,7 @@ export function VillageGame({
   }, [toast]);
 
   return (
-    <div className="relative h-full w-full select-none overflow-hidden">
+    <div ref={rootRef} className="relative h-full w-full select-none overflow-hidden">
       <canvas
         ref={canvasRef}
         aria-label="눈사람 마을"

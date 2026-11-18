@@ -144,6 +144,18 @@ body {
   overscroll-behavior: none;
 }
 
+/* 모달이 열려 있는 동안 뒤 페이지 스크롤·터치 줌을 막는다. 창 안 본문만 세로로 스크롤된다 */
+html.modal-lock,
+html.modal-lock body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+html.modal-lock [role="dialog"] {
+  touch-action: pan-y;
+}
+
 body {
   font-family: var(--font-pixel), sans-serif;
   -webkit-font-smoothing: none;
