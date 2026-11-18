@@ -439,6 +439,12 @@ body {
   color: var(--ink);
 }
 
+/* 나무 판 위 작은 글자 외곽선이 꺼진 버튼의 남색 글자에 겹쳐 뭉개지지 않게 */
+.pixel-box[data-tone="wood"] .pixel-btn[data-variant="primary"]:disabled.text-label {
+  color: var(--ink);
+  text-shadow: none;
+}
+
 .pixel-btn[data-variant="primary"]:disabled svg {
   --ink: var(--roof-muted-shade);
 }
