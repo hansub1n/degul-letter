@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useChristmasLabel } from "@/domains/letter";
 import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelField } from "@/shared/components/PixelField";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
+import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
 import { BACKDROP_CARD_TOP } from "../lib/render";
 import type { Village } from "../types";
@@ -22,6 +23,9 @@ export function HomeScreen() {
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
   const [leaving, setLeaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  /** 썰매가 빠져나간 뒤(또는 로딩이 300ms 안에 끝나 안 보인 뒤)에만 폼·버튼을 보여 준다 */
+  const [loaderDone, setLoaderDone] = useState(false);
+  const onLoaderFinished = useCallback(() => setLoaderDone(true), []);
   const dday = useChristmasLabel();
 
   useEffect(() => {
@@ -68,9 +72,13 @@ export function HomeScreen() {
 
   const form = (
     <>
-      {mine === undefined && <p className="m-auto text-caption">불러오는 중…</p>}
+      {!loaderDone && (
+        <div className="flex min-h-0 flex-1 flex-col justify-center">
+          <SantaSleighLoader loading={mine === undefined} onFinished={onLoaderFinished} />
+        </div>
+      )}
 
-      {mine && (
+      {loaderDone && mine && (
         <div className="flex w-full flex-1 flex-col justify-center gap-[calc(var(--p)*4)]">
           <p className="text-label text-center">{mine.name}의 마을</p>
           <PixelButton
@@ -89,7 +97,7 @@ export function HomeScreen() {
         </div>
       )}
 
-      {mine === null && (
+      {loaderDone && mine === null && (
         <form
           className="flex w-full flex-col gap-[calc(var(--p)*4)]"
           onSubmit={(e) => {
