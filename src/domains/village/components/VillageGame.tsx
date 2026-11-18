@@ -161,8 +161,8 @@ export function VillageGame({
           aria-hidden
         >
           {unsentIds.map((id) => (
-            <div key={id} data-unsent-id={id} className="absolute left-0 top-0 opacity-0">
-              <span className="pixel-blink inline-block">
+            <div key={id} data-unsent-id={id} className="absolute left-0 top-0 flex leading-none opacity-0">
+              <span className="pixel-blink block leading-none">
                 <PixelIcon name="envelope" scale={2} />
               </span>
             </div>

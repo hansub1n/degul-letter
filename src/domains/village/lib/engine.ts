@@ -12,7 +12,7 @@ import {
   type HammerView,
   type ScreenPad,
 } from "./render";
-import { ballHeights, breakStack, findNearbySnowman, finishStack, stackTopHeight, step } from "./rules";
+import { ballHeights, breakStack, findNearbySnowman, finishStack, stackHeadY, stackTopHeight, step } from "./rules";
 import type { GameEvent, Stack } from "./types";
 import { createWorld, MAILBOX_POSITION } from "./world";
 
@@ -164,8 +164,8 @@ export function createVillageGame({
         el.style.opacity = "0";
         continue;
       }
-      const topY = stack.sculpt ? stack.y - stack.sculpt.height : stack.y - stackTopHeight(stack);
-      const p = renderer.toScreen(stack.x, topY - 2);
+      // 머리 꼭대기에서 2칸 위에 봉투 아래가 오게 한다. 조각 위 빈 여백은 stackHeadY가 빼 둔다.
+      const p = renderer.toScreen(stack.x, stackHeadY(stack) - 2);
       if (p.x < -16 || p.x > width + 16 || p.y < -16 || p.y > height + 16) {
         el.style.opacity = "0";
         continue;

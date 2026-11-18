@@ -19,7 +19,7 @@ import {
   STACK_PUSH_SECONDS,
 } from "./constants";
 import { distance, easeInOutCubic } from "./geometry";
-import type { Sculpt } from "@/domains/snowman";
+import { sculptContentTop, type Sculpt } from "@/domains/snowman";
 import type { Ball, GameEvent, InputState, Stack, Vec, World } from "./types";
 
 // ---------- 눈사람 모양 계산 ----------
@@ -43,6 +43,15 @@ export function ballHeights(stack: Stack): number[] {
 export function stackTopHeight(stack: Stack): number {
   const heights = ballHeights(stack);
   return heights[heights.length - 1] + stack.balls[stack.balls.length - 1].r;
+}
+
+/** 눈사람 머리 꼭대기의 마을 y 좌표. 조각 캔버스 위쪽 빈 여백은 빼고, 실제로 보이는 꼭대기를 쓴다. */
+export function stackHeadY(stack: Stack): number {
+  if (stack.sculpt) {
+    const top = sculptContentTop(stack.sculpt);
+    if (top < stack.sculpt.height) return stack.y - (stack.sculpt.height - 1) + top;
+  }
+  return stack.y - stackTopHeight(stack);
 }
 
 export function isLoose(stack: Stack): boolean {

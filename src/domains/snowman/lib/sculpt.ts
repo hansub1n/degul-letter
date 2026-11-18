@@ -40,6 +40,17 @@ export function cloneSculpt(s: Sculpt): Sculpt {
   return { ...s, cells: s.cells.slice() };
 }
 
+/** 실제로 눈이 있는 맨 윗줄 번호. 머리 장식을 붙이면 더 위로 올라가고, 비어 있으면 height. */
+export function sculptContentTop(s: Sculpt): number {
+  for (let y = 0; y < s.height; y++) {
+    const row = y * s.width;
+    for (let x = 0; x < s.width; x++) {
+      if (s.cells[row + x] !== EMPTY) return y;
+    }
+  }
+  return s.height;
+}
+
 /**
  * 쌓은 눈덩이 모양 그대로 조각 재료를 만든다.
  * balls[i]의 중심은 땅에서 heights[i] 높이에 있다.
