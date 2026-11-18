@@ -91,9 +91,9 @@ export function InviteLogin({ variant, onClose }: Props) {
                 지켜 줄 열쇠
               </h1>
               <p className="text-body text-muted">
-                로그인하면 받은 편지를 지켜 주고,
+                어느 기기에서든 친구들의 눈사람과 편지가
                 <br />
-                어떤 기기에서든 열어 볼 수 있어요
+                녹지 않고 내 마을에 남아요
               </p>
             </header>
             <Perforation />
