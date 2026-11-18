@@ -761,3 +761,28 @@ body {
 :root[data-time="night"] .home-snowcap::before {
   background: var(--snow-moon);
 }
+/* 편지지 우표 + 12.25 소인. 소인은 우표 왼쪽 아래를 덮고 편지지 줄 위로 살짝 겹친다 */
+.letter-stamp {
+  width: calc(17 * 2px);
+  height: calc(17 * 2px);
+}
+
+.letter-postmark {
+  position: absolute;
+  left: calc(var(--p) * -12);
+  top: calc(var(--p) * 5);
+  display: block;
+}
+
+.letter-postmark-date {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  /* 돌리면 갈무리 12px이 뭉개져, 소인은 바르게 찍는다 */
+}

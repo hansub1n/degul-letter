@@ -26,6 +26,8 @@ const PALETTE: Record<string, string> = {
   N: "var(--pine-shade)",
   P: "var(--paper)", // 편지지 (열린 봉투 속)
   L: "var(--paper-line)",
+  c: "var(--sky)", // 우표 하늘색 면
+  m: "var(--muted)", // 소인
 };
 
 const ICONS = {
@@ -286,21 +288,49 @@ const ICONS = {
     "....osso....",
     "....oooo....",
   ],
-  // 우표 장식 (편지지 오른쪽 위): 남색 톱니 + berry 테두리 + 금색 면 + 빨간 별
+  // 편지지 우표: 남색 톱니 + berry 테두리 + 하늘색 면 + 눈사람
   stamp: [
-    "o.o.o.o.o.o.o",
-    ".rrrrrrrrrrr.",
-    "orgggggggggro",
-    ".rggggrggggr.",
-    "orggggrggggro",
-    ".rgrrrrrrrgr.",
-    "orggrrrrrggro",
-    ".rgggrrrgggr.",
-    "orggrrgrrggro",
-    ".rggrgggrggr.",
-    "orGGGGGGGGGro",
-    ".rrrrrrrrrrr.",
-    "o.o.o.o.o.o.o",
+    "o.o.o.o.o.o.o.o.o",
+    ".rrrrrrrrrrrrrrr.",
+    "orcccccccccccccro",
+    ".rcccccwwwcccccr.",
+    "orccccwwwwwccccro",
+    ".rccccwowowccccr.",
+    "orccccwwwwwccccro",
+    ".rcccccwwwcccccr.",
+    "orcccwwwwwwwcccro",
+    ".rccwwwwwwwwwccr.",
+    "orccwwwwswwwwwcro",
+    ".rcccwwwssswwwcr.",
+    "orcccccssssscccro",
+    ".rcccccccccccccr.",
+    "orcccccccccccccro",
+    ".rrrrrrrrrrrrrrr.",
+    "o.o.o.o.o.o.o.o.o",
+  ],
+  // 12.25 소인 고리. 날짜 글자는 LetterStamp가 가운데에 얹는다
+  postmark: [
+    ".....................",
+    ".......mmmmmmm.......",
+    ".....mmmm...mmmm.....",
+    "....mm.........mm....",
+    "...mm...........mm...",
+    "..mm.............mm..",
+    "..m...............m..",
+    ".mm...............mm.",
+    ".mm...............mm.",
+    ".m.................m.",
+    ".m.................m.",
+    ".m.................m.",
+    ".mm...............mm.",
+    ".mm...............mm.",
+    "..m...............m..",
+    "..mm.............mm..",
+    "...mm...........mm...",
+    "....mm.........mm....",
+    ".....mmmm...mmmm.....",
+    ".......mmmmmmm.......",
+    ".....................",
   ],
   // 작은 눈송이 (제목 장식): 흰 면 + 남색 외곽
   snowflake: [

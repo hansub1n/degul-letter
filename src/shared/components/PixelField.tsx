@@ -1,5 +1,5 @@
 import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { PixelIcon } from "./PixelIcon";
+import { LetterStamp } from "./LetterStamp";
 
 type Common = {
   /** 입력칸 위의 이름표. placeholder만으로 두지 않는다 */
@@ -37,12 +37,12 @@ export function PixelField(props: Props) {
           id={id}
           data-tone={paper ? "paper" : "snow"}
           className={`pixel-box pixel-box-flat pixel-field text-body w-full resize-none px-[calc(var(--p)*4)] ${
-            paper ? "pixel-paper-lines pr-[calc(var(--p)*14)]" : "py-[calc(var(--p)*3)]"
+            paper ? "pixel-paper-lines pr-[calc(var(--p)*24)]" : "py-[calc(var(--p)*3)]"
           }`}
           style={paper ? { lineHeight: "24px", paddingTop: 0, paddingBottom: 0 } : undefined}
           {...rest}
         />
-        {paper && <PixelIcon name="stamp" scale={2} className="pointer-events-none absolute right-[calc(var(--p)*3)] top-[calc(var(--p)*3)]" />}
+        {paper && <LetterStamp className="absolute right-[calc(var(--p)*3)] top-[calc(var(--p)*3)]" />}
       </div>
     );
   } else {
