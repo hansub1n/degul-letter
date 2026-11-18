@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { PixelButton } from "@/shared/components/PixelButton";
+import { useState, type CSSProperties } from "react";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelIcon } from "@/shared/components/PixelIcon";
-import { PixelPanel } from "@/shared/components/PixelPanel";
 import { christmasLabel, isLetterOpen } from "../lib/dday";
 import { LetterCard } from "./LetterCard";
 
@@ -39,8 +37,9 @@ type Props = {
 };
 
 /**
- * 집 옆 우체통: 마을에 온 편지를 편지지 행으로 모아 본다.
- * 12/25 전에는 자물쇠와 "잠김", 12/25부터는 행마다 "열기" 버튼이 생긴다. 읽은 편지는 봉인 도트가 빠진다.
+ * 집 옆 우체통: 마을에 온 편지를 봉투 타일로 3열 격자에 늘어놓는다.
+ * 12/25 전에는 꺼진 타일(흐린 회색 + 자물쇠 + "12월 25일에 열려요"), 12/25부터는 봉인된 봉투를 눌러 연다.
+ * 읽은 편지는 봉투가 열린 모습이 되고 이름이 흐려진다.
  */
 export function LetterBox({ recipientName, letters, openLetter, onClose }: Props) {
   const openable = isLetterOpen();
@@ -90,40 +89,76 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
           </p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-[calc(var(--p)*4)]">
-          {letters.map((letter) => {
-            const opened = read.has(letter.letterId);
-            return (
-              <PixelPanel
-                as="li"
-                key={letter.letterId}
-                tone="paper"
-                className="relative flex min-h-[calc(var(--p)*16)] items-center gap-[calc(var(--p)*3)]"
-                style={{ padding: "calc(var(--p) * 3) calc(var(--p) * 4)" }}
-              >
-                {/* 봉인 도트: 오른쪽 위와 왼쪽 아래 모서리 (시안 03). 읽은 편지는 봉인이 풀려 도트를 뗀다 */}
-                {!opened && (
-                  <>
-                    <span aria-hidden className="absolute right-[var(--p)] top-[var(--p)] size-[calc(var(--p)*2)] bg-berry" />
-                    <span aria-hidden className="absolute bottom-[var(--p)] left-[var(--p)] size-[calc(var(--p)*2)] bg-berry" />
-                  </>
-                )}
-                <span className={`text-label min-w-0 flex-1 truncate ${opened ? "text-muted" : ""}`}>{letter.authorName}</span>
-                {openable ? (
-                  <PixelButton size="sm" onClick={() => setReading(letter)}>
-                    {opened ? "다시 읽기" : "열기"}
-                  </PixelButton>
-                ) : (
-                  <span className="text-caption flex items-center gap-[var(--p)]">
-                    <PixelIcon name="lock" scale={2} />
-                    잠김
-                  </span>
-                )}
-              </PixelPanel>
-            );
-          })}
+        <ul className="grid grid-cols-3 gap-[calc(var(--p)*3)]">
+          {letters.map((letter, i) => (
+            <EnvelopeTile
+              key={letter.letterId}
+              letter={letter}
+              index={i}
+              openable={openable}
+              opened={read.has(letter.letterId)}
+              onOpen={() => setReading(letter)}
+            />
+          ))}
         </ul>
       )}
     </PixelDialog>
+  );
+}
+
+
+/** 봉투 타일 하나. 위에 큰 봉투(또는 자물쇠), 아래에 보낸 사람 이름(최대 두 줄) */
+function EnvelopeTile({
+  letter,
+  index,
+  openable,
+  opened,
+  onOpen,
+}: {
+  letter: LetterSummary;
+  index: number;
+  openable: boolean;
+  opened: boolean;
+  onOpen: () => void;
+}) {
+  const label = openable
+    ? `${letter.authorName}의 편지 ${opened ? "다시 읽기" : "열기"}`
+    : `${letter.authorName}의 편지, 12월 25일에 열려요`;
+  return (
+    <li className="flex">
+      <button
+        type="button"
+        aria-label={label}
+        aria-disabled={!openable || undefined}
+        onClick={() => {
+          if (openable) onOpen();
+        }}
+        data-tone="paper"
+        className="envelope-tile pixel-box flex w-full flex-col items-center gap-[calc(var(--p)*2)]"
+        style={{ padding: "calc(var(--p) * 3) calc(var(--p) * 2)" }}
+      >
+        {openable ? (
+          <>
+            <span
+              className={`flex ${opened ? "" : "envelope-bob"}`}
+              style={opened ? undefined : ({ "--bob-delay": `${-((index * 2) % 3) * 0.4}s` } as CSSProperties)}
+            >
+              <PixelIcon name={opened ? "envOpened" : "envSealed"} scale={3} />
+            </span>
+            <span className={`text-label w-full break-all text-center line-clamp-2 ${opened ? "text-muted" : ""}`}>
+              {letter.authorName}
+            </span>
+          </>
+        ) : (
+          <>
+            {/* 봉투 자리(높이 66px)에 자물쇠만 가운데 둔다 */}
+            <span className="flex h-[66px] items-center justify-center">
+              <PixelIcon name="lock" scale={3} />
+            </span>
+            <span className="text-caption w-full break-keep text-center">12월 25일에 열려요</span>
+          </>
+        )}
+      </button>
+    </li>
   );
 }

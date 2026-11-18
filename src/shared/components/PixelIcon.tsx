@@ -24,6 +24,8 @@ const PALETTE: Record<string, string> = {
   G: "var(--gold-shade)",
   n: "var(--pine-light)", // 호랑가시 잎
   N: "var(--pine-shade)",
+  P: "var(--paper)", // 편지지 (열린 봉투 속)
+  L: "var(--paper-line)",
 };
 
 const ICONS = {
@@ -191,6 +193,56 @@ const ICONS = {
     ".oggggggggo.",
     ".oGGGGGGGGo.",
     ".oooooooooo.",
+  ],
+  // 우체통 격자의 큰 봉투 (24x22): 봉인된 봉투 = 흰 면 + 남색 외곽 + 아래 그늘 + 가운데 빨간 밀랍 봉인
+  envSealed: [
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "oooooooooooooooooooooooo",
+    "ooowwwwwwwwwwwwwwwwwwooo",
+    "owwoowwwwwwwwwwwwwwoowwo",
+    "owwwwoowwwwwwwwwwoowwwwo",
+    "owwwwwwoowoooowoowwwwwwo",
+    "owwwwwwwworrprowwwwwwwwo",
+    "owwwwwwworrrrrrowwwwwwwo",
+    "owwwwwwworrrrrRowwwwwwwo",
+    "owwwwwwwwoRRRRowwwwwwwwo",
+    "owwwwwwwwwoooowwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "osssssssssssssssssssssso",
+    "oooooooooooooooooooooooo",
+  ],
+  // 읽은 봉투: 덮개가 열리고 편지지가 삐죽 나온다 (봉인 없음)
+  envOpened: [
+    "...........oo...........",
+    ".........oolloo.........",
+    "...oooooooooooooooooo...",
+    "...oPPPPPPPPPPPPPPPPo...",
+    "...oPPPPPPPPPPPPPPPPo...",
+    ".oooPLLLLLLLLLLLLLLPooo.",
+    "ooooPPPPPPPPPPPPPPPPoooo",
+    "owwoPLLLLLLLLLLLLLLPowwo",
+    "owwoPPPPPPPPPPPPPPPPowwo",
+    "owwoPLLLLLLLLLLLLLLPowwo",
+    "oowoPPPPPPPPPPPPPPPPowoo",
+    "owooPLLLLLLLLLLLLLLPoowo",
+    "owwwooPPPPPPPPPPPPoowwwo",
+    "owwwwwooPPPPPPPPoowwwwwo",
+    "owwwwwwwoooooooowwwwwwwo",
+    "owwwwwwwwwoooowwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "owwwwwwwwwwwwwwwwwwwwwwo",
+    "osssssssssssssssssssssso",
+    "oooooooooooooooooooooooo",
   ],
   // 별: 금색 (로고, 눈사람 완성, D-day)
   star: [

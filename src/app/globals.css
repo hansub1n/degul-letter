@@ -375,6 +375,44 @@ body {
   color: var(--ink);
 }
 
+/* 우체통 봉투 타일: 편지지 재질 상자. 크리스마스부터 누를 수 있고, 그 전에는 꺼진 버튼처럼 흐린 회색 면 + 그림자 없음 */
+.envelope-tile {
+  cursor: pointer;
+  transition: transform 80ms steps(2, end);
+}
+
+.envelope-tile:focus-visible {
+  outline: var(--p) solid var(--gold);
+  outline-offset: var(--p);
+}
+
+@media (hover: hover) {
+  .envelope-tile:not([aria-disabled="true"]):hover {
+    transform: translateY(calc(var(--p) * -1));
+    --box-drop-y: calc(var(--p) * 3);
+  }
+}
+
+.envelope-tile:active:not([aria-disabled="true"]) {
+  transform: translateY(var(--p));
+  --box-drop: transparent;
+}
+
+.envelope-tile[aria-disabled="true"] {
+  --box-fill: color-mix(in srgb, var(--paper-line) 55%, transparent);
+  --box-light: transparent;
+  --box-shade: transparent;
+  --box-drop: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+
+/* 안 읽은 봉투는 한 칸씩 들썩인다. 타일마다 박자를 엇갈리게(--bob-delay) 해서 한꺼번에 뛰지 않는다 */
+.envelope-bob {
+  animation: pixel-bob 1.2s steps(1, end) infinite;
+  animation-delay: var(--bob-delay, 0s);
+}
+
 /* 토스트: 낮에는 snow, 밤 모드에서는 night 재질. 2칸 아래에서 steps(3)로 올라온다 */
 :root[data-time="night"] .pixel-toast svg {
   --ink: var(--snow-edge); /* 남색 면 위에서 아이콘 외곽이 묻히지 않게 */
@@ -491,6 +529,7 @@ body {
   .pixel-bob,
   .pixel-leave,
   [data-twinkle] svg,
+  .envelope-bob,
   .pixel-snowfall-far {
     animation: none;
   }
