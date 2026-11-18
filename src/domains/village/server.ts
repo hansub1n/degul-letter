@@ -49,7 +49,7 @@ export async function createVillageForUser(params: {
     throw new VillageCreateError(400, `닉네임은 1~${VILLAGE_NAME_MAX}자로 적어 주세요`);
   }
 
-  // 1) 누구인지, 진짜 로그인했는지 (카카오 라벨 또는 구글 등 연결 기록). 익명 계정은 마을을 만들 수 없다
+  // 1) 누구인지, 진짜 로그인했는지 (kakao·google 라벨 또는 Appwrite 연결 기록). prefs만 바꾼 익명 계정은 403
   const account = await verifyAccount(params.jwt);
   if (!account) throw new VillageCreateError(401, "다시 들어와 주세요");
   if (!account.loggedIn) throw new VillageCreateError(403, "로그인하고 마을을 만들어 주세요");

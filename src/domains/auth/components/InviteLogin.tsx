@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { AirmailFrame, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { acquireModalLock } from "@/shared/lib/modalLock";
-import { startKakaoLogin } from "../api";
+import { startGoogleLogin, startKakaoLogin } from "../api";
+import { detectInApp, externalBrowserUrl, type InAppKind } from "../lib/inAppBrowser";
 import { LoginMethods } from "./LoginMethods";
+
+function subscribeInApp(): () => void {
+  return () => {};
+}
+
+function useInApp(): InAppKind | null {
+  const ua = useSyncExternalStore(subscribeInApp, () => navigator.userAgent, () => "");
+  return detectInApp(ua);
+}
 
 type Props = {
   /**
@@ -30,12 +40,16 @@ function Perforation() {
 }
 
 /**
- * 내 마을 만들기 초대장: 항공우편 카드 안에서 카카오로 로그인한다.
+ * 내 마을 만들기 초대장: 항공우편 카드 안에서 카카오 또는 구글로 로그인한다.
  * 친구 마을의 초대장 티켓과 첫 화면이 같은 카드를 쓴다. 로그인하면 첫 화면으로 돌아와 닉네임을 입력한다.
  */
 export function InviteLogin({ variant, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const inApp = useInApp();
+  // iOS의 카카오톡이 아닌 인앱은 바깥 브라우저를 열 주소가 없다. 구글 단추 대신 안내를 보여 준다.
+  const iosNotice = inApp === "ios";
 
   const kakao = async () => {
     setBusy(true);
@@ -45,6 +59,32 @@ export function InviteLogin({ variant, onClose }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "잠시 후 다시 시도해 주세요");
       setBusy(false);
+    }
+  };
+
+  const google = async () => {
+    if (inApp === "kakaotalk" || inApp === "android") {
+      window.location.assign(externalBrowserUrl(window.location.href, inApp));
+      return;
+    }
+    if (inApp === "ios") return;
+    setBusy(true);
+    setError(null);
+    try {
+      await startGoogleLogin("/");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "잠시 후 다시 시도해 주세요");
+      setBusy(false);
+    }
+  };
+
+  const copyLink = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      window.prompt("이 링크를 복사해서 Safari나 Chrome 주소창에 붙여 넣어요", url);
     }
   };
 
@@ -99,7 +139,19 @@ export function InviteLogin({ variant, onClose }: Props) {
             <Perforation />
             <div className="flex flex-col items-center gap-[calc(var(--p)*5)]">
               {error && <p className="text-body text-roof">{error}</p>}
-              <LoginMethods busy={busy} onKakao={() => void kakao()} />
+              <LoginMethods busy={busy} onKakao={() => void kakao()} onGoogle={iosNotice ? undefined : () => void google()} />
+              {iosNotice && (
+                <div className="flex w-full flex-col items-center gap-[calc(var(--p)*3)] text-center">
+                  <p className="text-body">
+                    이 앱에서는 구글 로그인을 열 수 없어요.
+                    <br />
+                    Safari나 Chrome에서 열어 주세요.
+                  </p>
+                  <PixelButton size="sm" disabled={busy} onClick={() => void copyLink()}>
+                    {copied ? "복사했어요" : "링크 복사"}
+                  </PixelButton>
+                </div>
+              )}
               {onClose && (
                 <PixelButton variant="ghost" size="sm" disabled={busy} onClick={onClose}>
                   나중에 할게요
