@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
-import { LetterStamp } from "@/shared/components/LetterStamp";
+import { LetterStamp } from "./LetterStamp";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { christmasLabel, isLetterOpen } from "../lib/dday";
 
 type Props = {
+  /** 우표를 고르는 데 쓴다. 같은 id면 항상 같은 우표 */
+  letterId?: string;
   /** 편지를 쓴 사람 (닉네임) */
   authorName: string;
   /** 편지를 받는 사람 (마을 주인 닉네임) */
@@ -27,7 +29,7 @@ type State = { kind: "sealed" } | { kind: "opening" } | { kind: "opened"; conten
  * 마을 주인이 편지 든 눈사람에서 여는 편지 카드.
  * 12/25 전: 봉인된 봉투 + D-day. 12/25부터: "편지 열기"를 누르면 편지지가 펼쳐진다.
  */
-export function LetterCard({ authorName, recipientName, onOpen, onClose, autoOpen = false }: Props) {
+export function LetterCard({ letterId, authorName, recipientName, onOpen, onClose, autoOpen = false }: Props) {
   const openable = isLetterOpen();
   const [state, setState] = useState<State>(autoOpen && openable ? { kind: "opening" } : { kind: "sealed" });
 
@@ -67,7 +69,7 @@ export function LetterCard({ authorName, recipientName, onOpen, onClose, autoOpe
           {/* 스크롤은 바깥에 두고, 안쪽은 일반 흐름이라 글이 우표 자리를 피해 흐른다 */}
           <div className="max-h-[45vh] overflow-y-auto">
             <div className="letter-stamp-slot">
-              <LetterStamp />
+              <LetterStamp letterId={letterId} />
             </div>
             <p className="text-label" style={{ lineHeight: "24px" }}>
               To. {recipientName}

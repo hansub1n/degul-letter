@@ -214,6 +214,7 @@ export function VillageScreen() {
       )}
       {openingLetter && (
         <LetterCard
+          letterId={letters.find((l) => l.snowmanId === openingLetter.savedId)?.letterId}
           authorName={openingLetter.authorName}
           recipientName={village.name}
           onOpen={async () => {

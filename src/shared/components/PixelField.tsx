@@ -1,5 +1,4 @@
 import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
-import { LetterStamp } from "./LetterStamp";
 
 type Common = {
   /** 입력칸 위의 이름표. placeholder만으로 두지 않는다 */
@@ -14,6 +13,8 @@ type TextareaProps = Common & {
   multiline: true;
   /** paper = 편지지 (24px 줄, 우표 장식) */
   tone?: "snow" | "paper";
+  /** 편지지 오른쪽 위에 올 우표 등 */
+  adornment?: ReactNode;
 } & TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 type Props = InputProps | TextareaProps;
@@ -25,7 +26,7 @@ export function PixelField(props: Props) {
 
   let control: ReactNode;
   if (props.multiline) {
-    const { label: _l, hint: _h, className: _c, multiline: _m, tone = "snow", ...rest } = props;
+    const { label: _l, hint: _h, className: _c, multiline: _m, tone = "snow", adornment, ...rest } = props;
     void _l;
     void _h;
     void _c;
@@ -37,12 +38,12 @@ export function PixelField(props: Props) {
           id={id}
           data-tone={paper ? "paper" : "snow"}
           className={`pixel-box pixel-box-flat pixel-field text-body w-full resize-none px-[calc(var(--p)*4)] ${
-            paper ? "pixel-paper-lines pr-[calc(var(--p)*25)]" : "py-[calc(var(--p)*3)]"
+            paper ? "pixel-paper-lines pr-[calc(var(--p)*29)]" : "py-[calc(var(--p)*3)]"
           }`}
           style={paper ? { lineHeight: "24px", paddingTop: 0, paddingBottom: 0 } : undefined}
           {...rest}
         />
-        {paper && <LetterStamp className="absolute right-[calc(var(--p)*3)] top-[calc(var(--p)*2)]" />}
+        {paper && adornment}
       </div>
     );
   } else {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { isLetterOpen, LETTER_MAX_LENGTH } from "@/domains/letter";
+import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
@@ -79,6 +79,11 @@ export function FinishDialog(props: Props) {
         <PixelField
           multiline
           tone="paper"
+          adornment={
+            <span className="absolute right-[calc(var(--p)*2)] top-[calc(var(--p)*2)]">
+              <LetterStamp />
+            </span>
+          }
           label={owner ? "크리스마스의 나에게" : `${props.recipient}에게`}
           hint={`${letter.length}/${LETTER_MAX_LENGTH}`}
           value={letter}

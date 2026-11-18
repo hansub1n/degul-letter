@@ -57,6 +57,7 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
   if (reading) {
     return (
       <LetterCard
+        letterId={reading.letterId}
         authorName={reading.authorName}
         recipientName={recipientName}
         autoOpen

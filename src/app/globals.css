@@ -762,12 +762,13 @@ body {
   background: var(--snow-moon);
 }
 /* 편지지 우표 + 12.25 소인.
-   우표는 9×10칸(27×30px). 소인 고리는 12×12칸(36px)이고 우표 왼쪽 아래를 덮되, 우표 위에 그린다.
+   우표는 25×25 도트, scale 2 → 50×50px. 소인 고리는 약 40px이고 -12deg로, 우표 왼쪽 아래 모서리에 반쯤 걸친다.
    읽기 칸에서는 .letter-stamp-slot 이 오른쪽을 띄워 글이 우표·소인과 겹치지 않게 한다. */
 .letter-stamp {
   display: block;
-  width: 26px;
-  height: 26px;
+  position: relative;
+  width: 50px;
+  height: 50px;
   overflow: visible;
 }
 
@@ -775,17 +776,23 @@ body {
   display: block;
   position: relative;
   z-index: 0;
+  overflow: visible;
 }
 
 .letter-postmark {
   position: absolute;
   z-index: 2;
-  /* 42px 고리를 26px 우표 왼쪽 아래와 8px만 겹치게. 눈사람 얼굴은 가리지 않는다 */
-  left: -34px;
-  top: 10px;
+  /* 40px 고리의 중심을 우표 왼쪽 아래 모서리에 둬, 반이 우표 밖으로 나가게 */
+  left: -20px;
+  top: 30px;
   display: block;
-  width: 42px;
-  height: 42px;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  border: 2px solid color-mix(in srgb, var(--ink) 50%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  transform: rotate(-12deg);
 }
 
 .letter-postmark-date {
@@ -795,26 +802,27 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
 
-/* 읽기 칸: 소인+우표 자리(60×52)를 오른쪽에 띄운다. 첫 두 줄(48px)보다 4px 길다 */
+/* 읽기 칸: 소인(왼쪽 20) + 우표 50 + 그림자 2, 세로는 소인이 아래로 20 더 내려가 70 */
 .letter-stamp-slot {
   float: right;
   position: relative;
   z-index: 1;
-  width: 60px;
-  height: 52px;
+  width: 72px;
+  height: 70px;
   margin-left: calc(var(--p) * 3);
   overflow: visible;
 }
 
 .letter-stamp-slot .letter-stamp {
   position: absolute;
-  right: 0;
+  right: 2px;
   top: 0;
 }
+
