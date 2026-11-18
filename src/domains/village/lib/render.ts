@@ -154,8 +154,8 @@ const PAL_NIGHT = {
   groundGlint: "#8E95C8",
   path: "#3E4275",
   pathDeep: "#363A6A",
-  track: "#44487D",
-  trackEdge: "#363A6A",
+  track: "#464B82",
+  trackEdge: "#3A3F74",
   groundShadow: "#33366A",
 } as const;
 /** 창문 빛 웅덩이 (바깥 → 안쪽). 밤 땅 위에서 따뜻하게 보이는 색 */
@@ -1090,6 +1090,8 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   const reducedMotion = prefersReducedMotion();
   const ground = makeGround(worldWidth, worldHeight, groundPal);
   const groundCtx = context2d(ground);
+  // 굴린 자국이 칠해진 칸. 겹치는 찍기의 진짜 바깥 칸에만 홈을 남기기 위해 쓴다
+  const trailMark = new Uint8Array(worldWidth * worldHeight);
   // 밤에는 마을 그림에 달빛 색을 곱하고, 캐릭터는 덜 어둡게 곱한다
   const moonlit = (sprite: HTMLCanvasElement) => (night ? tinted(sprite, NIGHT_MUL) : sprite);
   const hero = (sprite: HTMLCanvasElement) => (night ? tinted(sprite, NIGHT_MUL_HERO) : sprite);
@@ -1272,6 +1274,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   }
 
   // 굴린 자국: 다진 눈을 매끈한 면으로 찍고, 가장자리에 1칸 홈을 두어 점점이 찍힌 길과 구분한다. 길 위에 덧그린다.
+  // 매 프레임 찍기가 거의 겹치므로, 홈은 "지금까지 자국의 진짜 바깥"에만 남긴다. 안쪽은 면 색을 유지한다.
   function paintTrail(x: number, y: number, r: number): void {
     const rr = Math.max(2, r * 0.6);
     const rh = Math.max(1, Math.ceil(rr * 0.5));
@@ -1279,21 +1282,31 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const edge = night ? PAL_NIGHT.trackEdge : PAL.trackEdge;
     const cx = Math.round(x);
     const cy = Math.round(y);
+    const rows: Array<{ left: number; width: number; dy: number }> = [];
     for (let dy = -rh; dy <= rh; dy++) {
       const w = Math.round(rr * Math.sqrt(Math.max(0, 1 - (dy * dy) / ((rh + 0.5) * (rh + 0.5)))));
-      const left = cx - w;
-      const width = w * 2 + 1;
-      const onRim = dy === -rh || dy === rh || w <= 1;
-      if (onRim) {
-        groundCtx.fillStyle = edge;
-        groundCtx.fillRect(left, cy + dy, width, 1);
-      } else {
-        groundCtx.fillStyle = edge;
-        groundCtx.fillRect(left, cy + dy, 1, 1);
-        groundCtx.fillStyle = fill;
-        groundCtx.fillRect(left + 1, cy + dy, width - 2, 1);
-        groundCtx.fillStyle = edge;
-        groundCtx.fillRect(left + width - 1, cy + dy, 1, 1);
+      rows.push({ left: cx - w, width: w * 2 + 1, dy });
+    }
+    const inWorld = (px: number, py: number) => px >= 0 && py >= 0 && px < worldWidth && py < worldHeight;
+    const marked = (px: number, py: number) => inWorld(px, py) && trailMark[py * worldWidth + px] === 1;
+
+    groundCtx.fillStyle = fill;
+    for (const row of rows) {
+      groundCtx.fillRect(row.left, cy + row.dy, row.width, 1);
+      const py = cy + row.dy;
+      if (py < 0 || py >= worldHeight) continue;
+      const x0 = Math.max(0, row.left);
+      const x1 = Math.min(worldWidth, row.left + row.width);
+      trailMark.fill(1, py * worldWidth + x0, py * worldWidth + x1);
+    }
+
+    groundCtx.fillStyle = edge;
+    for (const row of rows) {
+      const py = cy + row.dy;
+      for (let px = row.left; px < row.left + row.width; px++) {
+        if (!inWorld(px, py)) continue;
+        if (marked(px - 1, py) && marked(px + 1, py) && marked(px, py - 1) && marked(px, py + 1)) continue;
+        groundCtx.fillRect(px, py, 1, 1);
       }
     }
   }
