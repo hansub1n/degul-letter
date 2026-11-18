@@ -36,6 +36,8 @@ export function PixelField(props: Props) {
       <div className="relative">
         <textarea
           id={id}
+          // 브라우저가 예전 입력값 목록을 띄우지 않게 한다
+          autoComplete="off"
           data-tone={paper ? "paper" : "snow"}
           className={`pixel-box pixel-box-flat pixel-field text-body w-full resize-none px-[calc(var(--p)*4)] ${
             paper ? "pixel-paper-lines pr-[calc(var(--p)*29)]" : "py-[calc(var(--p)*3)]"
@@ -54,7 +56,7 @@ export function PixelField(props: Props) {
     void _m;
     void _t;
     control = (
-      <input id={id} className="pixel-box pixel-box-flat pixel-field text-body h-11 w-full px-[calc(var(--p)*4)]" {...rest} />
+      <input id={id} autoComplete="off" className="pixel-box pixel-box-flat pixel-field text-body h-11 w-full px-[calc(var(--p)*4)]" {...rest} />
     );
   }
 

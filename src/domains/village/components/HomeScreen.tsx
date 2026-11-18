@@ -101,7 +101,6 @@ export function HomeScreen() {
             label="내 닉네임"
             value={name}
             maxLength={10}
-            autoComplete="nickname"
             onChange={(e) => setName(e.target.value)}
           />
           <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || busy}>
