@@ -1324,6 +1324,13 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     return half + bankThick(half) + 1;
   }
 
+  /** 공 좌표 (x, y)는 발밑이다. 띠의 아랫입술이 공 밑단(그림자 바로 위)에
+   *  오도록, 현재 반높이만큼 올려 찍는다. 최근 구간의 중심은 하나로 맞춰
+   *  위·아래 둑이 같이 단이 지게 한다. */
+  function trailLift(r: number): number {
+    return sliceExtent(r);
+  }
+
   /** 가는 앞쪽은 칸이 빠져 부스러진 꼬리처럼 보이게 한다 */
   function sparseDrop(px: number, py: number, half: number): boolean {
     const p = half <= 1 ? 0.5 : half <= 2 ? 0.32 : half <= 3 ? 0.14 : half <= 4 ? 0.06 : 0;
@@ -1378,10 +1385,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     put(cx + half + bt + 1, cy, snowEdgeColor, TRAIL_KIND_BANK);
   }
 
-  function stampSlice(p: TrailPoint, half: number): void {
+  function stampSlice(p: TrailPoint, half: number, lift: number): void {
     const cx = Math.round(p.x);
     const cy = Math.round(p.y);
-    if (Math.abs(p.dx) >= Math.abs(p.dy)) stampVertical(cx, cy, half, p.t);
+    if (Math.abs(p.dx) >= Math.abs(p.dy)) stampVertical(cx, cy - lift, half, p.t);
     else stampHorizontal(cx, cy, half, p.t);
   }
 
@@ -1389,8 +1396,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const cx = Math.round(p.x);
     const cy = Math.round(p.y);
     const ext = sliceExtent(maxR);
+    const lift = trailLift(maxR);
     if (Math.abs(p.dx) >= Math.abs(p.dy)) {
-      for (let py = cy - ext; py <= cy + ext; py++) clearTrailPixel(cx, py);
+      // 예전 발밑 중심과 올린 뒤 범위를 모두 지워, 들어 올릴 때 잔상이 안 남게 한다
+      for (let py = cy - lift - ext; py <= cy + ext; py++) clearTrailPixel(cx, py);
     } else {
       for (let px = cx - ext; px <= cx + ext; px++) clearTrailPixel(px, cy);
     }
@@ -1431,7 +1440,8 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     from = Math.max(0, from - 1);
     for (let i = from; i < recentTrail.length; i++) clearSlice(recentTrail[i], head.r);
     compactTrailLive();
-    for (let i = from; i < recentTrail.length; i++) stampSlice(recentTrail[i], taperedHalf(recentTrail[i], head));
+    const lift = trailLift(head.r);
+    for (let i = from; i < recentTrail.length; i++) stampSlice(recentTrail[i], taperedHalf(recentTrail[i], head), lift);
     let keep = 0;
     while (keep < recentTrail.length && head.along - recentTrail[keep].along > span) keep++;
     if (keep > 0) recentTrail.splice(0, keep);
