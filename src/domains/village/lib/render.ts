@@ -1124,6 +1124,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   const trailLive: number[] = [];
   let lastStamp: { x: number; y: number; r: number } | null = null;
   type TrailPoint = { x: number; y: number; r: number; t: number; dx: number; dy: number; along: number };
+  type TrailCap = { cx: number; cy: number; ext: number };
+  // 다시 그리기 전에만 지우는 최근 끝·시작 둥근 캡. 공이 들리면 참조만 끊어 자국은 남긴다
+  let lastEndCap: TrailCap | null = null;
+  let lastStartCap: TrailCap | null = null;
   const recentTrail: TrailPoint[] = [];
   const TRAIL_FADE_AFTER = 20;
   const TRAIL_FADE_FOR = 12;
@@ -1419,6 +1423,58 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     else stampHorizontal(cx, cy, half, p.t);
   }
 
+  /** 띠와 같은 중심. 가로로 굴리면 발밑에서 lift만큼 올린다 */
+  function capCenter(p: TrailPoint, lift: number): { cx: number; cy: number } {
+    const cx = Math.round(p.x);
+    const cy = Math.round(p.y);
+    return Math.abs(p.dx) >= Math.abs(p.dy) ? { cx, cy: cy - lift } : { cx, cy };
+  }
+
+  function clearDisk(cap: TrailCap): void {
+    const r2 = cap.ext * cap.ext + cap.ext;
+    for (let dy = -cap.ext; dy <= cap.ext; dy++) {
+      for (let dx = -cap.ext; dx <= cap.ext; dx++) {
+        if (dx * dx + dy * dy <= r2) clearTrailPixel(cap.cx + dx, cap.cy + dy);
+      }
+    }
+  }
+
+  /**
+   * 자국의 시작·끝에 도트 원 캡을 찍는다. 공 지름의 약 80% 띠와 같은 폭이고,
+   * 면·줄무늬·둑·아랫입술 그늘을 그대로 써서 공이 남긴 둥근 자국처럼 보이게 한다.
+   * 계단 원(안티앨리어스 없음). 둑은 이미 찍힌 면을 덮지 않아 띠와 자연스럽게 이어진다.
+   */
+  function stampCap(p: TrailPoint, half: number, lift: number): TrailCap {
+    const { cx, cy } = capCenter(p, lift);
+    const bt = bankThick(half);
+    const rBank = half + bt;
+    const rCent2 = (half + 0.5) * (half + 0.5);
+    const rBank2 = (rBank + 0.5) * (rBank + 0.5);
+    const now = p.t;
+    const horiz = Math.abs(p.dx) >= Math.abs(p.dy);
+    const alongOf = (px: number, py: number) => (horiz ? px : py);
+
+    for (let dy = -rBank; dy <= rBank; dy++) {
+      for (let dx = -rBank; dx <= rBank; dx++) {
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= rCent2) {
+          plotTrail(cx + dx, cy + dy, centreColor(alongOf(cx + dx, cy + dy), cx + dx, cy + dy), now, TRAIL_KIND_CENTRE);
+        } else if (d2 <= rBank2) {
+          plotTrail(cx + dx, cy + dy, snowColor, now, TRAIL_KIND_BANK);
+        }
+      }
+    }
+    // 아랫입술: 원 아래쪽 바깥에 SNOW_EDGE 한 줄 (띠의 아래 그늘과 같게)
+    for (let dx = -rBank; dx <= rBank; dx++) {
+      let maxDy: number | null = null;
+      for (let dy = -rBank; dy <= rBank; dy++) {
+        if (dx * dx + dy * dy <= rBank2) maxDy = dy;
+      }
+      if (maxDy !== null) plotTrail(cx + dx, cy + maxDy + 1, snowEdgeColor, now, TRAIL_KIND_BANK);
+    }
+    return { cx, cy, ext: rBank + 1 };
+  }
+
   function clearSlice(p: TrailPoint, maxR: number): void {
     const cx = Math.round(p.x);
     const cy = Math.round(p.y);
@@ -1465,10 +1521,19 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     let from = 0;
     while (from < recentTrail.length && head.along - recentTrail[from].along > span + 2) from++;
     from = Math.max(0, from - 1);
+    const startLive = from === 0 && recentTrail[0].along === 0;
+    // 굴리는 동안만 이전 캡을 지운다. 공 들린 뒤에는 lastEndCap을 비우기만 해서 자국이 남는다
+    if (lastEndCap) clearDisk(lastEndCap);
+    lastEndCap = null;
+    if (startLive && lastStartCap) clearDisk(lastStartCap);
+    lastStartCap = null;
     for (let i = from; i < recentTrail.length; i++) clearSlice(recentTrail[i], head.r);
     compactTrailLive();
     const lift = trailLift(head.r);
     for (let i = from; i < recentTrail.length; i++) stampSlice(recentTrail[i], taperedHalf(recentTrail[i], head), lift);
+    // 띠를 먼저 찍고 캡을 나중에 찍어, 둥근 끝이 각진 단면을 덮게 한다
+    if (startLive) lastStartCap = stampCap(recentTrail[0], taperedHalf(recentTrail[0], head), lift);
+    lastEndCap = stampCap(head, taperedHalf(head, head), lift);
     let keep = 0;
     while (keep < recentTrail.length && head.along - recentTrail[keep].along > span) keep++;
     if (keep > 0) recentTrail.splice(0, keep);
@@ -1481,7 +1546,12 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const dy = y - lastStamp.y;
       const dist = Math.hypot(dx, dy);
       const newBall = r + 3 < lastStamp.r;
-      if (newBall) recentTrail.length = 0;
+      if (newBall) {
+        // 들린 공의 끝 캡은 캔버스에 남기고, 새 공 자국만 다시 그린다
+        lastEndCap = null;
+        lastStartCap = null;
+        recentTrail.length = 0;
+      }
       if (!newBall && dist > 0 && dist < 24) {
         const steps = Math.max(1, Math.ceil(dist));
         for (let i = 1; i <= steps; i++) {
