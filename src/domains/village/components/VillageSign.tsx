@@ -277,7 +277,7 @@ export function VillageSign({ name, subtitle }: Props) {
     <div
       ref={rootRef}
       data-village-sign={phase}
-      className={`village-sign pointer-events-none flex max-w-[calc(100%-48px)] flex-col ${
+      className={`village-sign pointer-events-none flex min-w-0 max-w-full flex-col ${
         intro ? "village-sign-intro village-sign-enter items-center" : "items-start"
       }`}
     >

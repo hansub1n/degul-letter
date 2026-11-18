@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   christmasLabel,
@@ -13,8 +13,9 @@ import {
 } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelToast } from "@/shared/components/PixelToast";
+import { isModalLocked } from "@/shared/lib/modalLock";
 import { ensureUserId } from "@/shared/lib/session";
-import { deleteSnowman, getVillageByCode, listSnowmen, saveSnowman } from "../api";
+import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { FinishDialog } from "./FinishDialog";
 import { VillageGame, type MarkSaved } from "./VillageGame";
@@ -22,12 +23,13 @@ import { VillageSign } from "./VillageSign";
 
 const FINISH_DIALOG_DELAY_MS = 2000;
 
-type Loaded = { village: Village; saved: SavedSnowman[]; myId: string };
+type Loaded = { village: Village; saved: SavedSnowman[]; myId: string; myVillage: Village | null };
 type PendingSave = { stackId: number; draft: SnowmanDraft; markSaved: MarkSaved };
 
 /** 공유 링크(/v/[code])로 들어온 마을. 저장된 눈사람을 불러와 세우고, 새로 완성한 눈사람과 편지를 저장한다. */
 export function VillageScreen() {
   const { code } = useParams<{ code: string }>();
+  const router = useRouter();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
@@ -51,12 +53,20 @@ export function VillageScreen() {
           if (alive) setProblem("notFound");
           return;
         }
-        const saved = await listSnowmen(village.id);
+        const savedPromise = listSnowmen(village.id);
+        const minePromise =
+          village.ownerId === myId
+            ? Promise.resolve(null)
+            : findMyVillage().catch((err) => {
+                console.error(err);
+                return null;
+              });
+        const [saved, myVillage] = await Promise.all([savedPromise, minePromise]);
         if (!alive) return;
         setLetters(
           saved.flatMap((s) => (s.letterId ? [{ snowmanId: s.id, letterId: s.letterId, authorName: s.authorName }] : [])),
         );
-        setLoaded({ village, saved, myId });
+        setLoaded({ village, saved, myId, myVillage });
       } catch (e) {
         console.error(e);
         if (alive) setProblem("error");
@@ -103,7 +113,7 @@ export function VillageScreen() {
     );
   }
 
-  const { village, saved, myId } = loaded;
+  const { village, saved, myId, myVillage } = loaded;
   const isOwner = village.ownerId === myId;
 
   const save = async (job: PendingSave, name: string, letter: string) => {
@@ -197,7 +207,7 @@ export function VillageScreen() {
                   : "눈사람을 세우고 편지를 남겨 주세요"
               }
             />
-            {isOwner && (
+            {isOwner ? (
               <PixelButton
                 variant="primary"
                 iconOnly
@@ -206,6 +216,18 @@ export function VillageScreen() {
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={shareLink}
               />
+            ) : (
+              <PixelButton
+                variant="primary"
+                className="pointer-events-auto ml-auto shrink-0"
+                onClick={() => {
+                  if (isModalLocked()) return;
+                  if (myVillage) router.push(`/v/${myVillage.code}`);
+                  else router.push("/");
+                }}
+              >
+                {myVillage ? "내 마을 가기" : "내 마을 만들기"}
+              </PixelButton>
             )}
           </div>
         }
