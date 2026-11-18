@@ -7,6 +7,7 @@ import { PixelDialog } from "@/shared/components/PixelDialog";
 import { LetterStamp } from "./LetterStamp";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
+import { AirmailFrame } from "./AirmailFrame";
 import { christmasLabel, isLetterOpen } from "../lib/dday";
 
 type Props = {
@@ -65,7 +66,8 @@ export function LetterCard({ letterId, authorName, recipientName, onOpen, onClos
   return (
     <PixelDialog title={`${authorName}의 편지`} icon="envelope" align="start" onClose={onClose}>
       {state.kind === "opened" ? (
-        <PixelPanel tone="paper" pad={5} className="letter-paper relative">
+        <AirmailFrame>
+        <PixelPanel tone="paper" pad={5} flat className="letter-paper relative">
           {/* 스크롤은 바깥에 두고, 안쪽은 일반 흐름이라 글이 우표 자리를 피해 흐른다 */}
           <div className="max-h-[45vh] overflow-y-auto">
             <div className="letter-stamp-slot">
@@ -83,8 +85,10 @@ export function LetterCard({ letterId, authorName, recipientName, onOpen, onClos
             </p>
           </div>
         </PixelPanel>
+        </AirmailFrame>
       ) : (
-        <PixelPanel tone="paper" pad={6} className="flex flex-col items-center gap-[calc(var(--p)*4)] text-center">
+        <AirmailFrame>
+        <PixelPanel tone="paper" pad={6} flat className="flex flex-col items-center gap-[calc(var(--p)*4)] text-center">
           <PixelIcon name="envelope" scale={5} />
           {!openable ? (
             <>
@@ -107,6 +111,7 @@ export function LetterCard({ letterId, authorName, recipientName, onOpen, onClos
             </>
           )}
         </PixelPanel>
+        </AirmailFrame>
       )}
     </PixelDialog>
   );
