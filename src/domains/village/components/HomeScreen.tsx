@@ -84,7 +84,7 @@ export function HomeScreen() {
             내 마을 가기
           </PixelButton>
           <PixelButton icon="send" className="w-full" onClick={() => copyLink(mine)}>
-            링크 복사해서 친구 부르기
+            링크 복사하기
           </PixelButton>
         </div>
       )}

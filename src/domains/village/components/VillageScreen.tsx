@@ -18,8 +18,7 @@ import { deleteSnowman, getVillageByCode, listSnowmen, saveSnowman } from "../ap
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { FinishDialog } from "./FinishDialog";
 import { VillageGame, type MarkSaved } from "./VillageGame";
-import { VillageNameplate } from "./VillageNameplate";
-import { VillageTitle } from "./VillageTitle";
+import { VillageSign } from "./VillageSign";
 
 const FINISH_DIALOG_DELAY_MS = 2000;
 
@@ -173,30 +172,27 @@ export function VillageScreen() {
         onOpenLetter={(snowman) => {
           if (snowman.savedId) setOpeningLetter({ authorName: snowman.authorName ?? "친구", savedId: snowman.savedId });
         }}
-        overlay={
-          <VillageTitle
-            name={`${village.name}의 마을`}
-            subtitle={
-              isOwner
-                ? isLetterOpen()
-                  ? `메리 크리스마스! 편지 ${letterCount}통을 열어 보세요`
-                  : letterCount > 0
-                    ? `편지 ${letterCount}통이 기다려요 · 크리스마스 ${christmasLabel()}`
-                    : `친구에게 링크를 보내 보세요 · 크리스마스 ${christmasLabel()}`
-                : "눈사람을 세우고 편지를 남겨 주세요"
-            }
-          />
-        }
         header={
           <div className="pointer-events-none flex items-start justify-between gap-[calc(var(--p)*3)] p-[var(--p)]">
-            <VillageNameplate name={`${village.name}의 마을`} />
+            <VillageSign
+              name={`${village.name}의 마을`}
+              subtitle={
+                isOwner
+                  ? isLetterOpen()
+                    ? `메리 크리스마스! 편지 ${letterCount}통을 열어 보세요`
+                    : letterCount > 0
+                      ? `편지 ${letterCount}통이 기다려요 · 크리스마스 ${christmasLabel()}`
+                      : `친구에게 링크를 보내 보세요 · 크리스마스 ${christmasLabel()}`
+                  : "눈사람을 세우고 편지를 남겨 주세요"
+              }
+            />
             {isOwner && (
               <PixelButton
                 variant="primary"
                 iconOnly
                 icon="send"
                 aria-label="링크 보내기"
-                className="pointer-events-auto shrink-0"
+                className="pointer-events-auto ml-auto shrink-0"
                 onClick={shareLink}
               />
             )}

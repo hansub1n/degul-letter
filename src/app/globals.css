@@ -243,13 +243,33 @@ body {
   z-index: 1;
 }
 
-/* 나무 판 위 글자: 제목은 흰 글자+외곽선, 이름표는 크림, 안내 문장은 벽 색 */
-.pixel-box[data-tone="wood"] .text-label {
+/* 나무 판 위 작은 글자: 흰 글자 + 남색 1px 외곽선. 3칸(--p) 외곽선은 12px 글자를 가린다. */
+.pixel-box[data-tone="wood"] .text-label,
+.pixel-box[data-tone="wood"] .text-caption {
   color: var(--snow);
+  text-shadow:
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 1px 0 var(--ink),
+    0 -1px 0 var(--ink),
+    1px 1px 0 var(--ink),
+    -1px 1px 0 var(--ink),
+    1px -1px 0 var(--ink),
+    -1px -1px 0 var(--ink);
 }
 
-.pixel-box[data-tone="wood"] .text-caption {
-  color: var(--wall);
+/* 큰 제목은 칸 단위 외곽선을 그대로 쓴다 */
+.pixel-box[data-tone="wood"] .text-display.text-outline-ink,
+.pixel-box[data-tone="wood"] .text-title.text-outline-ink {
+  text-shadow:
+    var(--p) 0 var(--ink),
+    calc(var(--p) * -1) 0 var(--ink),
+    0 var(--p) var(--ink),
+    0 calc(var(--p) * -1) var(--ink),
+    var(--p) var(--p) var(--ink),
+    calc(var(--p) * -1) var(--p) var(--ink),
+    var(--p) calc(var(--p) * -1) var(--ink),
+    calc(var(--p) * -1) calc(var(--p) * -1) var(--ink);
 }
 
 /* 나무 판 안 입력칸은 크림 편지지 면으로 남겨 글을 읽기 쉽게 */
@@ -295,32 +315,11 @@ body {
   animation: pixel-bob 1.2s steps(1, end) infinite;
 }
 
-/* 마을에 들어올 때 이름이 떴다가 사라지는 타이틀 */
-@keyframes title-in-out {
-  0% {
-    opacity: 0;
-    transform: translateY(calc(var(--p) * -2));
-  }
-  10%,
-  80% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-}
-
-.title-in-out {
-  animation: title-in-out 3.4s steps(12, end) forwards;
-}
-
-/* 인트로 표지판이 사라질 때 왼쪽 위 작은 이름 판이 따라 나타난다 */
-@keyframes nameplate-in {
+/* 마을 표지판: 가운데에 나타난 뒤, 같은 판이 왼쪽 위 이름 판으로 줄어들며 이동한다 */
+@keyframes village-sign-enter {
   from {
     opacity: 0;
-    transform: translateY(calc(var(--p) * -1));
+    transform: translateY(calc(var(--p) * -2));
   }
   to {
     opacity: 1;
@@ -328,8 +327,17 @@ body {
   }
 }
 
-.nameplate-in {
-  animation: nameplate-in 360ms steps(4, end) 2.6s both;
+.village-sign-enter {
+  animation: village-sign-enter 400ms steps(4, end) both;
+}
+
+.village-sign-intro {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  top: 15%;
+  z-index: 10;
+  max-width: none;
 }
 
 /* ---------- 공통 컴포넌트 (3단계) ---------- */
@@ -388,12 +396,13 @@ body {
   cursor: not-allowed;
 }
 
-/* primary는 꺼져 있어도 주요 행동으로 읽히게 옅은 빨강 (그림자 없음, 흰 글자) */
+/* primary는 꺼져 있어도 주요 행동으로 읽히게 옅은 빨강 (그림자 없음).
+   흰 글자는 옅은 빨강 위에서 대비가 낮아, 남색 글자로 읽히게 한다. */
 .pixel-btn[data-variant="primary"]:disabled {
   --box-fill: var(--roof-muted);
   --box-light: var(--roof-muted);
   --box-shade: var(--roof-muted-shade);
-  color: var(--snow);
+  color: var(--ink);
 }
 
 .pixel-btn[data-variant="primary"]:disabled svg {
@@ -632,8 +641,14 @@ body {
   .pixel-leave,
   [data-twinkle] svg,
   .envelope-bob,
-  .pixel-snowfall-far {
+  .pixel-snowfall-far,
+  .village-sign-enter {
     animation: none;
+  }
+
+  .village-sign-enter {
+    opacity: 1;
+    transform: none;
   }
 
   .pixel-leave {
