@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelIcon } from "@/shared/components/PixelIcon";
@@ -53,6 +53,24 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
   const currentPage = Math.min(page, pageCount - 1);
   const pageLetters = letters.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
   const paged = pageCount > 1;
+  // 마지막 면에 편지가 한 줄뿐이어도 창 높이가 줄지 않게, 지금까지 본 가장 큰 격자 높이를 유지한다
+  const gridRef = useRef<HTMLUListElement>(null);
+  const [gridMinHeight, setGridMinHeight] = useState(0);
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!paged || !grid) return;
+    const measure = () => {
+      const prev = grid.style.minHeight;
+      grid.style.minHeight = "";
+      const h = grid.offsetHeight;
+      grid.style.minHeight = prev;
+      setGridMinHeight((m) => (h > m ? h : m));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(grid);
+    return () => ro.disconnect();
+  }, [paged, currentPage, reading]);
 
   if (reading) {
     return (
@@ -100,7 +118,11 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
       ) : (
         // 12/25 전에는 봉투와 페이지 넘김 위에 반투명 잠금 덮개 하나를 씌운다 (단추는 꺼 둔다)
         <div className="relative" style={openable || paged ? undefined : { minHeight: "calc(var(--p) * 60)" }}>
-          <ul className="grid grid-cols-3 gap-[calc(var(--p)*3)]" aria-hidden={!openable || undefined} inert={!openable}>
+          <ul
+            ref={gridRef}
+            className="grid grid-cols-3 content-start gap-[calc(var(--p)*3)]"
+            style={paged && gridMinHeight ? { minHeight: gridMinHeight } : undefined}
+            aria-hidden={!openable || undefined} inert={!openable}>
             {pageLetters.map((letter, i) => (
               <EnvelopeTile
                 key={letter.letterId}
