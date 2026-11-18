@@ -140,11 +140,16 @@ export function VillageScreen() {
   if (problem) {
     return (
       <Center>
-        <PixelToast placement="inline">
-          {problem === "notFound"
-            ? "마을을 찾을 수 없어요. 링크를 다시 확인해 주세요."
-            : "마을을 불러오지 못했어요. 잠시 후 다시 들어와 주세요."}
-        </PixelToast>
+        <div className="flex flex-col items-center gap-[calc(var(--p)*4)]">
+          <PixelToast placement="inline">
+            {problem === "notFound"
+              ? "마을을 찾을 수 없어요. 링크를 다시 확인해 주세요."
+              : "마을을 불러오지 못했어요. 잠시 후 다시 들어와 주세요."}
+          </PixelToast>
+          <PixelButton variant="primary" onClick={() => router.push("/")}>
+            첫 화면으로
+          </PixelButton>
+        </div>
       </Center>
     );
   }
