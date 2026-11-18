@@ -46,13 +46,6 @@ const ownedBy = (userId: string) => [
   Permission.delete(Role.user(userId)),
 ];
 
-// 공유 링크용 코드: 헷갈리는 글자(0/O, 1/l/I)는 뺀다
-const CODE_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
-function randomCode(length = 6): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
-  return Array.from(bytes, (b) => CODE_CHARS[b % CODE_CHARS.length]).join("");
-}
-
 export async function findMyVillage(): Promise<Village | null> {
   const userId = await ensureUserId();
   const { tables, databaseId } = getAppwrite();
@@ -64,25 +57,23 @@ export async function findMyVillage(): Promise<Village | null> {
   return rows[0] ? toVillage(rows[0]) : null;
 }
 
+/**
+ * 마을 만들기는 서버(/api/villages)가 한다. 카카오 로그인한 계정만, 한 계정에 하나만 만들 수 있다.
+ * 브라우저는 "나는 이 사람이에요" 증명(JWT)만 보낸다.
+ */
 export async function createVillage(name: string): Promise<Village> {
-  const userId = await ensureUserId();
-  const { tables, databaseId } = getAppwrite();
-  // 코드가 우연히 겹치면(아주 드묾) 다른 코드로 몇 번 다시 시도한다
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const row = await tables.createRow<VillageRow>({
-        databaseId,
-        tableId: TABLES.villages,
-        rowId: ID.unique(),
-        data: { name, code: randomCode(), ownerId: userId },
-        permissions: ownedBy(userId),
-      });
-      return toVillage(row);
-    } catch (e) {
-      if ((e as { code?: number }).code !== 409 || attempt === 2) throw e;
-    }
+  await ensureUserId();
+  const { jwt } = await getAppwrite().account.createJWT();
+  const res = await fetch("/api/villages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ name }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Partial<Village> & { message?: string };
+  if (!res.ok || !data.id || !data.code || !data.name || !data.ownerId) {
+    throw new Error(data.message ?? "마을을 만들지 못했어요");
   }
-  throw new Error("마을을 만들지 못했어요");
+  return { id: data.id, name: data.name, code: data.code, ownerId: data.ownerId };
 }
 
 export async function getVillageByCode(code: string): Promise<Village | null> {

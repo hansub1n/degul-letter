@@ -43,13 +43,18 @@ async function waitColumns(tableId) {
 // 테이블 권한: 누구나 읽기, 로그인한 사람(익명 포함)만 만들기.
 // 줄마다 따로 권한을 줄 수 있게(rowSecurity) 해서, 고치기·지우기는 만든 사람만 하게 한다.
 const tablePermissions = [Permission.read(Role.any()), Permission.create(Role.users())];
+// 마을은 누구나 읽기만. 만들기는 서버(/api/villages, 카카오 로그인한 계정만)가 서버 키로 한다.
+const villagePermissions = [Permission.read(Role.any())];
 
 async function setupVillages() {
   const tableId = "villages";
   console.log("🏡 villages");
   await ensure("테이블", () =>
-    tables.createTable({ databaseId, tableId, name: "villages", permissions: tablePermissions, rowSecurity: true }),
+    tables.createTable({ databaseId, tableId, name: "villages", permissions: villagePermissions, rowSecurity: true }),
   );
+  // 예전에 "로그인한 사람 누구나 만들기"로 만든 테이블도 권한을 맞춘다
+  await tables.updateTable({ databaseId, tableId, name: "villages", permissions: villagePermissions, rowSecurity: true });
+  console.log("  🔒 만들기 권한: 서버만");
   await ensure("name", () => tables.createVarcharColumn({ databaseId, tableId, key: "name", size: 30, required: true }));
   await ensure("code", () => tables.createVarcharColumn({ databaseId, tableId, key: "code", size: 12, required: true }));
   await ensure("ownerId", () =>

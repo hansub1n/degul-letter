@@ -4,11 +4,17 @@
 import { getAppwrite } from "@/shared/lib/appwrite";
 import { ensureUserId, forgetUserId } from "@/shared/lib/session";
 
-/** 지금 계정이 카카오 로그인으로 지켜지고 있는지 */
+/**
+ * 지금 계정이 로그인(카카오·구글)으로 지켜지고 있는지. 화면 표시용이고, 진짜 확인은 서버가 한다.
+ * 카카오는 서버가 붙인 `kakao` 라벨, 구글 등은 Appwrite에 남는 연결 기록으로 안다.
+ */
 export async function isLoggedIn(): Promise<boolean> {
   await ensureUserId();
-  const prefs = await getAppwrite().account.getPrefs<{ kakao?: boolean }>();
-  return prefs.kakao === true;
+  const { account } = getAppwrite();
+  const user = await account.get();
+  if (user.labels.includes("kakao")) return true;
+  const { total } = await account.listIdentities();
+  return total > 0;
 }
 
 /**
