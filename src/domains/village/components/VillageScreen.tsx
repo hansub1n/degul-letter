@@ -34,7 +34,6 @@ export function VillageScreen() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
   const gameApiRef = useRef<VillageGameApi | null>(null);
-  const savedMessageRef = useRef<string | null>(null);
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
@@ -122,8 +121,9 @@ export function VillageScreen() {
   const { village, saved, myId, myVillage } = loaded;
   const isOwner = village.ownerId === myId;
 
-  const save = async (job: PendingSave, name: string, letter: string): Promise<string> => {
+  const save = async (job: PendingSave, name: string, letter: string) => {
     const { draft, markSaved } = job;
+    setStatus("눈사람을 세우는 중…");
     try {
       // 편지를 먼저 묻고, 그 ID를 눈사람에 적어 둔다
       const letterId = letter ? await createLetter(village.id, name, letter) : null;
@@ -132,14 +132,13 @@ export function VillageScreen() {
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
       }
-      if (!letterId) return "마을에 눈사람을 세웠어요!";
-      return isLetterOpen() ? "편지를 넣었어요. 지금 바로 열 수 있어요" : "편지를 넣었어요. 12월 25일에 열려요";
+      if (!letterId) setStatus("마을에 눈사람을 세웠어요!");
+      else setStatus(isLetterOpen() ? "편지를 넣었어요. 지금 바로 열 수 있어요" : "편지를 넣었어요. 12월 25일에 열려요");
     } catch (e) {
       console.error(e);
       // 저장에 실패하면 다시 "편지 쓰기"로 시도할 수 있게 남겨 둔다
       setDrafts((m) => new Map(m).set(job.stackId, job));
       setStatus("저장하지 못했어요. 인터넷 연결을 확인해 주세요.");
-      throw e;
     }
   };
 
@@ -277,20 +276,15 @@ export function VillageScreen() {
           {...(isOwner
             ? { mode: "owner" as const }
             : { mode: "visitor" as const, recipient: village.name })}
-          onSubmit={async ({ name, letter }) => {
+          onSubmit={({ name, letter }) => {
             const job = pending;
+            setPending(null);
             setDrafts((m) => {
               const next = new Map(m);
               next.delete(job.stackId);
               return next;
             });
-            const message = await save(job, name, letter);
-            savedMessageRef.current = message;
-          }}
-          // 썰매가 다 빠져나간 뒤에 창을 닫고 성공 안내를 띄운다
-          onSaved={() => {
-            setPending(null);
-            if (savedMessageRef.current) setStatus(savedMessageRef.current);
+            void save(job, name, letter);
           }}
           // 취소·Esc: 저장하지 않고 닫는다. 눈사람은 그대로 두고, 다시 다가가면 "편지 쓰기"로 열 수 있다.
           onCancel={() => setPending(null)}
