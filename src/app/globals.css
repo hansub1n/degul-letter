@@ -456,6 +456,16 @@ body {
   color: var(--ink);
 }
 
+/* 우체통 페이지 넘김: 기호 단추(◀ ▶)와 '1 / 3' */
+.mailbox-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--p) * 4);
+  padding-top: calc(var(--p) * 3);
+}
+
+
 /* 안 읽은 봉투는 한 칸씩 들썩인다. 타일마다 박자를 엇갈리게(--bob-delay) 해서 한꺼번에 뛰지 않는다 */
 .envelope-bob {
   animation: pixel-bob 1.2s steps(1, end) infinite;

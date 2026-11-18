@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { christmasLabel, isLetterOpen } from "../lib/dday";
@@ -9,6 +10,8 @@ import { LetterCard } from "./LetterCard";
 export type LetterSummary = { letterId: string; authorName: string };
 
 const READ_KEY = "degul:read-letters";
+/** 한 면은 3열 2줄. 휴대폰(360 폭 창)에서 3줄+넘김+잠금 덮개가 한 화면에 빡빡해 보여 6통으로 나눈다. */
+const PAGE_SIZE = 6;
 
 /** 이 브라우저에서 읽은 편지 ID (읽은 편지는 이름이 흐려지고 "다시 읽기"가 된다) */
 function loadRead(): Set<string> {
@@ -37,14 +40,19 @@ type Props = {
 };
 
 /**
- * 집 옆 우체통: 마을에 온 편지를 봉투 타일로 3열 격자에 늘어놓는다.
- * 12/25 전에는 격자 전체에 반투명 잠금 덮개(흐린 회색 + 자물쇠 + "12월 25일에 열려요")를 씌우고, 12/25부터는 봉인된 봉투를 눌러 연다.
+ * 집 옆 우체통: 마을에 온 편지를 봉투 타일로 3열 격자에 늘어놓는다. 한 면에 6통을 넘으면 ◀ 1 / 3 ▶ 로 넘긴다.
+ * 12/25 전에는 격자와 넘김 단추 전체에 반투명 잠금 덮개를 씌워 잠긴 느낌이 나게 하고, 12/25부터는 봉인된 봉투를 눌러 연다.
  * 읽은 편지는 봉투가 열린 모습이 되고 이름이 흐려진다.
  */
 export function LetterBox({ recipientName, letters, openLetter, onClose }: Props) {
   const openable = isLetterOpen();
   const [reading, setReading] = useState<LetterSummary | null>(null);
   const [read, setRead] = useState<Set<string>>(loadRead);
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(letters.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageLetters = letters.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
+  const paged = pageCount > 1;
 
   if (reading) {
     return (
@@ -89,10 +97,10 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
           </p>
         </div>
       ) : (
-        // 12/25 전에는 봉투들 위에 반투명 잠금 덮개 하나를 씌운다 (봉투와 이름은 흐리게 비친다)
-        <div className="relative" style={openable ? undefined : { minHeight: "calc(var(--p) * 60)" }}>
+        // 12/25 전에는 봉투와 페이지 넘김 위에 반투명 잠금 덮개 하나를 씌운다 (단추는 꺼 둔다)
+        <div className="relative" style={openable || paged ? undefined : { minHeight: "calc(var(--p) * 60)" }}>
           <ul className="grid grid-cols-3 gap-[calc(var(--p)*3)]" aria-hidden={!openable || undefined} inert={!openable}>
-            {letters.map((letter, i) => (
+            {pageLetters.map((letter, i) => (
               <EnvelopeTile
                 key={letter.letterId}
                 letter={letter}
@@ -103,6 +111,29 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
               />
             ))}
           </ul>
+          {paged && (
+            <div className="mailbox-pager">
+              <PixelButton
+                iconOnly
+                size="sm"
+                icon="prev"
+                aria-label="이전 쪽"
+                disabled={!openable || currentPage <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              />
+              <p className="text-label tabular-nums">
+                {currentPage + 1} / {pageCount}
+              </p>
+              <PixelButton
+                iconOnly
+                size="sm"
+                icon="next"
+                aria-label="다음 쪽"
+                disabled={!openable || currentPage >= pageCount - 1}
+                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              />
+            </div>
+          )}
           {!openable && (
             <div className="mailbox-lock pixel-box absolute inset-0 flex flex-col items-center justify-center gap-[calc(var(--p)*4)]">
               <PixelIcon name="lock" scale={6} />
