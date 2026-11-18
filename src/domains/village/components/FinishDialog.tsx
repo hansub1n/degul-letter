@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
@@ -30,12 +30,33 @@ export function FinishDialog(props: Props) {
   const [confirming, setConfirming] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const keepWritingRef = useRef<HTMLButtonElement>(null);
+  const panelHeightRef = useRef(0);
+  const [panelMinHeight, setPanelMinHeight] = useState<number | undefined>();
   const messageId = useId();
   const owner = props.mode === "owner";
   const name = nickname.trim();
   const ready = Boolean(name && letter.trim());
 
-  const requestClose = () => setConfirming(true);
+  // 쓰기 화면의 창 높이를 재 두고, 확인 화면에서도 같은 크기를 유지한다
+  useLayoutEffect(() => {
+    if (confirming) return;
+    const panel = formRef.current?.closest<HTMLElement>('[role="dialog"]');
+    if (!panel) return;
+    const measure = () => {
+      panelHeightRef.current = panel.offsetHeight;
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(panel);
+    return () => ro.disconnect();
+  }, [confirming]);
+
+  const requestClose = () => {
+    const panel = formRef.current?.closest<HTMLElement>('[role="dialog"]');
+    const height = panel?.offsetHeight || panelHeightRef.current;
+    if (height) setPanelMinHeight(height);
+    setConfirming(true);
+  };
   const keepWriting = () => {
     setConfirming(false);
     // 적어 둔 글은 그대로 두고, 이전에 쓰던 입력칸으로 초점을 되돌린다
@@ -63,24 +84,12 @@ export function FinishDialog(props: Props) {
     <PixelDialog
       title={confirming ? "눈사람이 녹아 버려요" : "눈사람 완성!"}
       icon={confirming ? undefined : "star"}
-      wrapTitle={confirming}
+      hideHeader={confirming}
+      closeOnVeil
       onClose={confirming ? keepWriting : requestClose}
-      closeOnVeil={!confirming ? true : false}
+      minHeight={confirming ? panelMinHeight : undefined}
       footer={
-        confirming ? (
-          <div className="flex w-full flex-col items-center gap-[calc(var(--p)*3)]">
-            <PixelButton ref={keepWritingRef} variant="primary" className="w-full" onClick={keepWriting}>
-              계속 쓰기
-            </PixelButton>
-            <button
-              type="button"
-              className="pixel-btn text-caption underline decoration-[2px] underline-offset-4"
-              onClick={props.onCancel}
-            >
-              그냥 나가기
-            </button>
-          </div>
-        ) : (
+        confirming ? undefined : (
           <PixelButton
             variant="primary"
             type="submit"
@@ -96,11 +105,34 @@ export function FinishDialog(props: Props) {
       }
     >
       {confirming && (
-        <div className="flex flex-col items-center gap-[calc(var(--p)*4)] text-center" role="group" aria-describedby={messageId}>
-          <PixelIcon name="melt" scale={3} fit />
-          <p id={messageId} className="text-body">
-            편지를 남겨야 마을에 눈사람이 남아요
-          </p>
+        <div
+          className="flex min-h-full flex-1 flex-col items-center justify-center text-center"
+          role="group"
+          aria-describedby={messageId}
+        >
+          <div className="flex w-full flex-col items-center gap-[calc(var(--p)*4)]">
+            <PixelIcon name="melt" scale={3} fit />
+            <h2 className="text-title text-center">
+              눈사람이
+              <br />
+              녹아 버려요
+            </h2>
+            <p id={messageId} className="text-caption">
+              편지를 남겨야 마을에 눈사람이 남아요
+            </p>
+            <div className="flex w-full flex-col items-center gap-[calc(var(--p)*6)]">
+              <PixelButton ref={keepWritingRef} variant="primary" className="w-full" onClick={keepWriting}>
+                계속 쓰기
+              </PixelButton>
+              <button
+                type="button"
+                className="pixel-btn text-caption underline decoration-[2px] underline-offset-4"
+                onClick={props.onCancel}
+              >
+                그냥 나가기
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <form

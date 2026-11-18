@@ -27,6 +27,12 @@ type Props = {
   cover?: ReactNode;
   /** 긴 제목을 한 줄로 자르지 않고 줄바꿈한다 */
   wrapTitle?: boolean;
+  /** 닫기(X) 단추를 숨긴다. Esc·베일 클릭은 그대로 onClose를 부른다 */
+  hideClose?: boolean;
+  /** 제목·닫기 헤더를 숨긴다. 접근성용 이름은 title로 남긴다 */
+  hideHeader?: boolean;
+  /** 창의 최소 높이(px). 내용이 바뀌어도 크기가 줄지 않게 할 때 쓴다 */
+  minHeight?: number;
   className?: string;
   children?: ReactNode;
 };
@@ -51,6 +57,9 @@ export function PixelDialog({
   initialFocusRef,
   cover,
   wrapTitle = false,
+  hideClose = false,
+  hideHeader = false,
+  minHeight,
   className = "",
   children,
 }: Props) {
@@ -135,14 +144,16 @@ export function PixelDialog({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={hideHeader ? undefined : titleId}
+        aria-label={hideHeader && typeof title === "string" ? title : undefined}
         aria-describedby={caption ? captionId : undefined}
         tabIndex={-1}
         data-tone="snow"
         className={`pixel-box pixel-rise relative flex max-h-[calc(100dvh-36px)] w-full max-w-[360px] flex-col gap-[calc(var(--p)*4)] text-ink outline-none ${className}`}
-        style={{ padding: "calc(var(--p) * 5)" }}
+        style={{ padding: "calc(var(--p) * 5)", minHeight: minHeight ? `${minHeight}px` : undefined }}
       >
-        <div data-dialog-chrome inert={cover ? true : undefined} className="flex min-h-0 flex-col gap-[calc(var(--p)*4)]">
+        <div data-dialog-chrome inert={cover ? true : undefined} className="flex min-h-0 flex-1 flex-col gap-[calc(var(--p)*4)]">
+          {!hideHeader && (
           <div className="flex flex-col gap-[var(--p)]">
           {/* 헤더: 가운데 정렬이면 왼쪽에 닫기 버튼만큼 빈 칸을 둬서 제목이 창 한가운데에 온다 */}
           <div className={centered ? "grid grid-cols-[36px_minmax(0,1fr)_36px] items-center gap-[calc(var(--p)*2)]" : "flex items-center gap-[calc(var(--p)*2)]"}>
@@ -161,6 +172,9 @@ export function PixelDialog({
                   badge
                 ))}
             </div>
+            {hideClose ? (
+              <span aria-hidden className={centered ? "justify-self-end w-9" : "ml-auto w-9"} />
+            ) : (
             <PixelButton
               iconOnly
               size="sm"
@@ -169,6 +183,7 @@ export function PixelDialog({
               className={centered ? "justify-self-end" : "ml-auto"}
               onClick={onClose}
             />
+            )}
           </div>
           {caption && (
             <p id={captionId} className={`text-caption ${centered ? "text-center" : ""}`}>
@@ -176,10 +191,11 @@ export function PixelDialog({
             </p>
           )}
         </div>
+          )}
         {/* 안쪽 상자의 테두리와 금색 링(3칸)이 잘리지 않게 여백을 두고 같은 만큼 당긴다 */}
         <div
           data-dialog-body
-          className="min-h-0 overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           style={{ margin: "calc(var(--p) * -3)", padding: "calc(var(--p) * 3)" }}
         >
           {children}
