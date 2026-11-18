@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { TIME_OF_DAY_SCRIPT } from "@/shared/hooks/useTimeOfDay";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/shared/lib/site";
 import "./globals.css";
 
 // 갈무리체: 한글 도트 글꼴 (SIL Open Font License 1.1). 12px의 배수에서 가장 또렷하다.
@@ -13,15 +14,24 @@ const galmuri = localFont({
   display: "swap",
 });
 
+// 공유 이미지(opengraph-image.png, twitter-image.png)·아이콘(icon.png, apple-icon.png, favicon.ico)·manifest.ts는
+// 파일 규칙으로 Next가 붙인다. 미리보기 그림은 홈 배경을 그대로 찍고 나무 표지판을 얹은 것이다.
 export const metadata: Metadata = {
-  title: "데굴레터",
-  description: "눈덩이를 굴려 친구의 마을에 눈사람을 세우고, 크리스마스에 열어 볼 편지를 남겨요.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: "%s · 데굴레터" },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: ["데굴레터", "눈사람", "크리스마스", "편지", "픽셀 게임"],
+  alternates: { canonical: "/" },
   openGraph: {
-    title: "데굴레터",
-    description: "친구 마을에 눈사람을 세우고, 크리스마스에 열어 볼 편지를 남겨요.",
     type: "website",
+    url: "/",
     locale: "ko_KR",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
 };
 
 export const viewport: Viewport = {
