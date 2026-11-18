@@ -2,8 +2,8 @@
 
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
-import { LoginKeyArt } from "./LoginKeyArt";
-import { LoginMethods } from "./LoginMethods";
+import { LoginKeyArt } from "@/domains/auth/components/LoginKeyArt";
+import { LoginMethods } from "@/domains/auth/components/LoginMethods";
 
 type Props = {
   onClose: () => void;
@@ -28,7 +28,7 @@ export function LoginModalA({ onClose }: Props) {
           <br />
           어떤 기기에서든 열어 볼 수 있어요
         </p>
-        <LoginMethods />
+        <LoginMethods onKakao={() => undefined} onGoogle={() => undefined} />
         <PixelButton variant="ghost" size="sm" onClick={onClose}>
           나중에 할게요
         </PixelButton>

@@ -1,5 +1,5 @@
 // 로그인 없이 쓰는 익명 계정. 처음 들어온 브라우저에 Appwrite가 임시 계정을 만들어 준다.
-// 마을 주인인지, 내가 만든 눈사람인지 구분하는 데 쓴다. (카카오 로그인은 나중에 이 위에 붙인다)
+// 마을 주인인지, 내가 만든 눈사람인지 구분하는 데 쓴다. 카카오 로그인하면 이 계정이 카카오에 이어진다.
 
 import { getAppwrite } from "./appwrite";
 
@@ -23,4 +23,9 @@ export function ensureUserId(): Promise<string> {
     });
   }
   return pending;
+}
+
+/** 로그인으로 계정이 바뀐 뒤 부른다. 다음 ensureUserId()가 새 계정을 다시 읽는다. */
+export function forgetUserId(): void {
+  pending = null;
 }

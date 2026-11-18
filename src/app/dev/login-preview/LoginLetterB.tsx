@@ -4,7 +4,7 @@ import { AirmailFrame } from "@/domains/letter/components/AirmailFrame";
 import { LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelPanel } from "@/shared/components/PixelPanel";
-import { LoginMethods } from "./LoginMethods";
+import { LoginMethods } from "@/domains/auth/components/LoginMethods";
 
 type Props = {
   onClose: () => void;
@@ -58,7 +58,7 @@ export function LoginLetterB({ onClose }: Props) {
             </header>
             <Perforation />
             <div className="flex flex-col items-center gap-[calc(var(--p)*5)]">
-              <LoginMethods />
+              <LoginMethods onKakao={() => undefined} onGoogle={() => undefined} />
               <PixelButton variant="ghost" size="sm" onClick={onClose}>
                 나중에 할게요
               </PixelButton>

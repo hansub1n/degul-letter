@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { isLoggedIn, LoginMethods, startKakaoLogin } from "@/domains/auth";
 import { useChristmasLabel } from "@/domains/letter";
 import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
@@ -14,7 +15,7 @@ import { BACKDROP_CARD_TOP } from "../lib/render";
 import type { Village } from "../types";
 import { HomeBackdrop } from "./HomeBackdrop";
 
-/** 첫 화면: 내 마을이 있으면 들어가기·링크 복사, 없으면 마을 만들기 */
+/** 첫 화면: 내 마을이 있으면 들어가기·링크 복사, 없으면 로그인 → 마을 만들기 */
 export function HomeScreen() {
   const router = useRouter();
   const [mine, setMine] = useState<Village | null | undefined>(undefined);
@@ -23,6 +24,9 @@ export function HomeScreen() {
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
   const [leaving, setLeaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  /** 카카오 로그인으로 계정을 지키고 있는지. 마을은 로그인해야 만들 수 있다 */
+  const [loggedIn, setLoggedIn] = useState<boolean | undefined>(undefined);
+  const [loggingIn, setLoggingIn] = useState(false);
   /** 썰매가 빠져나간 뒤(또는 로딩이 300ms 안에 끝나 안 보인 뒤)에만 폼·버튼을 보여 준다 */
   const [loaderDone, setLoaderDone] = useState(false);
   const onLoaderFinished = useCallback(() => setLoaderDone(true), []);
@@ -30,11 +34,16 @@ export function HomeScreen() {
 
   useEffect(() => {
     let alive = true;
-    findMyVillage()
-      .then((v) => alive && setMine(v))
+    Promise.all([findMyVillage(), isLoggedIn()])
+      .then(([v, login]) => {
+        if (!alive) return;
+        setLoggedIn(login);
+        setMine(v);
+      })
       .catch((e) => {
         console.error(e);
         if (alive) {
+          setLoggedIn(false);
           setMine(null);
           setMessage("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.");
         }
@@ -57,6 +66,18 @@ export function HomeScreen() {
       console.error(e);
       setMessage("마을을 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
       setBusy(false);
+    }
+  };
+
+  /** 카카오 로그인 뒤 이 화면으로 돌아와, 로그인한 계정의 마을이 있으면 "내 마을 가기", 없으면 닉네임 입력이 보인다 */
+  const login = async () => {
+    setLoggingIn(true);
+    setMessage(null);
+    try {
+      await startKakaoLogin("/");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "로그인을 시작하지 못했어요");
+      setLoggingIn(false);
     }
   };
 
@@ -97,7 +118,17 @@ export function HomeScreen() {
         </div>
       )}
 
-      {loaderDone && mine === null && (
+      {loaderDone && mine === null && !loggedIn && (
+        <div className="flex w-full flex-1 flex-col justify-center gap-[calc(var(--p)*4)]">
+          <p className="text-caption text-center leading-[1.6]">
+            로그인하면 어떤 기기에서든
+            <br />내 마을과 편지를 찾을 수 있어요
+          </p>
+          <LoginMethods busy={loggingIn} onKakao={() => void login()} />
+        </div>
+      )}
+
+      {loaderDone && mine === null && loggedIn && (
         <form
           className="flex w-full flex-col gap-[calc(var(--p)*4)]"
           onSubmit={(e) => {

@@ -83,34 +83,25 @@ function Label({ mark, children }: { mark: ReactNode; children: ReactNode }) {
 }
 
 type Props = {
-  /** 미리보기라 눌러도 로그인은 하지 않는다 */
-  onPreview?: (method: "kakao" | "google") => void;
+  onKakao: () => void;
+  /** 없으면 Google 단추를 숨긴다 */
+  onGoogle?: () => void;
+  /** 로그인 페이지로 넘어가는 중이면 단추를 잠근다 */
+  busy?: boolean;
 };
 
-/**
- * 로그인 수단 단추.
- * 지금 앱은 Appwrite 익명 세션만 쓰고, 명세는 마을 주인용 카카오 OAuth다.
- * 시안에서는 카카오를 주요 단추로 두고, Google을 함께 보여 준다.
- */
-export function LoginMethods({ onPreview }: Props) {
+/** 로그인 수단 단추. 카카오가 주요 단추, Google은 보조 단추. */
+export function LoginMethods({ onKakao, onGoogle, busy = false }: Props) {
   return (
     <div className="flex w-full flex-col gap-[calc(var(--p)*4)]">
-      <PixelButton
-        variant="primary"
-        className="w-full"
-        onClick={() => onPreview?.("kakao")}
-        aria-label="카카오로 계속하기"
-      >
+      <PixelButton variant="primary" className="w-full" disabled={busy} onClick={onKakao} aria-label="카카오로 계속하기">
         <Label mark={<PixelMark rows={BUBBLE} onPrimary />}>카카오로 계속하기</Label>
       </PixelButton>
-      <PixelButton
-        variant="secondary"
-        className="w-full"
-        onClick={() => onPreview?.("google")}
-        aria-label="Google로 계속하기"
-      >
-        <Label mark={<PixelMark rows={GLOBE} />}>Google로 계속하기</Label>
-      </PixelButton>
+      {onGoogle && (
+        <PixelButton variant="secondary" className="w-full" disabled={busy} onClick={onGoogle} aria-label="Google로 계속하기">
+          <Label mark={<PixelMark rows={GLOBE} />}>Google로 계속하기</Label>
+        </PixelButton>
+      )}
     </div>
   );
 }
