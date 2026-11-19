@@ -21,6 +21,7 @@ import { isModalLocked } from "@/shared/lib/modalLock";
 import { ensureUserId } from "@/shared/lib/session";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
+import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
 import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
@@ -139,14 +140,10 @@ export function VillageScreen() {
   const unsentIds = useMemo(() => [...drafts.keys()], [drafts]);
 
   if (problem) {
-    return (
-      <Center>
-        <PixelToast placement="inline">
-          {problem === "notFound"
-            ? "마을을 찾을 수 없어요. 링크를 다시 확인해 주세요."
-            : "마을을 불러오지 못했어요. 잠시 후 다시 들어와 주세요."}
-        </PixelToast>
-      </Center>
+    return problem === "notFound" ? (
+      <ErrorScreen title="마을을 찾을 수 없어요" description="링크를 다시 확인해 주세요" />
+    ) : (
+      <ErrorScreen title="마을을 불러오지 못했어요" description="잠시 후 다시 들어와 주세요" onRetry={() => window.location.reload()} />
     );
   }
   if (!loaded) {
