@@ -194,7 +194,7 @@ export function HomeScreen() {
       )}
 
       {inviting && <InviteLogin variant="page" />}
-      <nav className="text-caption fixed bottom-[calc(var(--p)*3)] left-1/2 z-30 flex -translate-x-1/2 gap-[calc(var(--p)*2)] bg-paper px-[calc(var(--p)*3)] py-[var(--p)] text-ink">
+      <nav style={{ bottom: "calc(var(--p) * 3 + env(safe-area-inset-bottom, 0px))" }} className="text-caption fixed left-1/2 z-30 flex -translate-x-1/2 gap-[calc(var(--p)*2)] bg-paper px-[calc(var(--p)*3)] py-[var(--p)] text-ink">
         <Link href="/privacy">개인정보 처리방침</Link>
         <span aria-hidden>·</span>
         <Link href="/terms">이용 약관</Link>

@@ -365,7 +365,3 @@ export function VillageScreen() {
     </>
   );
 }
-
-function Center({ children }: { children: React.ReactNode }) {
-  return <div className="fixed inset-0 flex items-center justify-center bg-ground px-[calc(var(--p)*6)]">{children}</div>;
-}

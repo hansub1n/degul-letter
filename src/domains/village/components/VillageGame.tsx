@@ -191,7 +191,18 @@ export function VillageGame({
         </div>
       )}
 
-      {header && !sculpting && <div className="absolute inset-x-3 top-3">{header}</div>}
+      {header && !sculpting && (
+        <div
+          className="absolute"
+          style={{
+            top: "calc(12px + env(safe-area-inset-top, 0px))",
+            left: "max(12px, env(safe-area-inset-left, 0px))",
+            right: "max(12px, env(safe-area-inset-right, 0px))",
+          }}
+        >
+          {header}
+        </div>
+      )}
       {overlay}
 
       {/* 조작 안내: 마을 이름보다 눈에 띄지 않게 아래쪽에 한 줄로, 몇 초 뒤 사라진다 */}
@@ -199,7 +210,7 @@ export function VillageGame({
 
       {/* 알림: 위쪽 가운데 */}
       {toast && (
-        <div className="pointer-events-none absolute inset-x-0 top-[72px] flex justify-center">
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ top: "calc(72px + env(safe-area-inset-top, 0px))" }}>
           <PixelToast key={toast.key} placement="inline">
             {toast.text}
           </PixelToast>
