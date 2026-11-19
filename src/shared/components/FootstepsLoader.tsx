@@ -6,6 +6,7 @@ import { hashInt } from "@/shared/lib/hash";
 
 // 마을을 불러오는 동안의 화면: 눈밭 위에 발자국이 아래에서 위로 찍히고, 가운데 조금 위에 안내 문구가 뜬다.
 // 1칸 = 3px(--p). 색은 globals.css 팔레트와 같은 hex (캔버스는 CSS 변수를 못 읽는다).
+// 밤 모드는 <html data-time="night">일 때 render.ts / globals.css와 같은 값이다.
 
 const P = 3;
 const STEP_GAP = 9; // 발자국 사이 세로 간격(칸)
@@ -15,13 +16,27 @@ const LIFE_MS = 3200; // 발자국이 남아 있는 시간
 const FADE_MS = 900; // 그중 마지막에 점이 빠지며 사라지는 시간
 const SHOW_DELAY_MS = 300; // 이보다 빨리 불러오면 아무것도 보여 주지 않는다
 
-const GROUND = [0xdc, 0xe6, 0xf3]; // --ground
-const GROUND_DOT = [0xcc, 0xd8, 0xea]; // --ground-dot
-const GLINT = [0xff, 0xff, 0xff]; // --ground-glint
+type Rgb = readonly [number, number, number];
+type Pal = { ground: Rgb; groundDot: Rgb; glint: Rgb; foot: Record<string, string> };
 
-// 왼발 (4x8): 앞꿈치 + 뒤꿈치. e = 위쪽 그늘(--snow-edge), d = 눌린 눈(--path-deep)
+// 낮: --ground, --ground-dot, --ground-glint, --snow-edge, --path-deep
+const PAL_DAY: Pal = {
+  ground: [0xdc, 0xe6, 0xf3],
+  groundDot: [0xcc, 0xd8, 0xea],
+  glint: [0xff, 0xff, 0xff],
+  foot: { e: "#A9B8D6", d: "#B8C4DC" },
+};
+// 밤: --ground, --ground-dot, --ground-glint. 발자국은 밤 눈밭(--ground-dot)과 섞이지 않게
+// --ground-shadow·--path보다 한 단계씩 어둡게 칠한다 (그대로 쓰면 위쪽 자국이 배경에 묻힌다)
+const PAL_NIGHT: Pal = {
+  ground: [0x4a, 0x4f, 0x86],
+  groundDot: [0x42, 0x46, 0x7a],
+  glint: [0x8e, 0x95, 0xc8],
+  foot: { e: "#272957", d: "#313466" },
+};
+
+// 왼발 (4x8): 앞꿈치 + 뒤꿈치. e = 위쪽 그늘, d = 눌린 눈
 const FOOT = [".ee.", "eddd", "eddd", "dddd", ".dd.", "....", ".ee.", ".dd."];
-const FOOT_COLOR: Record<string, string> = { e: "#A9B8D6", d: "#B8C4DC" };
 
 type Props = {
   /** 화면에 띄우는 안내 문구 */
@@ -47,6 +62,7 @@ export function FootstepsLoader({ label = "마을로 가는 중…", className =
     if (!canvas || !ctx) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const pal = document.documentElement.getAttribute("data-time") === "night" ? PAL_NIGHT : PAL_DAY;
     let w = 0;
     let h = 0;
     let ground: ImageData | null = null;
@@ -66,7 +82,7 @@ export function FootstepsLoader({ label = "마을로 가는 중…", className =
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const r = hashInt(x, y);
-          const c = r < 0.04 ? GROUND_DOT : r > 0.994 ? GLINT : GROUND;
+          const c = r < 0.04 ? pal.groundDot : r > 0.994 ? pal.glint : pal.ground;
           const i = (y * w + x) * 4;
           ground.data[i] = c[0];
           ground.data[i + 1] = c[1];
@@ -99,7 +115,7 @@ export function FootstepsLoader({ label = "마을로 가는 중…", className =
           const px = k % 2 ? cx + (row.length - 1 - x) : cx + x;
           const py = cy + y;
           if (fade > 0 && hashInt(px, py) < fade) continue;
-          ctx.fillStyle = FOOT_COLOR[c];
+          ctx.fillStyle = pal.foot[c];
           ctx.fillRect(px, py, 1, 1);
         }
       });
