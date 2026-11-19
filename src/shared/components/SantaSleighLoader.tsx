@@ -354,3 +354,59 @@ export function SantaSleighLoader({
     </div>
   );
 }
+
+// 길을 잃은 산타 머리 위 물음표 말풍선 (흰 면 + 남색 물음표, 외곽선은 paintCells가 두른다)
+const QUESTION = [
+  ".WWWWW.",
+  "WWkkkWW",
+  "WWWWkWW",
+  "WWWkkWW",
+  "WWWkWWW",
+  "WWWWWWW",
+  "WWWkWWW",
+  ".WWWWW.",
+  "..WW...",
+  "..W....",
+];
+
+const LOST_W = SPRITE_W + 2;
+const LOST_H = SCENE_H;
+
+/**
+ * 마을을 못 찾은 산타: 로딩 썰매와 같은 그림을 멈춘 채로 그리고, 산타 머리 위에 물음표를 띄운다.
+ * 없는 주소·없는 마을·오류 화면에서 쓴다 ("산타가 마을을 찾다가 길을 잃었다").
+ */
+export function SantaLostArt({ scale = 4, className = "" }: { scale?: number; className?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const ctx = ref.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, LOST_W, LOST_H);
+    const x = 1;
+    const sy = 14;
+    const d1x = x + 28;
+    const d1y = 10;
+    const d2x = x + 46;
+    const d2y = 8;
+    const cells: Cell[] = [];
+    pushRows(SLEIGH, x, sy, cells);
+    pushRein(cells, x + 17, sy + 6, d1x + 10, d1y + 8);
+    pushRein(cells, d1x + 11, d1y + 8, d2x + 10, d2y + 8);
+    pushRows(DEER, d1x, d1y, cells);
+    pushRows(LEGS_TUCK, d1x, d1y + 13, cells);
+    pushRows(DEER, d2x, d2y, cells);
+    pushRows(LEGS_TUCK, d2x, d2y + 13, cells);
+    pushRows(QUESTION, x + 12, 1, cells);
+    paintCells(ctx, cells);
+  }, []);
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      width={LOST_W}
+      height={LOST_H}
+      className={`[image-rendering:pixelated] ${className}`}
+      style={{ width: LOST_W * scale, height: LOST_H * scale }}
+    />
+  );
+}

@@ -71,7 +71,7 @@ export function InviteLogin({ variant, onClose }: Props) {
       }`}
       onClick={overlay && onClose && !busy ? (e) => e.target === e.currentTarget && onClose() : undefined}
     >
-      <section aria-labelledby="invite-login-title" className="pixel-rise w-full max-w-[360px]">
+      <section aria-labelledby="invite-login-title" className="pixel-rise w-full max-w-[324px]">
         <AirmailFrame>
           <PixelPanel
             tone="paper"
