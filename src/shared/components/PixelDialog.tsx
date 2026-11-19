@@ -154,7 +154,7 @@ export function PixelDialog({
         aria-describedby={caption ? captionId : undefined}
         tabIndex={-1}
         data-tone="snow"
-        className={`pixel-box pixel-rise relative flex max-h-[calc(100dvh-36px-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] w-full max-w-[360px] flex-col gap-[calc(var(--p)*4)] text-ink outline-none ${className}`}
+        className={`pixel-box pixel-rise relative flex max-h-[calc(100dvh-36px-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] w-full max-w-[324px] flex-col gap-[calc(var(--p)*4)] text-ink outline-none ${className}`}
         style={{ padding: "calc(var(--p) * 5)", minHeight: minHeight ? `${minHeight}px` : undefined }}
       >
         <div data-dialog-chrome inert={cover ? true : undefined} className="flex min-h-0 flex-1 flex-col gap-[calc(var(--p)*4)]">

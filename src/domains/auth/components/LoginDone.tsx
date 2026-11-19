@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PixelButton } from "@/shared/components/PixelButton";
-import { PixelPanel } from "@/shared/components/PixelPanel";
+import { PixelDialog } from "@/shared/components/PixelDialog";
 import { completeLogin } from "../api";
 
 /**
@@ -38,15 +38,18 @@ export function LoginDone() {
   }, [router]);
 
   return (
-    <main className="fixed inset-0 flex items-center justify-center bg-ground px-[calc(var(--p)*6)]">
-      <PixelPanel className="relative z-10 flex w-full max-w-[320px] flex-col items-center gap-[calc(var(--p)*4)] text-center">
-        <p className="text-body">{error ?? "로그인하는 중…"}</p>
-        {error && (
-          <PixelButton variant="primary" className="w-full" onClick={() => router.replace("/")}>
-            처음으로
-          </PixelButton>
-        )}
-      </PixelPanel>
+    <main className="fixed inset-0 bg-ground">
+      {/* 다른 확인 창과 같은 공용 창(크기·여백·베일). 로그인 중에는 닫을 수 없다 */}
+      <PixelDialog title={error ? "로그인하지 못했어요" : "로그인하는 중"} hideHeader closeOnVeil={false} onClose={() => error && router.replace("/")}>
+        <div className="flex flex-col items-center gap-[calc(var(--p)*4)] px-[calc(var(--p)*2)] pb-[calc(var(--p)*1)] pt-[calc(var(--p)*3)] text-center break-keep">
+          <p className="text-body">{error ?? "로그인하는 중…"}</p>
+          {error && (
+            <PixelButton variant="primary" className="w-full" onClick={() => router.replace("/")}>
+              처음으로
+            </PixelButton>
+          )}
+        </div>
+      </PixelDialog>
     </main>
   );
 }
