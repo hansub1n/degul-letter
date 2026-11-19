@@ -156,6 +156,15 @@ html.modal-lock [role="dialog"] {
   touch-action: pan-y;
 }
 
+/* 약관·개인정보: 안쪽 상자만 스크롤하고 스크롤바는 숨긴다 (폭이 바뀌지 않게) */
+.legal-scroll {
+  scrollbar-width: none;
+}
+
+.legal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   font-family: var(--font-pixel), sans-serif;
   -webkit-font-smoothing: none;

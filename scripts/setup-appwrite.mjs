@@ -133,7 +133,7 @@ async function setupLetters() {
 async function setupIdentities() {
   const tableId = "identities";
   console.log("🔑 identities");
-  // 카카오 회원번호 → 우리 계정 ID 연결표. 줄 ID가 "kakao_회원번호"라서 인덱스가 필요 없다.
+  // 카카오 회원번호·구글 sub → 우리 계정 ID 연결표. 줄 ID가 "kakao_회원번호" 또는 "google_sub"라서 인덱스가 필요 없다.
   // 권한을 아무에게도 주지 않는다. 로그인 서버(API 키)만 읽고 쓴다.
   await ensure("테이블", () =>
     tables.createTable({ databaseId, tableId, name: "identities", permissions: [], rowSecurity: false }),
