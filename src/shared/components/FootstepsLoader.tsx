@@ -76,11 +76,12 @@ export function FootstepsLoader({ label = "마을로 가는 중…", className =
       }
     };
 
-    // 안내 문구 아래(칸)에서 발자국을 멈춘다. 토스트와 겹치지 않게 몇 칸 여백을 둔다.
-    const toastStopY = () => {
+    // 안내 문구는 화면 아래에 있고, 발자국은 문구 바로 위에서 시작해 위(마을 쪽)로 걸어 올라간다.
+    // 문구와 겹치지 않게 몇 칸 여백을 둔다.
+    const toastTopY = () => {
       const el = toastRef.current;
-      if (!el) return 10;
-      return Math.ceil(el.getBoundingClientRect().bottom / P) + 4;
+      if (!el) return h - 24;
+      return Math.floor(el.getBoundingClientRect().top / P) - 26;
     };
 
     resize();
@@ -109,9 +110,9 @@ export function FootstepsLoader({ label = "마을로 가는 중…", className =
       if (!ground || w <= 0) return;
       ctx.putImageData(ground, 0, 0);
 
-      const startY = h - 24;
-      // 발자국은 안내 문구 아래에서 멈춘다
-      const count = Math.max(1, Math.floor((startY - toastStopY()) / STEP_GAP) + 1);
+      const startY = toastTopY();
+      // 발자국은 화면 위쪽 1/4 지점까지만 올라간다
+      const count = Math.max(1, Math.floor((startY - Math.round(h * 0.25)) / STEP_GAP) + 1);
       const elapsed = now - start;
       // 발이 4칸이라 기준을 2칸 왼쪽으로, 처음 몇 걸음이 한쪽으로 치우치지 않게 흔들림 위상을 맞춘다
       const footX = (k: number) => Math.round(w / 2 - 2 + Math.sin((k - 3) / 4) * 6 + (k % 2 ? SIDE : -SIDE));
@@ -146,7 +147,7 @@ export function FootstepsLoader({ label = "마을로 가는 중…", className =
           <canvas ref={canvasRef} aria-hidden className="absolute inset-0 block [image-rendering:pixelated]" />
           <div
             ref={toastRef}
-            className="pointer-events-none absolute inset-x-0 top-[42%] z-10 flex justify-center px-[calc(var(--p)*6)]"
+            className="pointer-events-none absolute inset-x-0 bottom-[18%] z-10 flex justify-center px-[calc(var(--p)*6)]"
           >
             <PixelToast placement="inline">{label}</PixelToast>
           </div>
