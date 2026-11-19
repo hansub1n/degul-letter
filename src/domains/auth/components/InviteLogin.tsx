@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "reac
 import { AirmailFrame, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelPanel } from "@/shared/components/PixelPanel";
+import { PixelToast } from "@/shared/components/PixelToast";
 import { acquireModalLock } from "@/shared/lib/modalLock";
 import { startGoogleLogin, startKakaoLogin } from "../api";
 import { detectInApp, externalBrowserUrl, type InAppKind } from "../lib/inAppBrowser";
@@ -46,10 +47,13 @@ function Perforation() {
 export function InviteLogin({ variant, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // 실패·안내 문구는 카드 안에 끼우지 않고(카드가 늘어나 버튼이 밀린다) 아래 알림으로 잠깐 띄운다
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
   const inApp = useInApp();
-  // iOS의 카카오톡이 아닌 인앱은 바깥 브라우저를 열 주소가 없다. 구글 단추 대신 안내를 보여 준다.
-  const iosNotice = inApp === "ios";
 
   const kakao = async () => {
     setBusy(true);
@@ -67,7 +71,12 @@ export function InviteLogin({ variant, onClose }: Props) {
       window.location.assign(externalBrowserUrl(window.location.href, inApp));
       return;
     }
-    if (inApp === "ios") return;
+    // iOS의 카카오톡이 아닌 인앱은 바깥 브라우저를 열 주소가 없다.
+    // 단추 모양은 그대로 두고, 누르면 링크를 복사해 Safari·Chrome에서 열도록 알림으로 안내한다
+    if (inApp === "ios") {
+      await copyLink();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -82,7 +91,7 @@ export function InviteLogin({ variant, onClose }: Props) {
     const url = window.location.href;
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
+      setError("링크를 복사했어요. Safari에서 열어 주세요");
     } catch {
       window.prompt("이 링크를 복사해서 Safari나 Chrome 주소창에 붙여 넣어요", url);
     }
@@ -138,20 +147,7 @@ export function InviteLogin({ variant, onClose }: Props) {
             </header>
             <Perforation />
             <div className="flex flex-col items-center gap-[calc(var(--p)*5)]">
-              {error && <p className="text-body text-roof">{error}</p>}
-              <LoginMethods busy={busy} onKakao={() => void kakao()} onGoogle={iosNotice ? undefined : () => void google()} />
-              {iosNotice && (
-                <div className="flex w-full flex-col items-center gap-[calc(var(--p)*3)] text-center">
-                  <p className="text-body">
-                    이 앱에서는 구글 로그인을 열 수 없어요.
-                    <br />
-                    Safari나 Chrome에서 열어 주세요.
-                  </p>
-                  <PixelButton size="sm" disabled={busy} onClick={() => void copyLink()}>
-                    {copied ? "복사했어요" : "링크 복사"}
-                  </PixelButton>
-                </div>
-              )}
+              <LoginMethods busy={busy} onKakao={() => void kakao()} onGoogle={() => void google()} />
               {onClose && (
                 <PixelButton variant="ghost" size="sm" disabled={busy} onClick={onClose}>
                   나중에 할게요
@@ -161,6 +157,11 @@ export function InviteLogin({ variant, onClose }: Props) {
           </PixelPanel>
         </AirmailFrame>
       </section>
+      {error && (
+        <PixelToast key={error} className="z-50">
+          {error}
+        </PixelToast>
+      )}
     </div>
   );
 }
