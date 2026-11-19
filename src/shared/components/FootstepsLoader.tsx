@@ -26,12 +26,13 @@ const PAL_DAY: Pal = {
   glint: [0xff, 0xff, 0xff],
   foot: { e: "#A9B8D6", d: "#B8C4DC" },
 };
-// 밤: --ground, --ground-dot, --ground-glint, --ground-shadow, --path
+// 밤: --ground, --ground-dot, --ground-glint. 발자국은 밤 눈밭(--ground-dot)과 섞이지 않게
+// --ground-shadow·--path보다 한 단계씩 어둡게 칠한다 (그대로 쓰면 위쪽 자국이 배경에 묻힌다)
 const PAL_NIGHT: Pal = {
   ground: [0x4a, 0x4f, 0x86],
   groundDot: [0x42, 0x46, 0x7a],
   glint: [0x8e, 0x95, 0xc8],
-  foot: { e: "#33366A", d: "#3E4275" },
+  foot: { e: "#272957", d: "#313466" },
 };
 
 // 왼발 (4x8): 앞꿈치 + 뒤꿈치. e = 위쪽 그늘, d = 눌린 눈
