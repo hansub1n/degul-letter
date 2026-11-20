@@ -21,8 +21,9 @@ const galmuriSmall = localFont({
   display: "swap",
 });
 
-// 공유 이미지(opengraph-image.png, twitter-image.png)·아이콘(icon.png, apple-icon.png, favicon.ico)·manifest.ts는
-// 파일 규칙으로 Next가 붙인다. 미리보기 그림은 홈 배경을 그대로 찍고 나무 표지판을 얹은 것이다.
+// 공유 이미지(opengraph-image.png, twitter-image.png)·아이콘(icon.svg, apple-icon.png, favicon.ico)·manifest.ts는
+// 파일 규칙으로 Next가 붙인다. 공유 이미지는 마을 앞 나무 표지판과 눈 조각들, 탭 아이콘은 오른쪽으로 미는 캐릭터,
+// 홈 화면 아이콘은 밤 마을에서 눈덩이를 미는 장면이다.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: SITE_TITLE, template: "%s · 데굴레터" },
