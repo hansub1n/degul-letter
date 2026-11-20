@@ -634,6 +634,34 @@ body {
   }
 }
 
+/* 천천히 등장하는 창: 베일이 0.3초에 걸쳐 깔리고, 창은 6칸 아래에서 0.36초에 걸쳐 올라온다 */
+.pixel-veil-in {
+  animation: pixel-veil-in 300ms steps(4, end);
+}
+
+.pixel-rise-soft {
+  animation: pixel-rise-soft 360ms steps(6, end);
+}
+
+@keyframes pixel-veil-in {
+  from {
+    background-color: transparent;
+  }
+}
+
+@keyframes pixel-rise-soft {
+  from {
+    transform: translateY(calc(var(--p) * 6));
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 @keyframes pixel-rise {
   from {
     transform: translateY(calc(var(--p) * 2));
@@ -737,6 +765,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .pixel-rise,
+  .pixel-rise-soft,
+  .pixel-veil-in,
   .pixel-flash,
   .pixel-bob,
   .pixel-blink,

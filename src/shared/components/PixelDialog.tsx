@@ -34,6 +34,8 @@ type Props = {
   hideHeader?: boolean;
   /** 창의 최소 높이(px). 내용이 바뀌어도 크기가 줄지 않게 할 때 쓴다 */
   minHeight?: number;
+  /** 천천히 등장: 베일이 스르르 깔리고 창이 아래에서 더 길게 올라온다 (완성 뒤 편지 창처럼 한 박자 쉬고 이어질 때) */
+  soft?: boolean;
   className?: string;
   children?: ReactNode;
 };
@@ -61,6 +63,7 @@ export function PixelDialog({
   hideClose = false,
   hideHeader = false,
   minHeight,
+  soft = false,
   className = "",
   children,
 }: Props) {
@@ -134,7 +137,7 @@ export function PixelDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-veil"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-veil ${soft ? "pixel-veil-in" : ""}`}
       style={{
         paddingTop: "max(calc(var(--p) * 4), env(safe-area-inset-top, 0px))",
         paddingRight: "max(calc(var(--p) * 4), env(safe-area-inset-right, 0px))",
@@ -154,7 +157,7 @@ export function PixelDialog({
         aria-describedby={caption ? captionId : undefined}
         tabIndex={-1}
         data-tone="snow"
-        className={`pixel-box pixel-rise relative flex max-h-[calc(100dvh-36px-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] w-full max-w-[324px] flex-col gap-[calc(var(--p)*4)] text-ink outline-none ${className}`}
+        className={`pixel-box ${soft ? "pixel-rise-soft" : "pixel-rise"} relative flex max-h-[calc(100dvh-36px-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] w-full max-w-[324px] flex-col gap-[calc(var(--p)*4)] text-ink outline-none ${className}`}
         style={{ padding: "calc(var(--p) * 5)", minHeight: minHeight ? `${minHeight}px` : undefined }}
       >
         <div data-dialog-chrome inert={cover ? true : undefined} className="flex min-h-0 flex-1 flex-col gap-[calc(var(--p)*4)]">

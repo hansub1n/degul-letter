@@ -50,6 +50,8 @@ type Props = {
   onSavedSnowmanBroken?: (savedId: string) => void;
   /** 어떤 눈사람이든 부서졌을 때 (편지를 안 넣은 눈사람 목록에서 빼려고 쓴다) */
   onSnowmanBroken?: (stackId: number) => void;
+  /** "완성!" 축하가 끝났을 때 (편지 창을 이 뒤에 띄운다) */
+  onSnowmanCelebrated?: (stackId: number) => void;
   /** 편지 버튼을 눌렀을 때 (어느 눈사람의 편지인지) */
   onOpenLetter?: (snowman: NearbySnowman) => void;
   /** 우체통 말풍선을 눌렀을 때 (주인: 우체통 열기, 방문자: 언제 열리는지 안내). 없으면 말풍선을 띄우지 않는다 */
@@ -68,6 +70,8 @@ type Props = {
 
 export type VillageGameApi = {
   hasUnsavedWork: () => boolean;
+  /** 눈사람 몸의 화면 위치 (페이지 기준 CSS px). 편지 봉투가 날아갈 곳 */
+  stackChestScreen: (stackId: number) => { x: number; y: number } | null;
 };
 
 export type MarkSaved = (rowId: string, authorName: string, hasLetter: boolean) => void;
@@ -81,6 +85,7 @@ export function VillageGame({
   onWriteLetter,
   onSavedSnowmanBroken,
   onSnowmanBroken,
+  onSnowmanCelebrated,
   onOpenLetter,
   onOpenMailbox,
   door,
@@ -104,9 +109,9 @@ export function VillageGame({
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
   // 바뀔 수 있는 콜백은 ref로 최신 값을 들고 있는다 (게임 루프가 매 프레임 부르므로)
-  const callbacks = useRef({ onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken });
+  const callbacks = useRef({ onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken, onSnowmanCelebrated });
   useEffect(() => {
-    callbacks.current = { onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken };
+    callbacks.current = { onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken, onSnowmanCelebrated };
   });
 
   useEffect(() => {
@@ -128,6 +133,7 @@ export function VillageGame({
             );
           }
         }
+        if (event.type === "celebrated") callbacks.current.onSnowmanCelebrated?.(event.stackId);
         if (event.type === "broken") {
           callbacks.current.onSnowmanBroken?.(event.stackId);
           if (event.savedId) callbacks.current.onSavedSnowmanBroken?.(event.savedId);
@@ -160,6 +166,11 @@ export function VillageGame({
     if (!apiRef) return;
     apiRef.current = {
       hasUnsavedWork: () => Boolean(sculpting) || Boolean(gameRef.current?.hasUnsavedWork()),
+      stackChestScreen: (stackId) => {
+        const p = gameRef.current?.stackChestScreen(stackId);
+        const box = canvasRef.current?.getBoundingClientRect();
+        return p && box ? { x: p.x + box.left, y: p.y + box.top } : null;
+      },
     };
     return () => {
       apiRef.current = null;
