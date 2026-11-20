@@ -76,6 +76,8 @@ export function FinishDialog(props: Props) {
 
   return (
     <PixelDialog
+      // 완성 축하 뒤에 이어지는 창이라 베일과 창이 천천히 올라온다
+      soft
       title={confirmingLeave ? "눈사람이 녹아 버려요" : "눈사람 완성!"}
       icon={confirmingLeave ? undefined : "star"}
       hideHeader={confirmingLeave}

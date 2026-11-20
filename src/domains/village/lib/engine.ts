@@ -85,6 +85,8 @@ export type VillageGame = {
   hasUnsavedWork(): boolean;
   /** 캐릭터가 화면 아래쪽 절반에 있는지 (알림을 캐릭터 반대쪽에 띄우려고 쓴다) */
   playerInLowerHalf(): boolean;
+  /** 눈사람 가슴께의 화면 위치 (CSS px, 캔버스 기준). 편지 봉투가 날아갈 곳 */
+  stackChestScreen(stackId: number): { x: number; y: number } | null;
   destroy(): void;
 };
 
@@ -337,7 +339,11 @@ export function createVillageGame({
       world.player.dir = "down";
       if ("vibrate" in navigator) navigator.vibrate([20, 60, 20]);
     }
-    if (celebrate && world.time - celebrate.start > CELEBRATE_SECONDS) celebrate = null;
+    if (celebrate && world.time - celebrate.start > CELEBRATE_SECONDS) {
+      const done = celebrate.stackId;
+      celebrate = null;
+      emit([{ type: "celebrated", stackId: done }]);
+    }
 
     // 카메라는 표지판·버튼 아래 끝까지 마을 밖을 더 보여 준다 (맨 위 줄이 표지판 뒤에 숨지 않게)
     const boxes = headerBoxes();
@@ -427,6 +433,13 @@ export function createVillageGame({
     },
     setBreakCharging(charging) {
       chargeStart = charging ? performance.now() : null;
+    },
+    stackChestScreen(stackId) {
+      const stack = findStack(stackId);
+      if (!stack) return null;
+      // 머리 꼭대기와 발 사이 아래쪽 1/3쯤 (편지를 눈사람 몸에 쏙 넣는 자리)
+      const head = stackHeadY(stack);
+      return renderer.toScreen(stack.x, stack.y - (stack.y - head) * 0.4);
     },
     playerInLowerHalf() {
       const p = renderer.toScreen(world.player.x, world.player.y);

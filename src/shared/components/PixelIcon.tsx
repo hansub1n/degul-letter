@@ -169,19 +169,19 @@ const ICONS = {
     ".....oosso..",
     "......oooo..",
   ],
-  // 집 로그아웃: 반쯤 열린 문 안에서 불빛이 새어 나온다
+  // 집 로그아웃: 반쯤 열린 문 안에서 불빛이 새어 나온다. 왼쪽 문틀이 무거워서 한 칸 오른쪽으로 옮겨 가운데로 보이게 한다
   houseDoor: [
-    "oooooooo....",
-    "oYYyyyyoo...",
-    "oYyyyyyobo..",
-    "oyyyyyyobbo.",
-    "oyyyyyyobbo.",
-    "oyyyyyyogbo.",
-    "oyyyyyyobbo.",
-    "oyyyyyyobbo.",
-    "oyyyyyyobo..",
-    "oyyyyyyoo...",
-    "oooooooo....",
+    ".oooooooo...",
+    ".oYYyyyyoo..",
+    ".oYyyyyyobo.",
+    ".oyyyyyyobbo",
+    ".oyyyyyyobbo",
+    ".oyyyyyyogbo",
+    ".oyyyyyyobbo",
+    ".oyyyyyyobbo",
+    ".oyyyyyyobo.",
+    ".oyyyyyyoo..",
+    ".oooooooo...",
   ],
   // 우체통: 빨간 통 + 투입구 + 나무 기둥
   mailbox: [

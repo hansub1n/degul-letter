@@ -24,11 +24,13 @@ import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
 import { GoHomeConfirm } from "./GoHomeConfirm";
+import { LetterFlight } from "./LetterFlight";
 import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { VillageSign } from "./VillageSign";
 
-const FINISH_DIALOG_DELAY_MS = 2000;
+/** "완성!" 축하가 끝나고 편지 창이 뜨기 전 한 박자 쉬는 시간 (바로 뜨면 뚝 끊기는 느낌이 든다) */
+const AFTER_CELEBRATE_PAUSE_MS = 350;
 
 type Loaded = {
   village: Village;
@@ -52,6 +54,8 @@ export function VillageScreen() {
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [goHomeOpen, setGoHomeOpen] = useState(false);
+  /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
+  const [flight, setFlight] = useState<{ stackId: number; key: number } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
@@ -60,6 +64,8 @@ export function VillageScreen() {
   const [drafts, setDrafts] = useState<Map<number, PendingSave>>(() => new Map());
   /** 완성 직후(편지 창이 뜨기 전) 부순 눈사람. 늦게 뜨는 편지 창을 띄우지 않으려고 기억한다 */
   const brokenRef = useRef<Set<number>>(new Set());
+  /** 완성했지만 아직 편지 창을 안 띄운 눈사람. 축하가 끝나면(onSnowmanCelebrated) 꺼내 편지 창을 띄운다 */
+  const celebratingRef = useRef<Map<number, PendingSave>>(new Map());
   const [status, setStatus] = useState<string | null>(null);
   // 눈사람 ID → 편지 ID. 편지 개수를 세고, 눈사람을 부술 때 편지도 지우는 데 쓴다.
   // 마을에 온 편지 목록 (눈사람 ID → 편지 ID, 보낸 사람). 우체통 목록·편지 수·부술 때 편지 지우기에 쓴다.
@@ -235,18 +241,25 @@ export function VillageScreen() {
         apiRef={gameApiRef}
         saved={saved}
         myId={myId}
-        // 마을로 돌아오는 확대(0.5초)와 "완성!" 축하가 끝난 뒤에 이름·편지 창을 띄운다
+        // 마을로 돌아오는 확대(0.5초)와 "완성!" 축하가 끝나고, 한 박자 쉰 뒤에 이름·편지 창을 띄운다
         onSnowmanFinished={(stackId, draft, markSaved) => {
           const job = { stackId, draft, markSaved };
           brokenRef.current.delete(stackId);
+          celebratingRef.current.set(stackId, job);
           setDrafts((m) => new Map(m).set(stackId, job));
+        }}
+        onSnowmanCelebrated={(stackId) => {
+          const job = celebratingRef.current.get(stackId);
+          celebratingRef.current.delete(stackId);
+          if (!job) return;
           window.setTimeout(() => {
             if (!brokenRef.current.has(stackId)) setPending(job);
-          }, FINISH_DIALOG_DELAY_MS);
+          }, AFTER_CELEBRATE_PAUSE_MS);
         }}
         // 편지를 안 넣은 눈사람을 부수면 "녹아 버려요" 대상에서 뺀다 (부순 뒤 나갈 때 잘못 묻지 않게)
         onSnowmanBroken={(stackId) => {
           brokenRef.current.add(stackId);
+          celebratingRef.current.delete(stackId);
           setDrafts((m) => {
             if (!m.has(stackId)) return m;
             const next = new Map(m);
@@ -328,13 +341,15 @@ export function VillageScreen() {
                 onClick={shareLink}
               />
             ) : myVillage ? (
+              // 내 마을이 있는 친구: 주인의 종이비행기 버튼과 같은 모양. 아이콘은 집 문 말풍선과 같은 반쯤 열린 문
               <PixelButton
                 variant="primary"
+                iconOnly
+                icon="houseDoor"
+                aria-label="내 마을 가기"
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={() => goOrConfirm(`/v/${myVillage.code}`)}
-              >
-                내 마을 가기
-              </PixelButton>
+              />
             ) : (
               <InviteTicket
                 className="pointer-events-auto ml-auto shrink-0"
@@ -390,6 +405,7 @@ export function VillageScreen() {
               next.delete(job.stackId);
               return next;
             });
+            setFlight({ stackId: job.stackId, key: Date.now() });
             void save(job, name, letter);
           }}
           // 취소·Esc: 저장하지 않고 닫는다. 눈사람은 그대로 두고, 다시 다가가면 "편지 쓰기"로 열 수 있다.
@@ -397,6 +413,13 @@ export function VillageScreen() {
         />
       )}
       {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
+      {flight && (
+        <LetterFlight
+          key={flight.key}
+          target={() => gameApiRef.current?.stackChestScreen(flight.stackId) ?? null}
+          onDone={() => setFlight(null)}
+        />
+      )}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
       {goHomeOpen && (
         <GoHomeConfirm
