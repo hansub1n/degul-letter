@@ -23,6 +23,7 @@ import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowma
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
+import { GoHomeConfirm } from "./GoHomeConfirm";
 import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { VillageSign } from "./VillageSign";
@@ -50,6 +51,7 @@ export function VillageScreen() {
   const gameApiRef = useRef<VillageGameApi | null>(null);
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [goHomeOpen, setGoHomeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
@@ -79,6 +81,7 @@ export function VillageScreen() {
       setDrafts(new Map());
       setLeaveTo(null);
       setLogoutOpen(false);
+      setGoHomeOpen(false);
       setInviteOpen(false);
       setStatus(null);
       setLetters([]);
@@ -270,8 +273,17 @@ export function VillageScreen() {
                   },
                 }
               : undefined
-            : // 놀러 온 친구: 집 앞에서 첫 화면(내 마을 만들기·내 마을 가기)으로 간다
-              { icon: "houseDoor", label: "첫 화면으로", onClick: () => goOrConfirm("/") }
+            : // 놀러 온 친구: 집 앞에서 내 마을로 (마을이 없으면 첫 화면에서 마을 만들기).
+              // 저장 안 한 눈사람이 있으면 "녹아 버려요"가 확인을 겸하고, 없으면 확인 창으로 묻는다
+              {
+                icon: "houseDoor",
+                label: myVillage ? "내 마을로" : "내 마을 만들기",
+                onClick: () => {
+                  if (isModalLocked()) return;
+                  if (hasUnsaved()) setLeaveTo(myVillage ? `/v/${myVillage.code}` : "/");
+                  else setGoHomeOpen(true);
+                },
+              }
         }
         onOpenLetter={(snowman) => {
           if (snowman.savedId) setOpeningLetter({ authorName: snowman.authorName ?? "친구", savedId: snowman.savedId });
@@ -370,6 +382,16 @@ export function VillageScreen() {
       )}
       {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
+      {goHomeOpen && (
+        <GoHomeConfirm
+          hasVillage={myVillage !== null}
+          onGo={() => {
+            setGoHomeOpen(false);
+            router.push(myVillage ? `/v/${myVillage.code}` : "/");
+          }}
+          onClose={() => setGoHomeOpen(false)}
+        />
+      )}
       {leaveTo && (
         <PixelDialog title="눈사람이 녹아 버려요" hideHeader closeOnVeil onClose={() => setLeaveTo(null)}>
           <div className="flex min-h-full w-full flex-1 flex-col justify-center self-stretch">
