@@ -19,6 +19,8 @@ function messageFor(event: GameEvent): string | null {
       return "계속 밀면 위로 올라가요";
     case "stackBlocked":
       return event.reason === "full" ? "4단까지만 쌓을 수 있어요" : "완성된 눈사람에는 더 쌓을 수 없어요";
+    case "zoneBlocked":
+      return "다른 눈사람과 너무 가까워요. 조금 떨어져서 쌓아 주세요";
     case "stacked":
       return event.height === 2 ? "눈사람이 됐어요! 더 쌓거나 완성해 보세요" : `${event.height}단 눈사람!`;
     case "broken":
