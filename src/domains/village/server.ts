@@ -39,6 +39,33 @@ function config() {
 
 type VillageRow = { $id: string; name: string; code: string; ownerId: string };
 
+/**
+ * 공유 링크의 제목에 쓸 마을 이름만. 눈사람·편지·주인 ID는 돌려주지 않는다.
+ * 환경 변수가 없거나 마을이 없으면 null (그때 화면은 공통 제목을 쓴다).
+ */
+export async function getPublicVillageName(code: string): Promise<string | null> {
+  if (!/^[a-z0-9]{4,12}$/.test(code)) return null;
+  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+  const apiKey = process.env.APPWRITE_API_KEY;
+  if (!endpoint || !projectId || !databaseId || !apiKey) return null;
+  try {
+    const tables = new TablesDB(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey));
+    const { rows } = await tables.listRows({
+      databaseId,
+      tableId: "villages",
+      queries: [Query.equal("code", code), Query.limit(1)],
+    });
+    const name = (rows[0] as unknown as VillageRow | undefined)?.name;
+    if (typeof name !== "string") return null;
+    const clean = name.replace(/[\u0000-\u001f]/g, "").trim();
+    return clean ? [...clean].slice(0, 30).join("") : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createVillageForUser(params: {
   jwt: string;
   name: unknown;
