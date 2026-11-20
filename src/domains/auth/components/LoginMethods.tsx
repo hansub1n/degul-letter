@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import localFont from "next/font/local";
-import kakaoLogin from "../assets/kakao_login_kr_large.svg";
+import kakaoLogin from "../assets/kakao_login_kr_medium.svg";
 
 // 구글 로그인 단추만 공식 글꼴을 쓴다. 나머지 화면은 갈무리체 그대로다.
 // Roboto Medium: Apache 2.0. Noto Sans KR Medium(이 문구에 쓰는 글자만): SIL Open Font License 1.1.
@@ -36,9 +36,9 @@ export function LoginMethods({ onKakao, onGoogle, busy = false }: Props) {
 }
 
 /**
- * 카카오 로그인 버튼: 카카오가 제공하는 표준 버튼 그림을 그대로 쓴다 (가이드는 표준 디자인 사용을 권장한다).
- * 그림은 카카오 개발자 사이트 [도구 > 리소스 다운로드 > 카카오 로그인]의 Kakao Login.zip 안 SVG/kakao_login_kr_large.svg.
- * 가로세로 비율을 지킨 채 카드 폭에 맞춰 늘리고 줄이기만 한다 (색·모양·글자는 손대지 않는다).
+ * 카카오 로그인 버튼: 카카오가 제공하는 표준 버튼 그림(Kakao Login.zip의 SVG/kakao_login_kr_medium.svg)을 쓴다.
+ * 가이드대로 "버튼이 넓어지면 심볼·문구 크기는 그대로 두고 노란 바탕만 좌우로 늘린다".
+ * 그림을 카드 폭에 맞춰 줄이면 문구가 작아지므로, 그림은 원래 크기(224×46) 그대로 가운데 두고 같은 노란색 바탕을 넓게 깐다.
  */
 function KakaoLoginButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
   return (
@@ -47,17 +47,18 @@ function KakaoLoginButton({ disabled, onClick }: { disabled: boolean; onClick: (
       disabled={disabled}
       onClick={onClick}
       aria-label="카카오 로그인"
-      className="block w-full transition-opacity disabled:opacity-60"
+      className="flex h-[46px] w-full items-center justify-center overflow-hidden rounded-[8px] bg-[#FEE500] transition-opacity disabled:opacity-60"
     >
-      <Image src={kakaoLogin} alt="" unoptimized priority className="h-auto w-full" />
+      <Image src={kakaoLogin} alt="" width={224} height={46} unoptimized priority />
     </button>
   );
 }
 
 /**
- * Google로 로그인. 구글 브랜드 가이드의 표준 라이트 버튼이다.
- * 배경 #FFFFFF, 테두리 1px #747775, 글자 #1F1F1F, 높이 40px, 모서리 4px, 공식 G 로고.
- * 색·로고·문구를 픽셀로 다시 그리지 않는다. 가로만 카드 폭에 맞춘다.
+ * Google로 로그인: 구글 브랜드 가이드의 표준 라이트 버튼 (흰 배경, 테두리 #747775, 글자 #1F1F1F, Roboto Medium, 공식 G 로고).
+ * 구글 버튼은 글꼴로 글자를 쓰고, 카카오 버튼은 카카오가 준 그림이다. 둘이 따로 놀지 않게 맞춘다.
+ * - antialiased: 사이트 전체가 도트 글씨라 글자 다듬기를 꺼 두었는데, 그대로면 구글 글자만 계단처럼 거칠어진다
+ * - 높이는 카카오 버튼과 같은 46px, 글자는 가이드대로 14px (카카오 문구와 거의 같은 크기)
  */
 function GoogleSignInButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
   return (
@@ -66,7 +67,7 @@ function GoogleSignInButton({ disabled, onClick }: { disabled: boolean; onClick:
       disabled={disabled}
       onClick={onClick}
       aria-label="Google로 로그인"
-      className="flex h-10 w-full items-center justify-center gap-2.5 rounded border border-[#747775] bg-white px-3 text-[14px] leading-5 font-medium text-[#1F1F1F] transition-colors hover:bg-[#F8F9FA] active:bg-[#F1F3F4] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F1F1F] disabled:opacity-60"
+      className="flex h-[46px] w-full items-center justify-center gap-2.5 rounded border border-[#747775] bg-white px-3 text-[14px] leading-5 font-medium text-[#1F1F1F] antialiased transition-colors hover:bg-[#F8F9FA] active:bg-[#F1F3F4] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F1F1F] disabled:opacity-60"
     >
       <GoogleG />
       <span className="inline-flex items-baseline">

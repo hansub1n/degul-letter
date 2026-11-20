@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelIcon } from "@/shared/components/PixelIcon";
@@ -11,7 +11,14 @@ export type LetterSummary = { letterId: string; authorName: string };
 
 const READ_KEY = "degul:read-letters";
 /** 한 면은 3열 2줄. 휴대폰(360 폭 창)에서 3줄+넘김+잠금 덮개가 한 화면에 빡빡해 보여 6통으로 나눈다. */
-const PAGE_SIZE = 6;
+/**
+ * 한 면에 2칸 × 2줄 = 4통. 3칸 × 2줄(6통)로 두면 칸 폭이 약 90px라 닉네임 8자(약 100px)도 한 줄에 안 들어가서,
+ * 이름이 다 보이게 2칸으로 둔다.
+ */
+const PAGE_SIZE = 4;
+/** 봉투 칸 높이와, 창 크기를 고정할 상자 높이 (3px 칸 단위). 편지가 없을 때·한 면일 때·여러 면일 때 모두 같은 크기 */
+const TILE_H = 40;
+const BOX_H = TILE_H * 2 + 3 + 20;
 
 /** 이 브라우저에서 읽은 편지 ID (읽은 편지는 이름이 흐려지고 "다시 읽기"가 된다) */
 function loadRead(): Set<string> {
@@ -53,25 +60,6 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
   const currentPage = Math.min(page, pageCount - 1);
   const pageLetters = letters.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
   const paged = pageCount > 1;
-  // 마지막 면에 편지가 한 줄뿐이어도 창 높이가 줄지 않게, 지금까지 본 가장 큰 격자 높이를 유지한다
-  const gridRef = useRef<HTMLUListElement>(null);
-  const [gridMinHeight, setGridMinHeight] = useState(0);
-  useLayoutEffect(() => {
-    const grid = gridRef.current;
-    if (!paged || !grid) return;
-    const measure = () => {
-      const prev = grid.style.minHeight;
-      grid.style.minHeight = "";
-      const h = grid.offsetHeight;
-      grid.style.minHeight = prev;
-      setGridMinHeight((m) => (h > m ? h : m));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(grid);
-    return () => ro.disconnect();
-  }, [paged, currentPage, reading]);
-
   if (reading) {
     return (
       <LetterCard
@@ -100,48 +88,51 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
       caption={openable ? "메리 크리스마스! 편지를 열어 보세요" : `12월 25일에 열 수 있어요 · ${christmasLabel()}`}
       onClose={onClose}
       // 우체통은 마을 주인만 연다. 크리스마스 전에 편지가 있으면 링크를 더 보내 보라고만 하고, 당일부터는 위 안내로 충분하다
+      // 아래 안내 줄 자리는 늘 남겨 둔다 (안내가 없을 때도 보이지만 않게). 그래야 창 크기가 상태마다 같다
       footer={
-        !openable && letters.length > 0 ? (
-          <p className="text-caption w-full text-center">링크를 보내면 편지가 더 모여요</p>
-        ) : undefined
+        <p className={`text-caption w-full text-center ${!openable && letters.length > 0 ? "" : "invisible"}`}>
+          링크를 보내면 편지가 더 모여요
+        </p>
       }
     >
-      {letters.length === 0 ? (
-        <div className="flex flex-col items-center gap-[calc(var(--p)*3)] py-[calc(var(--p)*6)] text-center">
-          <PixelIcon name="envelope" scale={3} />
-          <p className="text-caption">
-            아직 편지가 없어요.
-            <br />
-            친구에게 링크를 보내 보세요!
-          </p>
-        </div>
-      ) : (
-        // 12/25 전에는 봉투와 페이지 넘김 위에 반투명 잠금 덮개 하나를 씌운다 (단추는 꺼 둔다)
-        <div className="relative" style={openable || paged ? undefined : { minHeight: "calc(var(--p) * 60)" }}>
-          <ul
-            ref={gridRef}
-            className="grid grid-cols-3 content-start gap-[calc(var(--p)*3)]"
-            style={paged && gridMinHeight ? { minHeight: gridMinHeight } : undefined}
-            aria-hidden={!openable || undefined} inert={!openable}>
-            {pageLetters.map((letter, i) => (
-              <EnvelopeTile
-                key={letter.letterId}
-                letter={letter}
-                index={i}
-                openable={openable}
-                opened={read.has(letter.letterId)}
-                onOpen={() => setReading(letter)}
-              />
-            ))}
-          </ul>
-          {paged && (
-            <div className="mailbox-pager">
+      {/* 창 크기 고정: 편지가 없어도, 한 면뿐이어도 페이지 넘김이 있을 때와 같은 높이의 상자 안에 그린다 */}
+      <div className="relative flex flex-col" style={{ height: `calc(var(--p) * ${BOX_H})` }}>
+        {letters.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-[calc(var(--p)*3)] text-center">
+            <PixelIcon name="envelope" scale={3} />
+            <p className="text-caption">
+              아직 편지가 없어요.
+              <br />
+              친구에게 링크를 보내 보세요!
+            </p>
+          </div>
+        ) : (
+          <>
+            <ul
+              className="grid grid-cols-2 content-start gap-[calc(var(--p)*3)]"
+              style={{ gridAutoRows: `calc(var(--p) * ${TILE_H})` }}
+              aria-hidden={!openable || undefined}
+              inert={!openable}
+            >
+              {pageLetters.map((letter, i) => (
+                <EnvelopeTile
+                  key={letter.letterId}
+                  letter={letter}
+                  index={i}
+                  openable={openable}
+                  opened={read.has(letter.letterId)}
+                  onOpen={() => setReading(letter)}
+                />
+              ))}
+            </ul>
+            {/* 페이지 넘김 자리는 한 면뿐이어도 남겨 둔다 (보이지만 않게) */}
+            <div className={`mailbox-pager mt-auto ${paged ? "" : "invisible"}`} aria-hidden={!paged || undefined}>
               <PixelButton
                 iconOnly
                 size="sm"
                 icon="prev"
                 aria-label="이전 쪽"
-                disabled={!openable || currentPage <= 0}
+                disabled={!openable || !paged || currentPage <= 0}
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
               />
               <p className="text-label tabular-nums">
@@ -152,24 +143,24 @@ export function LetterBox({ recipientName, letters, openLetter, onClose }: Props
                 size="sm"
                 icon="next"
                 aria-label="다음 쪽"
-                disabled={!openable || currentPage >= pageCount - 1}
+                disabled={!openable || !paged || currentPage >= pageCount - 1}
                 onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
               />
             </div>
-          )}
-          {!openable && (
-            <div className="mailbox-lock pixel-box absolute inset-0 flex flex-col items-center justify-center gap-[calc(var(--p)*4)]">
-              <PixelIcon name="lock" scale={6} />
-              <p className="text-label">12월 25일에 열려요</p>
-            </div>
-          )}
-        </div>
-      )}
+            {!openable && (
+              <div className="mailbox-lock pixel-box absolute inset-0 flex flex-col items-center justify-center gap-[calc(var(--p)*4)]">
+                <PixelIcon name="lock" scale={6} />
+                <p className="text-label">12월 25일에 열려요</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </PixelDialog>
   );
 }
 
-/** 봉투 타일 하나. 위에 큰 봉투, 아래에 보낸 사람 이름(최대 두 줄). 12/25 전에는 잠금 덮개 아래에서 가만히 있다 */
+/** 봉투 타일 하나. 위에 큰 봉투, 아래에 보낸 사람 이름(한 줄). 12/25 전에는 잠금 덮개 아래에서 가만히 있다 */
 function EnvelopeTile({
   letter,
   index,
@@ -192,7 +183,7 @@ function EnvelopeTile({
         disabled={!openable}
         onClick={onOpen}
         data-tone="paper"
-        className="envelope-tile pixel-box flex w-full flex-col items-center gap-[calc(var(--p)*2)]"
+        className="envelope-tile pixel-box flex w-full flex-col items-center justify-center gap-[calc(var(--p)*2)]"
         style={{ padding: "calc(var(--p) * 3) calc(var(--p) * 2)" }}
       >
         <span
@@ -201,7 +192,7 @@ function EnvelopeTile({
         >
           <PixelIcon name={opened ? "envOpened" : "envSealed"} scale={3} />
         </span>
-        <span className={`text-label w-full break-all text-center line-clamp-2 ${opened ? "text-muted" : ""}`}>
+        <span className={`text-label w-full truncate text-center ${opened ? "text-muted" : ""}`}>
           {letter.authorName}
         </span>
       </button>

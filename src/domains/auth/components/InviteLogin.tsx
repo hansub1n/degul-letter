@@ -158,7 +158,7 @@ export function InviteLogin({ variant, onClose }: Props) {
         </AirmailFrame>
       </section>
       {error && (
-        <PixelToast key={error} className="z-50">
+        <PixelToast key={error} lift={24} className="z-50">
           {error}
         </PixelToast>
       )}

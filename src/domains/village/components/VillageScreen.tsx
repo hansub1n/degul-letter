@@ -305,7 +305,12 @@ export function VillageScreen() {
           </div>
         }
       />
-      {status && <PixelToast key={status}>{status}</PixelToast>}
+      {/* 저장 상태 알림: 처음 몇 초 뜨는 조작 안내(같은 아래쪽 자리)와 겹치지 않게 그 위로 올린다 */}
+      {status && (
+        <PixelToast key={status} lift={48}>
+          {status}
+        </PixelToast>
+      )}
       {mailboxOpen && (
         <LetterBox
           recipientName={village.name}
