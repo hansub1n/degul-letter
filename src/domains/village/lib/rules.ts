@@ -129,14 +129,12 @@ function zoneOwnerAt(world: World, x: number, y: number, r: number, ignoreId: nu
   const newHalf = Math.max(r, nameHalfWidth(NAME_MAX_CHARS));
   return world.stacks.find((s) => {
     if (s.id === ignoreId || !(s.finished || s.saved)) return false;
-    // 가로: 이름표 폭과, 조각이 옆으로 뻗은 끝까지 (긴 꼬리·팔 아래에 새 눈사람이 숨지 않게)
-    const nameHalf = nameHalfWidth(s.saved ? [...s.saved.authorName].length : NAME_MAX_CHARS);
-    const rect = stackRect(s);
-    const left = Math.min(rect.left, s.x - Math.max(footRadius(s), nameHalf));
-    const right = Math.max(rect.right, s.x + Math.max(footRadius(s), nameHalf));
-    if (x + newHalf <= left || x - newHalf >= right) return false;
+    // 가로: 발밑 눈덩이와 이름표 폭만 본다. 조각이 옆으로 뻗은 끝까지 막으면 빈자리 찾기가 너무 어려워서,
+    // 조각끼리 겹치는 건 완성할 때 "다른 눈사람과 겹쳐요"로 알려 준다
+    const half = Math.max(footRadius(s), nameHalfWidth(s.saved ? [...s.saved.authorName].length : NAME_MAX_CHARS));
+    if (Math.abs(x - s.x) >= half + newHalf) return false;
     // 세로: 다른 눈사람의 머리 꼭대기부터 이름표 아래까지와, 새 눈덩이의 몸~이름표가 겹치면 막는다
-    const top = rect.top;
+    const top = s.y - stackTopHeight(s);
     const bottom = s.y + NAME_HEIGHT;
     return y + NAME_HEIGHT > top && y - r < bottom;
   });
