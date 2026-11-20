@@ -5,6 +5,7 @@
 
 import { AppwriteException, Client, ID, Permission, Query, Role, TablesDB } from "node-appwrite";
 import { verifyAccount } from "@/shared/lib/serverAccount";
+import { NICKNAME_MAX } from "./types";
 
 export class VillageCreateError extends Error {
   constructor(
@@ -15,8 +16,8 @@ export class VillageCreateError extends Error {
   }
 }
 
-/** 화면 입력칸과 같은 닉네임 길이 제한 */
-export const VILLAGE_NAME_MAX = 10;
+/** 화면 입력칸과 같은 닉네임 길이 제한 (types.ts의 NICKNAME_MAX) */
+export const VILLAGE_NAME_MAX = NICKNAME_MAX;
 
 const CODE_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
 

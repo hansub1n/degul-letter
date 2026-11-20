@@ -14,6 +14,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
 import { BACKDROP_CARD_TOP } from "../lib/render";
+import { NICKNAME_MAX } from "../types";
 import type { Village } from "../types";
 import { HomeBackdrop } from "./HomeBackdrop";
 
@@ -119,9 +120,10 @@ export function HomeScreen() {
           <PixelField
             id="home-nickname"
             label="내 닉네임"
+            hint={`${name.length}/${NICKNAME_MAX}`}
             placeholder="마을 이름이 돼요"
             value={name}
-            maxLength={10}
+            maxLength={NICKNAME_MAX}
             onChange={(e) => setName(e.target.value)}
           />
           <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || busy}>
