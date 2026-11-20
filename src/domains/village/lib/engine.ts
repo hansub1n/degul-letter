@@ -237,9 +237,10 @@ export function createVillageGame({
     // 조각 중이거나 완성 축하 중에는 말풍선을 띄우지 않는다 ("완성!" 글자를 가리지 않게)
     const celebrating = celebrate !== null || pendingCelebrate !== null;
     const nearby = sculptMode || celebrating || world.lift ? null : findNearbySnowman(world, isOwner);
-    // 마을 주인이 우체통·집 문 가까이 오면 (눈사람 말풍선이 없을 때만) 그 위에 말풍선을 띄운다.
+    // 우체통·집 문 가까이 오면 (눈사람 말풍선이 없을 때만) 그 위에 말풍선을 띄운다. 주인·방문자 모두.
+    // 무엇을 할지(우체통 열기·로그아웃 / 우체통 안내·첫 화면으로)는 화면 쪽이 정한다.
     // 둘 다 가까우면 더 가까운 쪽 하나만 띄운다.
-    const spotsOpen = isOwner && !nearby && !sculptMode && !celebrating;
+    const spotsOpen = !nearby && !sculptMode && !celebrating;
     const toMailbox = distance(world.player.x, world.player.y, MAILBOX_POSITION.x, MAILBOX_POSITION.y);
     const toDoor = distance(world.player.x, world.player.y, DOOR_POSITION.x, DOOR_POSITION.y);
     const mailboxNear = spotsOpen && toMailbox < 20 && toMailbox <= toDoor;

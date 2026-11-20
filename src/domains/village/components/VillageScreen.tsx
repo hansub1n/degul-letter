@@ -23,6 +23,7 @@ import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowma
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
+import { GoHomeConfirm } from "./GoHomeConfirm";
 import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { VillageSign } from "./VillageSign";
@@ -50,6 +51,7 @@ export function VillageScreen() {
   const gameApiRef = useRef<VillageGameApi | null>(null);
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [goHomeOpen, setGoHomeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
@@ -79,6 +81,7 @@ export function VillageScreen() {
       setDrafts(new Map());
       setLeaveTo(null);
       setLogoutOpen(false);
+      setGoHomeOpen(false);
       setInviteOpen(false);
       setStatus(null);
       setLetters([]);
@@ -244,17 +247,43 @@ export function VillageScreen() {
         onSavedSnowmanBroken={(id) => void removeSaved(id)}
         isOwner={isOwner}
         mailCount={letterCount}
-        onOpenMailbox={() => setMailboxOpen(true)}
-        // 카카오 로그인 전에 만든 마을(익명 주인)은 로그아웃하면 마을을 잃으므로 문 말풍선을 띄우지 않는다
-        // 저장 안 한 눈사람이 있으면 "녹아 버려요"가 확인을 겸하고, 없으면 로그아웃 확인 창을 띄운다
-        onLogout={
-          loggedIn
-            ? () => {
-                if (isModalLocked()) return;
-                if (hasUnsaved()) setLeaveTo(LOGOUT);
-                else setLogoutOpen(true);
+        // 우체통: 주인은 편지함을 열고, 친구는 언제 열리는지만 본다 (편지는 주인만 읽는다)
+        onOpenMailbox={
+          isOwner
+            ? () => setMailboxOpen(true)
+            : () =>
+                setStatus(
+                  isLetterOpen()
+                    ? `${village.name}의 우체통이에요! 편지는 ${village.name}만 열어 볼 수 있어요`
+                    : `12월 25일에 열리는 ${village.name}의 우체통이에요!`,
+                )
+        }
+        door={
+          isOwner
+            ? // 카카오 로그인 전에 만든 마을(익명 주인)은 로그아웃하면 마을을 잃으므로 문 말풍선을 띄우지 않는다
+              // 저장 안 한 눈사람이 있으면 "녹아 버려요"가 확인을 겸하고, 없으면 로그아웃 확인 창을 띄운다
+              loggedIn
+              ? {
+                  icon: "houseDoor",
+                  label: "로그아웃",
+                  onClick: () => {
+                    if (isModalLocked()) return;
+                    if (hasUnsaved()) setLeaveTo(LOGOUT);
+                    else setLogoutOpen(true);
+                  },
+                }
+              : undefined
+            : // 놀러 온 친구: 집 앞에서 내 마을로 (마을이 없으면 첫 화면에서 마을 만들기).
+              // 저장 안 한 눈사람이 있으면 "녹아 버려요"가 확인을 겸하고, 없으면 확인 창으로 묻는다
+              {
+                icon: "houseDoor",
+                label: myVillage ? "내 마을로" : "내 마을 만들기",
+                onClick: () => {
+                  if (isModalLocked()) return;
+                  if (hasUnsaved()) setLeaveTo(myVillage ? `/v/${myVillage.code}` : "/");
+                  else setGoHomeOpen(true);
+                },
               }
-            : undefined
         }
         onOpenLetter={(snowman) => {
           if (snowman.savedId) setOpeningLetter({ authorName: snowman.authorName ?? "친구", savedId: snowman.savedId });
@@ -353,6 +382,16 @@ export function VillageScreen() {
       )}
       {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
+      {goHomeOpen && (
+        <GoHomeConfirm
+          hasVillage={myVillage !== null}
+          onGo={() => {
+            setGoHomeOpen(false);
+            router.push(myVillage ? `/v/${myVillage.code}` : "/");
+          }}
+          onClose={() => setGoHomeOpen(false)}
+        />
+      )}
       {leaveTo && (
         <PixelDialog title="눈사람이 녹아 버려요" hideHeader closeOnVeil onClose={() => setLeaveTo(null)}>
           <div className="flex min-h-full w-full flex-1 flex-col justify-center self-stretch">

@@ -5,6 +5,7 @@ import { isModalLocked, onModalLockChange } from "@/shared/lib/modalLock";
 import { SculptEditor } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
 import { PixelButton } from "@/shared/components/PixelButton";
+import type { PixelIconName } from "@/shared/components/PixelIcon";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
@@ -47,10 +48,10 @@ type Props = {
   onSavedSnowmanBroken?: (savedId: string) => void;
   /** 편지 버튼을 눌렀을 때 (어느 눈사람의 편지인지) */
   onOpenLetter?: (snowman: NearbySnowman) => void;
-  /** 우체통 말풍선의 편지 버튼을 눌렀을 때 (마을 주인만) */
+  /** 우체통 말풍선을 눌렀을 때 (주인: 우체통 열기, 방문자: 언제 열리는지 안내). 없으면 말풍선을 띄우지 않는다 */
   onOpenMailbox?: () => void;
-  /** 집 문 앞 말풍선의 "로그아웃"을 눌렀을 때 (마을 주인만) */
-  onLogout?: () => void;
+  /** 집 문 앞 말풍선 (주인: 로그아웃, 방문자: 첫 화면으로). 없으면 말풍선을 띄우지 않는다 */
+  door?: { icon: PixelIconName; label: string; onClick: () => void };
   /** 우체통에 모인 편지 수 (깃발이 올라간다) */
   mailCount?: number;
   /** 화면 위쪽에 띄울 것 (링크 보내기 등) */
@@ -77,7 +78,7 @@ export function VillageGame({
   onSavedSnowmanBroken,
   onOpenLetter,
   onOpenMailbox,
-  onLogout,
+  door,
   mailCount = 0,
   header,
   overlay,
@@ -235,18 +236,16 @@ export function VillageGame({
         />
       )}
 
-      {(nearby || mailboxNear || (doorNear && onLogout)) && !sculpting && (
+      {(nearby || (mailboxNear && onOpenMailbox) || (doorNear && door)) && !sculpting && (
         // 눈사람 머리 위에 뜨는 말풍선. 위치는 엔진이 매 프레임 직접 옮긴다(setNearbyAnchor).
         <div ref={(el) => gameRef.current?.setNearbyAnchor(el)} className="absolute left-0 top-0 opacity-0">
           <div className="pixel-bob flex items-end gap-[calc(var(--p)*3)] pb-[calc(var(--p)*2)]">
-            {!nearby && mailboxNear && (
-              // 우체통 말풍선: 모든 편지 보기
-              <PixelButton iconOnly size="sm" icon="mailbox" aria-label="우체통 열기" onClick={() => onOpenMailbox?.()} />
+            {!nearby && mailboxNear && onOpenMailbox && (
+              <PixelButton iconOnly size="sm" icon="mailbox" aria-label="우체통" onClick={onOpenMailbox} />
             )}
-            {!nearby && doorNear && onLogout && (
-              // 집 말풍선 (지붕 위): 공용 컴퓨터(PC방 등)에서 다음 사람이 내 마을에 들어오지 못하게
-              // 우체통처럼 아이콘만. 눌러도 바로 나가지 않고 확인 창이 떠서 뜻을 알려 준다
-              <PixelButton iconOnly size="sm" icon="houseDoor" aria-label="로그아웃" onClick={onLogout} />
+            {!nearby && doorNear && door && (
+              // 집 말풍선 (지붕 위). 아이콘만 두고, 누르면 확인 창이나 이동으로 뜻을 알려 준다
+              <PixelButton iconOnly size="sm" icon={door.icon} aria-label={door.label} onClick={door.onClick} />
             )}
             {nearby &&
               bubbleButtons(nearby, isOwner, unsentIds.includes(nearby.id)).map((kind) => (
