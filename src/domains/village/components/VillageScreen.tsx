@@ -244,17 +244,34 @@ export function VillageScreen() {
         onSavedSnowmanBroken={(id) => void removeSaved(id)}
         isOwner={isOwner}
         mailCount={letterCount}
-        onOpenMailbox={() => setMailboxOpen(true)}
-        // 카카오 로그인 전에 만든 마을(익명 주인)은 로그아웃하면 마을을 잃으므로 문 말풍선을 띄우지 않는다
-        // 저장 안 한 눈사람이 있으면 "녹아 버려요"가 확인을 겸하고, 없으면 로그아웃 확인 창을 띄운다
-        onLogout={
-          loggedIn
-            ? () => {
-                if (isModalLocked()) return;
-                if (hasUnsaved()) setLeaveTo(LOGOUT);
-                else setLogoutOpen(true);
-              }
-            : undefined
+        // 우체통: 주인은 편지함을 열고, 친구는 언제 열리는지만 본다 (편지는 주인만 읽는다)
+        onOpenMailbox={
+          isOwner
+            ? () => setMailboxOpen(true)
+            : () =>
+                setStatus(
+                  isLetterOpen()
+                    ? `${village.name}의 우체통이에요! 편지는 ${village.name}만 열어 볼 수 있어요`
+                    : `12월 25일에 열리는 ${village.name}의 우체통이에요!`,
+                )
+        }
+        door={
+          isOwner
+            ? // 카카오 로그인 전에 만든 마을(익명 주인)은 로그아웃하면 마을을 잃으므로 문 말풍선을 띄우지 않는다
+              // 저장 안 한 눈사람이 있으면 "녹아 버려요"가 확인을 겸하고, 없으면 로그아웃 확인 창을 띄운다
+              loggedIn
+              ? {
+                  icon: "houseDoor",
+                  label: "로그아웃",
+                  onClick: () => {
+                    if (isModalLocked()) return;
+                    if (hasUnsaved()) setLeaveTo(LOGOUT);
+                    else setLogoutOpen(true);
+                  },
+                }
+              : undefined
+            : // 놀러 온 친구: 집 앞에서 첫 화면(내 마을 만들기·내 마을 가기)으로 간다
+              { icon: "houseDoor", label: "첫 화면으로", onClick: () => goOrConfirm("/") }
         }
         onOpenLetter={(snowman) => {
           if (snowman.savedId) setOpeningLetter({ authorName: snowman.authorName ?? "친구", savedId: snowman.savedId });
