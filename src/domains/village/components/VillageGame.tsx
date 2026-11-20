@@ -221,7 +221,8 @@ export function VillageGame({
 
       {/* 알림: 위쪽 가운데. 마을 이름 표지판(위 12~78px)과 겹치지 않게 그 아래에 띄운다 */}
       {toast && (
-        <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ top: "calc(96px + env(safe-area-inset-top, 0px))" }}>
+        // 알림은 화면 아래쪽에 띄운다. 위쪽에 두면 눈사람 머리 위 말풍선(망치·끌)과 겹친다
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center px-[calc(var(--p)*4)]" style={{ bottom: "calc(96px + env(safe-area-inset-bottom, 0px))" }}>
           <PixelToast key={toast.key} placement="inline">
             {toast.text}
           </PixelToast>
