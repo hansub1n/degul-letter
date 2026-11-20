@@ -14,6 +14,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
 import { BACKDROP_CARD_TOP } from "../lib/render";
+import { NICKNAME_MAX } from "../types";
 import type { Village } from "../types";
 import { HomeBackdrop } from "./HomeBackdrop";
 
@@ -119,9 +120,10 @@ export function HomeScreen() {
           <PixelField
             id="home-nickname"
             label="내 닉네임"
+            hint={`${name.length}/${NICKNAME_MAX}`}
             placeholder="마을 이름이 돼요"
             value={name}
-            maxLength={10}
+            maxLength={NICKNAME_MAX}
             onChange={(e) => setName(e.target.value)}
           />
           <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || busy}>
@@ -194,12 +196,13 @@ export function HomeScreen() {
       )}
 
       {inviting && <InviteLogin variant="page" />}
-      <nav style={{ bottom: "calc(var(--p) * 3 + env(safe-area-inset-bottom, 0px))" }} className="text-caption fixed left-1/2 z-30 flex -translate-x-1/2 gap-[calc(var(--p)*2)] bg-paper px-[calc(var(--p)*3)] py-[var(--p)] text-ink">
+      <nav style={{ bottom: "calc(var(--p) * 3 + env(safe-area-inset-bottom, 0px))" }} className="text-caption fixed left-1/2 z-30 flex w-max -translate-x-1/2 whitespace-nowrap gap-[calc(var(--p)*2)] bg-paper px-[calc(var(--p)*3)] py-[var(--p)] text-ink">
         <Link href="/privacy">개인정보 처리방침</Link>
         <span aria-hidden>·</span>
         <Link href="/terms">이용 약관</Link>
       </nav>
-      {message && <PixelToast>{message}</PixelToast>}
+      {/* 아래 개인정보·약관 링크와 겹치지 않게 그 위로 올린다 */}
+      {message && <PixelToast lift={24}>{message}</PixelToast>}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
     </main>
   );

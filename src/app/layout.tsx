@@ -13,6 +13,13 @@ const galmuri = localFont({
   display: "swap",
 });
 
+// 작은 갈무리체(10px에서 또렷함): 마을 눈사람 이름표처럼 12px보다 작게 써야 하는 캔버스 글자용
+const galmuriSmall = localFont({
+  variable: "--font-pixel-small",
+  src: [{ path: "../../node_modules/galmuri/dist/Galmuri9.woff2", weight: "400", style: "normal" }],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "데굴레터",
   description: "눈덩이를 굴려 친구의 마을에 눈사람을 세우고, 크리스마스에 열어 볼 편지를 남겨요.",
@@ -36,7 +43,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // data-time은 아래 스크립트가 첫 칠 전에 정하므로 서버 HTML과 다를 수 있다
-    <html lang="ko" className={`${galmuri.variable} h-full`} suppressHydrationWarning>
+    <html lang="ko" className={`${galmuri.variable} ${galmuriSmall.variable} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: TIME_OF_DAY_SCRIPT }} />
       </head>

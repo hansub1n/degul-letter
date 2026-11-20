@@ -19,6 +19,8 @@ function messageFor(event: GameEvent): string | null {
       return "계속 밀면 위로 올라가요";
     case "stackBlocked":
       return event.reason === "full" ? "4단까지만 쌓을 수 있어요" : "완성된 눈사람에는 더 쌓을 수 없어요";
+    case "zoneBlocked":
+      return "다른 눈사람과 너무 가까워요. 조금 떨어져서 쌓아 주세요";
     case "stacked":
       return event.height === 2 ? "눈사람이 됐어요! 더 쌓거나 완성해 보세요" : `${event.height}단 눈사람!`;
     case "broken":
@@ -208,9 +210,9 @@ export function VillageGame({
       {/* 조작 안내: 마을 이름보다 눈에 띄지 않게 아래쪽에 한 줄로, 몇 초 뒤 사라진다 */}
       {showHint && !sculpting && <PixelToast icon="arrow">끌어서 걷고, 눈덩이를 밀어 굴려요</PixelToast>}
 
-      {/* 알림: 위쪽 가운데 */}
+      {/* 알림: 위쪽 가운데. 마을 이름 표지판(위 12~78px)과 겹치지 않게 그 아래에 띄운다 */}
       {toast && (
-        <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ top: "calc(72px + env(safe-area-inset-top, 0px))" }}>
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ top: "calc(96px + env(safe-area-inset-top, 0px))" }}>
           <PixelToast key={toast.key} placement="inline">
             {toast.text}
           </PixelToast>

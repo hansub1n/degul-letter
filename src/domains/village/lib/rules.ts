@@ -85,11 +85,42 @@ function playerBlocked(world: World, x: number, y: number, mx: number, my: numbe
   );
 }
 
+// ---------- 눈사람 자리 ----------
+// 완성된(또는 저장된) 눈사람은 발밑 이름표까지 자기 자리를 가진다. 그 자리 안에서는 눈덩이를 쌓아 새 눈사람을
+// 만들 수 없어서, 눈사람을 딱 붙여 세워 이름끼리 이어 붙는 일이 없다. 눈덩이를 굴리거나 지나가는 건 자유롭다.
+
+/** 이름표 글자 하나의 마을 폭(칸). 화면 10px 글씨 ÷ 기본 배율 3 + 외곽선 여유 */
+const NAME_CHAR_WIDTH = 3.5;
+/** 아직 이름이 없는 새 눈사람은 닉네임 최대 글자 수만큼 폭을 잡는다 */
+const NAME_MAX_CHARS = 8;
+/** 이름표가 차지하는 발밑 높이(칸) */
+const NAME_HEIGHT = 6;
+
+function nameHalfWidth(chars: number): number {
+  return (chars * NAME_CHAR_WIDTH) / 2 + 1;
+}
+
+/** (x, y)에 눈덩이를 두면 다른 눈사람의 자리(몸 + 이름표)와 겹치는지. 겹치면 그 눈사람 */
+function zoneOwnerAt(world: World, x: number, y: number, r: number, ignoreId: number): Stack | undefined {
+  const newHalf = Math.max(r, nameHalfWidth(NAME_MAX_CHARS));
+  return world.stacks.find((s) => {
+    if (s.id === ignoreId || !(s.finished || s.saved)) return false;
+    const half = Math.max(footRadius(s), nameHalfWidth(s.saved ? [...s.saved.authorName].length : NAME_MAX_CHARS));
+    if (Math.abs(x - s.x) >= half + newHalf) return false;
+    // 세로: 다른 눈사람의 머리 꼭대기부터 이름표 아래까지와, 새 눈덩이의 몸~이름표가 겹치면 막는다
+    const top = s.y - stackTopHeight(s);
+    const bottom = s.y + NAME_HEIGHT;
+    return y + NAME_HEIGHT > top && y - r < bottom;
+  });
+}
+
 function isFreeSpot(world: World, x: number, y: number, r: number): boolean {
   return (
     !outOfBounds(world, x, y, r) &&
     !hitsObstacle(world, x, y, r) &&
     !findStackAt(world, x, y, r + 2) &&
+    // 새 눈덩이도 다른 눈사람 자리에는 생기지 않게 한다
+    !zoneOwnerAt(world, x, y, r, -1) &&
     distance(x, y, world.player.x, world.player.y) > r + PLAYER_RADIUS + 2
   );
 }
@@ -301,6 +332,14 @@ function pushIntoStack(
   }
   push.time += dt;
 
+  // 다른 눈사람 자리 안에 있는 눈덩이 위로는 쌓지 못한다 (거기서 새 눈사람이 생기면 이름이 이어 붙는다)
+  if (!other.finished && zoneOwnerAt(world, other.x, other.y, footRadius(other), other.id)) {
+    if (!push.warned) {
+      push.warned = true;
+      events.push({ type: "zoneBlocked" });
+    }
+    return;
+  }
   const blocked = other.finished ? "finished" : other.balls.length >= MAX_STACK_HEIGHT ? "full" : null;
   if (!push.warned && push.time > 0.15) {
     push.warned = true;
