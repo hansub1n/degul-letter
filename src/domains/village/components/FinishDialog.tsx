@@ -5,6 +5,7 @@ import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
+import { NICKNAME_MAX } from "../types";
 import { LeaveConfirm } from "./LeaveConfirm";
 
 type Submit = (result: { name: string; letter: string }) => void;
@@ -113,8 +114,9 @@ export function FinishDialog(props: Props) {
         >
           <PixelField
             label="닉네임"
+            hint={`${nickname.length}/${NICKNAME_MAX}`}
             value={nickname}
-            maxLength={10}
+            maxLength={NICKNAME_MAX}
             onChange={(e) => setNickname(e.target.value)}
             placeholder="눈사람과 편지에 쓰여요"
           />

@@ -5,6 +5,7 @@
 
 import { AppwriteException, Client, ID, Permission, Query, Role, TablesDB } from "node-appwrite";
 import { verifyAccount } from "@/shared/lib/serverAccount";
+import { NICKNAME_MAX } from "./types";
 
 export class VillageCreateError extends Error {
   constructor(
@@ -15,8 +16,8 @@ export class VillageCreateError extends Error {
   }
 }
 
-/** 화면 입력칸과 같은 닉네임 길이 제한 */
-export const VILLAGE_NAME_MAX = 10;
+/** 화면 입력칸과 같은 닉네임 길이 제한 (types.ts의 NICKNAME_MAX) */
+export const VILLAGE_NAME_MAX = NICKNAME_MAX;
 
 const CODE_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
 
@@ -38,6 +39,33 @@ function config() {
 
 type VillageRow = { $id: string; name: string; code: string; ownerId: string };
 
+/**
+ * 공유 링크의 제목에 쓸 마을 이름만. 눈사람·편지·주인 ID는 돌려주지 않는다.
+ * 환경 변수가 없거나 마을이 없으면 null (그때 화면은 공통 제목을 쓴다).
+ */
+export async function getPublicVillageName(code: string): Promise<string | null> {
+  if (!/^[a-z0-9]{4,12}$/.test(code)) return null;
+  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+  const apiKey = process.env.APPWRITE_API_KEY;
+  if (!endpoint || !projectId || !databaseId || !apiKey) return null;
+  try {
+    const tables = new TablesDB(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey));
+    const { rows } = await tables.listRows({
+      databaseId,
+      tableId: "villages",
+      queries: [Query.equal("code", code), Query.limit(1)],
+    });
+    const name = (rows[0] as unknown as VillageRow | undefined)?.name;
+    if (typeof name !== "string") return null;
+    const clean = name.replace(/[\u0000-\u001f]/g, "").trim();
+    return clean ? [...clean].slice(0, 30).join("") : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createVillageForUser(params: {
   jwt: string;
   name: unknown;
@@ -49,7 +77,7 @@ export async function createVillageForUser(params: {
     throw new VillageCreateError(400, `닉네임은 1~${VILLAGE_NAME_MAX}자로 적어 주세요`);
   }
 
-  // 1) 누구인지, 진짜 로그인했는지 (카카오 라벨 또는 구글 등 연결 기록). 익명 계정은 마을을 만들 수 없다
+  // 1) 누구인지, 진짜 로그인했는지 (kakao·google 라벨 또는 Appwrite 연결 기록). prefs만 바꾼 익명 계정은 403
   const account = await verifyAccount(params.jwt);
   if (!account) throw new VillageCreateError(401, "다시 들어와 주세요");
   if (!account.loggedIn) throw new VillageCreateError(403, "로그인하고 마을을 만들어 주세요");

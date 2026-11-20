@@ -64,7 +64,7 @@ export function LetterCard({ letterId, authorName, recipientName, onOpen, onClos
   };
 
   return (
-    <PixelDialog title={`${authorName}의 편지`} icon="envelope" align="start" onClose={onClose}>
+    <PixelDialog title={`${authorName}의 편지`} icon="envelope" align="start" wrapTitle /* 닉네임이 길어도 "의 편지"까지 보이게 */ onClose={onClose}>
       {state.kind === "opened" ? (
         <AirmailFrame>
         <PixelPanel tone="paper" pad={5} flat className="letter-paper relative">

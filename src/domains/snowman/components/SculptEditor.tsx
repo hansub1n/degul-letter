@@ -99,7 +99,8 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
         onPointerCancel={onPointerEnd}
       />
 
-      <div className="pointer-events-none absolute inset-x-[calc(var(--p)*4)] top-[calc(var(--p)*4)] flex items-start justify-between gap-[calc(var(--p)*4)]">
+      {/* 아이폰 노치·홈 바(viewport-fit=cover)를 피해 안전 영역만큼 더 띄운다 */}
+      <div style={{ top: "calc(var(--p) * 4 + env(safe-area-inset-top, 0px))" }} className="pointer-events-none absolute inset-x-[calc(var(--p)*4)] flex items-start justify-between gap-[calc(var(--p)*4)]">
         <PixelButton iconOnly icon="close" aria-label="나가기" className="pointer-events-auto" onClick={onCancel} />
         <PixelToast key={tool} placement="inline" className="mt-[var(--p)] min-w-0">
           {active?.hint}
@@ -114,7 +115,7 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
         />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-[calc(var(--p)*4)] bottom-[calc(var(--p)*6)] flex justify-center gap-[calc(var(--p)*4)]">
+      <div style={{ bottom: "calc(var(--p) * 6 + env(safe-area-inset-bottom, 0px))" }} className="pointer-events-none absolute inset-x-[calc(var(--p)*4)] flex justify-center gap-[calc(var(--p)*4)]">
         {TOOLS.map((t) => (
           <PixelButton
             iconOnly
