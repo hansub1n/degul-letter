@@ -58,6 +58,8 @@ export function VillageScreen() {
   const [pending, setPending] = useState<PendingSave | null>(null);
   // 완성했지만 아직 편지를 넣지 않은 눈사람 (창을 취소한 경우). 다시 다가가면 "편지 쓰기"가 뜬다.
   const [drafts, setDrafts] = useState<Map<number, PendingSave>>(() => new Map());
+  /** 완성 직후(편지 창이 뜨기 전) 부순 눈사람. 늦게 뜨는 편지 창을 띄우지 않으려고 기억한다 */
+  const brokenRef = useRef<Set<number>>(new Set());
   const [status, setStatus] = useState<string | null>(null);
   // 눈사람 ID → 편지 ID. 편지 개수를 세고, 눈사람을 부술 때 편지도 지우는 데 쓴다.
   // 마을에 온 편지 목록 (눈사람 ID → 편지 ID, 보낸 사람). 우체통 목록·편지 수·부술 때 편지 지우기에 쓴다.
@@ -236,8 +238,22 @@ export function VillageScreen() {
         // 마을로 돌아오는 확대(0.5초)와 "완성!" 축하가 끝난 뒤에 이름·편지 창을 띄운다
         onSnowmanFinished={(stackId, draft, markSaved) => {
           const job = { stackId, draft, markSaved };
+          brokenRef.current.delete(stackId);
           setDrafts((m) => new Map(m).set(stackId, job));
-          window.setTimeout(() => setPending(job), FINISH_DIALOG_DELAY_MS);
+          window.setTimeout(() => {
+            if (!brokenRef.current.has(stackId)) setPending(job);
+          }, FINISH_DIALOG_DELAY_MS);
+        }}
+        // 편지를 안 넣은 눈사람을 부수면 "녹아 버려요" 대상에서 뺀다 (부순 뒤 나갈 때 잘못 묻지 않게)
+        onSnowmanBroken={(stackId) => {
+          brokenRef.current.add(stackId);
+          setDrafts((m) => {
+            if (!m.has(stackId)) return m;
+            const next = new Map(m);
+            next.delete(stackId);
+            return next;
+          });
+          setPending((p) => (p?.stackId === stackId ? null : p));
         }}
         unsentIds={unsentIds}
         onWriteLetter={(stackId) => {

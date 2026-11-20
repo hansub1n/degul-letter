@@ -72,6 +72,7 @@ export type GameEvent =
   | { type: "stackBlocked"; reason: "full" | "finished" }
   /** 다른 눈사람 자리(이름표까지) 안에서는 눈덩이를 쌓을 수 없다 */
   | { type: "zoneBlocked" }
+  | { type: "overlapping" }
   | { type: "stacked"; stackId: number; height: number }
   | { type: "broken"; stackId: number; x: number; y: number; height: number; r: number; savedId: string | null }
   | { type: "finished"; stackId: number };

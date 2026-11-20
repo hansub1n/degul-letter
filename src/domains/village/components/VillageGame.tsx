@@ -20,6 +20,8 @@ function messageFor(event: GameEvent): string | null {
       return "계속 밀면 위로 올라가요";
     case "stackBlocked":
       return event.reason === "full" ? "4단까지만 쌓을 수 있어요" : "완성된 눈사람에는 더 쌓을 수 없어요";
+    case "overlapping":
+      return "다른 눈사람과 겹쳐요";
     case "zoneBlocked":
       return "다른 눈사람과 너무 가까워요. 조금 떨어져서 쌓아 주세요";
     case "stacked":
@@ -46,6 +48,8 @@ type Props = {
   onWriteLetter?: (stackId: number) => void;
   /** 저장된 내 눈사람을 부쉈을 때 */
   onSavedSnowmanBroken?: (savedId: string) => void;
+  /** 어떤 눈사람이든 부서졌을 때 (편지를 안 넣은 눈사람 목록에서 빼려고 쓴다) */
+  onSnowmanBroken?: (stackId: number) => void;
   /** 편지 버튼을 눌렀을 때 (어느 눈사람의 편지인지) */
   onOpenLetter?: (snowman: NearbySnowman) => void;
   /** 우체통 말풍선을 눌렀을 때 (주인: 우체통 열기, 방문자: 언제 열리는지 안내). 없으면 말풍선을 띄우지 않는다 */
@@ -76,6 +80,7 @@ export function VillageGame({
   unsentIds = [],
   onWriteLetter,
   onSavedSnowmanBroken,
+  onSnowmanBroken,
   onOpenLetter,
   onOpenMailbox,
   door,
@@ -95,9 +100,9 @@ export function VillageGame({
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
   // 바뀔 수 있는 콜백은 ref로 최신 값을 들고 있는다 (게임 루프가 매 프레임 부르므로)
-  const callbacks = useRef({ onSnowmanFinished, onSavedSnowmanBroken });
+  const callbacks = useRef({ onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken });
   useEffect(() => {
-    callbacks.current = { onSnowmanFinished, onSavedSnowmanBroken };
+    callbacks.current = { onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken };
   });
 
   useEffect(() => {
@@ -119,7 +124,10 @@ export function VillageGame({
             );
           }
         }
-        if (event.type === "broken" && event.savedId) callbacks.current.onSavedSnowmanBroken?.(event.savedId);
+        if (event.type === "broken") {
+          callbacks.current.onSnowmanBroken?.(event.stackId);
+          if (event.savedId) callbacks.current.onSavedSnowmanBroken?.(event.savedId);
+        }
       },
       onNearbyChange: setNearby,
       onMailboxNearChange: setMailboxNear,
@@ -274,7 +282,13 @@ export function VillageGame({
                   )}
                   {kind === "hammer" && (
                     <BreakButton
-                      onHoldChange={(holding) => gameRef.current?.setBreakCharging(holding)}
+                      onHoldChange={(holding) => {
+                        gameRef.current?.setBreakCharging(holding);
+                        // 편지를 넣은 내 눈사람: 망치질은 그대로 두고, 내리치는 동안 편지도 사라진다고만 알려 준다
+                        if (holding && nearby.savedId && nearby.hasLetter) {
+                          setToast({ text: "부수면 넣은 편지도 같이 사라져요", key: performance.now() });
+                        }
+                      }}
                       onBreak={() => gameRef.current?.breakNearby()}
                       onTooShort={() => setToast({ text: "망치를 꾹 눌러야 부서져요", key: performance.now() })}
                     />

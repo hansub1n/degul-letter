@@ -102,9 +102,13 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
       {/* 아이폰 노치·홈 바(viewport-fit=cover)를 피해 안전 영역만큼 더 띄운다 */}
       <div style={{ top: "calc(var(--p) * 4 + env(safe-area-inset-top, 0px))" }} className="pointer-events-none absolute inset-x-[calc(var(--p)*4)] flex items-start justify-between gap-[calc(var(--p)*4)]">
         <PixelButton iconOnly icon="close" aria-label="나가기" className="pointer-events-auto" onClick={onCancel} />
-        <PixelToast key={tool} placement="inline" className="mt-[var(--p)] min-w-0">
-          {active?.hint}
-        </PixelToast>
+        {/* 안내 칸은 남은 폭을 꽉 채운 고정 크기로 둔다. 도구마다 글 길이가 달라 칸이 줄어들면
+            아이폰 사파리가 예전 칸 테두리를 지우지 않고 자국으로 남긴다 */}
+        <div className="mt-[var(--p)] min-w-0 flex-1">
+          <PixelToast key={tool} placement="inline" className="w-full">
+            {active?.hint}
+          </PixelToast>
+        </div>
         <PixelButton
           variant="pine"
           iconOnly
