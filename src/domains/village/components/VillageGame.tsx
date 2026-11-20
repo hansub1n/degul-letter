@@ -208,9 +208,9 @@ export function VillageGame({
       {/* 조작 안내: 마을 이름보다 눈에 띄지 않게 아래쪽에 한 줄로, 몇 초 뒤 사라진다 */}
       {showHint && !sculpting && <PixelToast icon="arrow">끌어서 걷고, 눈덩이를 밀어 굴려요</PixelToast>}
 
-      {/* 알림: 위쪽 가운데 */}
+      {/* 알림: 위쪽 가운데. 마을 이름 표지판(위 12~78px)과 겹치지 않게 그 아래에 띄운다 */}
       {toast && (
-        <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ top: "calc(72px + env(safe-area-inset-top, 0px))" }}>
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ top: "calc(96px + env(safe-area-inset-top, 0px))" }}>
           <PixelToast key={toast.key} placement="inline">
             {toast.text}
           </PixelToast>
