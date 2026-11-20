@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { TIME_OF_DAY_SCRIPT } from "@/shared/hooks/useTimeOfDay";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/shared/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_SHARE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/shared/lib/site";
 import "./globals.css";
 
 // 갈무리체: 한글 도트 글꼴 (SIL Open Font License 1.1). 12px의 배수에서 가장 또렷하다.
@@ -36,10 +36,11 @@ export const metadata: Metadata = {
     url: "/",
     locale: "ko_KR",
     siteName: SITE_NAME,
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
+    // 카톡 미리보기: "데굴레터 / 한 줄 설명" 두 줄. 탭 제목·검색 설명은 위의 title·description을 쓴다
+    title: SITE_NAME,
+    description: SITE_SHARE_DESCRIPTION,
   },
-  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
+  twitter: { card: "summary_large_image", title: SITE_NAME, description: SITE_SHARE_DESCRIPTION },
 };
 
 export const viewport: Viewport = {
