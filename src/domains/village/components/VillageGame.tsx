@@ -92,7 +92,11 @@ export function VillageGame({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [toast, setToast] = useState<{ text: string; key: number; side: "top" | "bottom" } | null>(null);
+  /** 알림은 캐릭터 반대쪽 절반에 띄운다. 말풍선(망치·끌·우체통)은 늘 캐릭터 근처라 겹치지 않는다 */
+  const showToast = (text: string) =>
+    setToast({ text, key: performance.now(), side: gameRef.current?.playerInLowerHalf() ? "top" : "bottom" });
   const [nearby, setNearby] = useState<NearbySnowman | null>(null);
   const [mailboxNear, setMailboxNear] = useState(false);
   const [doorNear, setDoorNear] = useState(false);
@@ -115,7 +119,7 @@ export function VillageGame({
       isOwner,
       onEvent: (event) => {
         const text = messageFor(event);
-        if (text) setToast({ text, key: performance.now() });
+        if (text) showToast(text);
         if (event.type === "finished") {
           const draft = game.exportSnowman(event.stackId);
           if (draft) {
@@ -134,6 +138,8 @@ export function VillageGame({
       onDoorNearChange: setDoorNear,
     });
     gameRef.current = game;
+    // 표지판 층은 게임보다 먼저 그려지므로, 게임을 만든 뒤 한 번 더 알려 준다
+    game.setHeaderLayer(headerRef.current);
     const hintTimer = window.setTimeout(() => setShowHint(false), 8000);
     return () => {
       window.clearTimeout(hintTimer);
@@ -204,6 +210,10 @@ export function VillageGame({
 
       {header && !sculpting && (
         <div
+          ref={(el) => {
+            headerRef.current = el;
+            gameRef.current?.setHeaderLayer(el);
+          }}
           className="absolute"
           style={{
             top: "calc(12px + env(safe-area-inset-top, 0px))",
@@ -219,10 +229,16 @@ export function VillageGame({
       {/* 조작 안내: 마을 이름보다 눈에 띄지 않게 아래쪽에 한 줄로, 몇 초 뒤 사라진다 */}
       {showHint && !sculpting && <PixelToast icon="arrow">끌어서 걷고, 눈덩이를 밀어 굴려요</PixelToast>}
 
-      {/* 알림: 위쪽 가운데. 마을 이름 표지판(위 12~78px)과 겹치지 않게 그 아래에 띄운다 */}
+      {/* 알림: 캐릭터가 화면 아래쪽에 있으면 위(마을 이름 표지판 아래), 위쪽에 있으면 아래에 띄운다 */}
       {toast && (
-        // 알림은 화면 아래쪽에 띄운다. 위쪽에 두면 눈사람 머리 위 말풍선(망치·끌)과 겹친다
-        <div className="pointer-events-none absolute inset-x-0 flex justify-center px-[calc(var(--p)*4)]" style={{ bottom: "calc(96px + env(safe-area-inset-bottom, 0px))" }}>
+        <div
+          className="pointer-events-none absolute inset-x-0 flex justify-center px-[calc(var(--p)*4)]"
+          style={
+            toast.side === "top"
+              ? { top: "calc(96px + env(safe-area-inset-top, 0px))" }
+              : { bottom: "calc(96px + env(safe-area-inset-bottom, 0px))" }
+          }
+        >
           <PixelToast key={toast.key} placement="inline">
             {toast.text}
           </PixelToast>
@@ -287,11 +303,11 @@ export function VillageGame({
                         gameRef.current?.setBreakCharging(holding);
                         // 편지를 넣은 내 눈사람: 망치질은 그대로 두고, 내리치는 동안 편지도 사라진다고만 알려 준다
                         if (holding && nearby.savedId && nearby.hasLetter) {
-                          setToast({ text: "부수면 넣은 편지도 같이 사라져요", key: performance.now() });
+                          showToast("부수면 넣은 편지도 같이 사라져요");
                         }
                       }}
                       onBreak={() => gameRef.current?.breakNearby()}
-                      onTooShort={() => setToast({ text: "망치를 꾹 눌러야 부서져요", key: performance.now() })}
+                      onTooShort={() => showToast("망치를 꾹 눌러야 부서져요")}
                     />
                   )}
                 </Fragment>
