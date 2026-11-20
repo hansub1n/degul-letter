@@ -5,6 +5,7 @@
 
 import { AppwriteException, Client, ID, Permission, Query, Role, TablesDB } from "node-appwrite";
 import { verifyAccount } from "@/shared/lib/serverAccount";
+import { NICKNAME_MAX } from "./types";
 
 export class VillageCreateError extends Error {
   constructor(
@@ -15,8 +16,8 @@ export class VillageCreateError extends Error {
   }
 }
 
-/** 화면 입력칸과 같은 닉네임 길이 제한 */
-export const VILLAGE_NAME_MAX = 10;
+/** 화면 입력칸과 같은 닉네임 길이 제한 (types.ts의 NICKNAME_MAX) */
+export const VILLAGE_NAME_MAX = NICKNAME_MAX;
 
 const CODE_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
 
@@ -76,7 +77,7 @@ export async function createVillageForUser(params: {
     throw new VillageCreateError(400, `닉네임은 1~${VILLAGE_NAME_MAX}자로 적어 주세요`);
   }
 
-  // 1) 누구인지, 진짜 로그인했는지 (카카오 라벨 또는 구글 등 연결 기록). 익명 계정은 마을을 만들 수 없다
+  // 1) 누구인지, 진짜 로그인했는지 (kakao·google 라벨 또는 Appwrite 연결 기록). prefs만 바꾼 익명 계정은 403
   const account = await verifyAccount(params.jwt);
   if (!account) throw new VillageCreateError(401, "다시 들어와 주세요");
   if (!account.loggedIn) throw new VillageCreateError(403, "로그인하고 마을을 만들어 주세요");

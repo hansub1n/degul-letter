@@ -29,3 +29,6 @@ export type SnowmanDraft = {
   balls: number[];
   sculpt: Sculpt;
 };
+
+/** 닉네임(마을 이름·눈사람 이름표·편지 보낸 사람) 최대 글자 수. 이름표가 마을에서 너무 길지 않게 8자 */
+export const NICKNAME_MAX = 8;

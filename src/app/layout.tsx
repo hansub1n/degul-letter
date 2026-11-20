@@ -14,6 +14,13 @@ const galmuri = localFont({
   display: "swap",
 });
 
+// 작은 갈무리체(10px에서 또렷함): 마을 눈사람 이름표처럼 12px보다 작게 써야 하는 캔버스 글자용
+const galmuriSmall = localFont({
+  variable: "--font-pixel-small",
+  src: [{ path: "../../node_modules/galmuri/dist/Galmuri9.woff2", weight: "400", style: "normal" }],
+  display: "swap",
+});
+
 // 공유 이미지(opengraph-image.png, twitter-image.png)·아이콘(icon.png, apple-icon.png, favicon.ico)·manifest.ts는
 // 파일 규칙으로 Next가 붙인다. 미리보기 그림은 홈 배경을 그대로 찍고 나무 표지판을 얹은 것이다.
 export const metadata: Metadata = {
@@ -39,13 +46,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
   themeColor: "#1A1730",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // data-time은 아래 스크립트가 첫 칠 전에 정하므로 서버 HTML과 다를 수 있다
-    <html lang="ko" className={`${galmuri.variable} h-full`} suppressHydrationWarning>
+    <html lang="ko" className={`${galmuri.variable} ${galmuriSmall.variable} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: TIME_OF_DAY_SCRIPT }} />
       </head>

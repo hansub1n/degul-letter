@@ -21,7 +21,7 @@ export type Sculpt = {
 /** 좌우 여백: 팔이나 귀를 붙일 자리 */
 const MARGIN_X = 8;
 /** 위쪽 여백: 머리 위에 붙일 자리 */
-const MARGIN_TOP = 10;
+const MARGIN_TOP = 20;
 
 export function cellAt(s: Sculpt, x: number, y: number): number {
   if (x < 0 || y < 0 || x >= s.width || y >= s.height) return EMPTY;

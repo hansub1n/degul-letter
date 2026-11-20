@@ -12,7 +12,7 @@ import {
   type HammerView,
   type ScreenPad,
 } from "./render";
-import { ballHeights, breakStack, findNearbySnowman, finishStack, stackHeadY, stackTopHeight, step } from "./rules";
+import { ballHeights, breakStack, findNearbySnowman, finishStack, stackHeadY, step } from "./rules";
 import type { GameEvent, Stack } from "./types";
 import { createWorld, DOOR_POSITION, HOUSE_POSITION, MAILBOX_POSITION } from "./world";
 
@@ -161,8 +161,8 @@ export function createVillageGame({
     el.style.opacity = "1";
   };
   /** 눈사람 머리 꼭대기 바로 위에 말풍선을 띄운다 */
-  const placeAnchorOnStack = (stack: Stack) =>
-    placeAnchor(stack.x, stack.sculpt ? stack.y - stack.sculpt.height : stack.y - stackTopHeight(stack));
+  // 말풍선은 실제로 눈이 있는 머리 꼭대기에서 4칸 더 위에 띄운다 (조각 틀 위쪽 빈 여백 높이는 빼야 크기마다 위치가 들쭉날쭉하지 않다)
+  const placeAnchorOnStack = (stack: Stack) => placeAnchor(stack.x, stackHeadY(stack) - 4);
 
   const findStack = (id: number): Stack | undefined => world.stacks.find((s) => s.id === id);
 

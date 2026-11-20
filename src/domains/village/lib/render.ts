@@ -236,6 +236,10 @@ const CRACK = PAL.muted;
 const SHAKE_SECONDS = 0.28;
 
 const INK = PAL.ink;
+/** 캐릭터가 이만큼(마을 칸) 가까이 간 눈사람 이름은 노랗게 */
+const NAME_NEAR_DISTANCE = 28;
+/** 가까이 간 눈사람 이름 색 (globals.css --gold) */
+const NAME_NEAR_COLOR = "#FFC94D";
 const SNOW_EDGE = PAL.snowEdge;
 const SNOW_SHADE = PAL.snowShade;
 
@@ -1161,6 +1165,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   // 캔버스 글자에 쓸 도트 글꼴 이름 (next/font가 만든 이름을 CSS 변수에서 읽는다)
   const pixelFont =
     getComputedStyle(document.documentElement).getPropertyValue("--font-pixel").trim() || "sans-serif";
+  // 이름표용 작은 도트 글꼴. 캔버스는 글꼴을 스스로 불러오지 않아서 미리 불러 둔다
+  const pixelFontSmall =
+    getComputedStyle(document.documentElement).getPropertyValue("--font-pixel-small").trim() || pixelFont;
+  void document.fonts?.load(`10px ${pixelFontSmall}`).catch(() => undefined);
 
   // 조각 그림은 바뀔 때(version)만 다시 그리고, 그 외에는 만들어 둔 그림을 다시 쓴다
   const sculptSprites = new Map<number, { source: Sculpt; version: number; image: HTMLCanvasElement; outlined: HTMLCanvasElement }>();
@@ -1941,22 +1949,32 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     screen.imageSmoothingEnabled = false;
     screen.drawImage(pixel, 0, 0, pw, ph, 0, 0, pw * scale * dpr, ph * scale * dpr);
 
-    // 저장된 눈사람 발밑에 만든 사람 이름표 (조각하느라 확대 중일 때는 숨긴다)
+    // 이름표: 저장된 눈사람마다 발밑에 만든 사람 이름. 작은 도트 글씨(10px) + 흰 글씨 + 남색 외곽선 (상자 없음, 조각을 덜 가린다).
+    // 캐릭터가 가까이 간 눈사람 하나는 노란 글씨로 바꿔 지금 누구 눈사람 앞인지 알려 준다.
+    // 이름끼리 겹치면 그대로 겹쳐 두되, 캐릭터와 가까운 눈사람 이름이 맨 위에 오게 먼 것부터 그린다.
+    // (조각하느라 확대 중일 때는 숨긴다)
     if (t < 0.05) {
       screen.setTransform(dpr, 0, 0, dpr, 0, 0);
-      screen.font = `bold 12px ${pixelFont}`;
+      screen.font = `10px ${pixelFontSmall}`;
       screen.textAlign = "center";
       screen.textBaseline = "top";
       screen.lineJoin = "round";
-      screen.lineWidth = 4;
-      for (const stack of world.stacks) {
-        if (!stack.saved || stack.pop) continue;
-        const p = toScreen(stack.x, stack.y + 3);
+      screen.lineWidth = 3;
+      const px = world.player.x;
+      const py = world.player.y;
+      const dist = (s: (typeof world.stacks)[number]) => Math.hypot(s.x - px, s.y - py);
+      const tagged = world.stacks.filter((stack) => stack.saved && !stack.pop).sort((a, b) => dist(b) - dist(a));
+      const near = tagged.length > 0 && dist(tagged[tagged.length - 1]) < NAME_NEAR_DISTANCE ? tagged[tagged.length - 1] : null;
+      for (const stack of tagged) {
+        if (!stack.saved) continue;
         const label = stack.saved.authorName;
-        screen.strokeStyle = PAL.snow;
-        screen.strokeText(label, Math.round(p.x), Math.round(p.y));
-        screen.fillStyle = INK;
-        screen.fillText(label, Math.round(p.x), Math.round(p.y));
+        const p = toScreen(stack.x, stack.y + 3);
+        const x = Math.round(p.x);
+        const y = Math.round(p.y);
+        screen.strokeStyle = INK;
+        screen.strokeText(label, x, y);
+        screen.fillStyle = stack === near ? NAME_NEAR_COLOR : PAL.snow;
+        screen.fillText(label, x, y);
       }
     }
 

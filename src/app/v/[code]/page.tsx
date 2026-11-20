@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { VillageScreen } from "@/domains/village";
 import { getPublicVillageName } from "@/domains/village/server";
-import { PixelToast } from "@/shared/components/PixelToast";
+import { FootstepsLoader } from "@/shared/components/FootstepsLoader";
 import { villageShareText } from "@/shared/lib/site";
 
 // 카카오톡·슬랙에 붙는 제목. 마을 이름만 쓰고, 편지 내용·만든 사람 목록은 넣지 않는다.
@@ -28,13 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 export default function VillagePage() {
   return (
     <main className="fixed inset-0 bg-ground">
-      <Suspense
-        fallback={
-          <div className="fixed inset-0 flex items-center justify-center bg-ground">
-            <PixelToast placement="inline">마을로 가는 중…</PixelToast>
-          </div>
-        }
-      >
+      <Suspense fallback={<FootstepsLoader />}>
         <VillageScreen />
       </Suspense>
     </main>
