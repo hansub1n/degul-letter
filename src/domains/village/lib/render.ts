@@ -907,17 +907,28 @@ function paintSmoke(ctx: CanvasRenderingContext2D, hx: number, hy: number, time:
   }
 }
 
-/** 밤: 집 앞 땅에 계단식 타원 두 겹으로 창문 빛 웅덩이를 깐다 (땅 다음, 그림자 전에) */
-function paintWindowGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
-  const layer = (rx: number, ry: number, color: string) => {
-    ctx.fillStyle = color;
-    for (let dy = -ry; dy <= ry; dy++) {
-      const w = Math.round(rx * Math.sqrt(1 - (dy * dy) / ((ry + 0.5) * (ry + 0.5))));
-      ctx.fillRect(Math.round(cx - w), Math.round(cy + dy), w * 2 + 1, 1);
+/**
+ * 밤: 창문 불빛이 집 앞 그림자 위에 은은하게 비친다.
+ * 집 그림의 왼쪽 위 (hx, hy) 기준. 창문은 10~20칸, 집 바닥은 43칸 줄.
+ * 튀지 않게 흐린 보라 점만 찍는다: 창문 바로 앞은 바둑판, 바깥은 2칸 간격 점.
+ * 따뜻한 색은 창문 바로 아래 몇 점에만 둔다 (꽉 칠하거나 노란 점이 많으면 화려하고 기둥처럼 보였다).
+ * 그림자 다음, 집 그림 전에 칠해 위쪽 절반은 집에 가려진다.
+ */
+function paintWindowGlow(ctx: CanvasRenderingContext2D, hx: number, hy: number): void {
+  const cx = hx + 15;
+  const cy = hy + 44;
+  const rx = 14;
+  const ry = 6;
+  for (let y = cy; y <= cy + ry; y++) {
+    for (let x = cx - rx; x <= cx + rx; x++) {
+      const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+      if (d > 1) continue;
+      const grid = x % 2 === 0 && y % 2 === 0;
+      if (d < 0.4 ? (x + y) % 2 !== 0 : !grid) continue;
+      ctx.fillStyle = d < 0.15 && grid ? GLOW_INNER : GLOW_OUTER;
+      ctx.fillRect(x, y, 1, 1);
     }
-  };
-  layer(18, 5, GLOW_OUTER);
-  layer(11, 3, GLOW_INNER);
+  }
 }
 
 // ---------- 홈 배경 ----------
@@ -1061,13 +1072,13 @@ export function paintBackdrop(
 
     const hx = house.x - 24;
     const hy = house.y - 43;
-    if (night) paintWindowGlow(ctx, hx + 16, hy + 47);
 
     const items: Array<{ y: number; paint: () => void }> = [];
     items.push({
       y: house.y,
       paint: () => {
         shadow(ctx, house.x + 3, house.y + 1, 27);
+        if (night) paintWindowGlow(ctx, hx, hy);
         drawOutlined(ctx, lit(makeHouseSprite()), hx, hy);
         groundSnow(ctx, house.x - 20, house.y, 40, night);
         if (night) paintNightWindow(ctx, hx, hy, false);
@@ -1840,7 +1851,6 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     if (camY < SNOW_CLIFF_BOTTOM) px.drawImage(snowCliff, -camX, SNOW_CLIFF_BOTTOM - SNOW_CLIFF_H - camY);
     const hx = Math.round(HOUSE_POSITION.x - 24 - camX);
     const hy = Math.round(HOUSE_POSITION.y - 43 - camY);
-    if (night) paintWindowGlow(px, hx + 16, hy + 47);
 
     // 아래쪽(y가 큰) 것이 앞에 오도록 y 순서로 그린다
     const layers: Array<{ y: number; paint: () => void }> = [];
@@ -1849,6 +1859,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       paint: () => {
         // 빛은 왼쪽 위: 그림자는 오른쪽으로 조금 밀린다
         shadow(px, HOUSE_POSITION.x + 3 - camX, HOUSE_POSITION.y + 1 - camY, 24);
+        if (night) paintWindowGlow(px, hx, hy);
         drawOutlined(px, houseSprite, hx, hy);
         groundSnow(px, HOUSE_POSITION.x - 20 - camX, Math.round(HOUSE_POSITION.y - camY), 40, night);
         // 밤에는 창문이 따뜻하게 빛나고, 1.6초마다 한 칸 밝아졌다 돌아온다
