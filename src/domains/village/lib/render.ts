@@ -68,6 +68,13 @@ export type Renderer = {
   toScreen(worldX: number, worldY: number): Vec;
   /** 캔버스 크기 (CSS px) */
   size(): { width: number; height: number };
+  /**
+   * 화면 위쪽에서 표지판·버튼이 덮는 높이(CSS px). 카메라가 마을 맨 위에서 이만큼 더 올라가서,
+   * 마을 맨 위 줄에 세운 눈사람·캐릭터가 표지판 뒤에 숨지 않게 한다.
+   */
+  setTopInset(cssPx: number): void;
+  /** 마을에서 가장 높이 솟은 것(조각으로 키운 눈사람 머리)의 y. 0보다 위면 카메라가 그만큼 더 올라간다 */
+  setContentTop(worldY: number): void;
 };
 
 type Particle = {
@@ -405,6 +412,54 @@ function ballSprite(r: number, roll: number): HTMLCanvasElement {
 }
 
 // 그림은 브라우저에서 게임이 시작될 때 만든다 (서버에는 document가 없다)
+/** 마을 맨 위 경계의 눈 절벽 높이(칸). 절벽 아래 끝이 마을 y = SNOW_CLIFF_BOTTOM에 온다 */
+const SNOW_CLIFF_H = 30;
+const SNOW_CLIFF_BOTTOM = 2;
+const CLIFF_FACE = "#B8C4DC";
+const CLIFF_LIGHT = "#C9D3E6";
+const CLIFF_DARK = "#A3B2CF";
+const CLIFF_LINE = "#8E9DBF";
+
+/**
+ * 마을 맨 위 경계의 눈 절벽 (8x8 네모 블록을 쌓은 계단 모양). "여기부터는 한 단 높은 언덕"으로 읽히게 해서,
+ * 카메라가 표지판 아래까지 보여 주는 위쪽 여백이 걸어갈 수 있는 눈밭처럼 보이지 않게 한다.
+ * 블록 줄마다 높이가 1~2칸 다르고, 각 줄 꼭대기에 눈이 3칸 덮여 옆으로 흘러내린다. 맨 아래는 땅 그림자.
+ */
+const makeSnowCliffSprite = (width: number) =>
+  makeSprite(width, SNOW_CLIFF_H, (ctx) => {
+    const block = 8;
+    const faceBottom = SNOW_CLIFF_H - 3;
+    const cols = Math.ceil(width / block);
+    // 블록 줄(열)마다 2~3단. 이웃끼리 너무 들쭉날쭉하지 않게 천천히 바뀐다
+    const blocksAt = (c: number) => (Math.sin(c * 0.9) + hash2(c, 41) * 1.2 > 0.55 ? 3 : 2);
+    for (let c = 0; c < cols; c++) {
+      const n = blocksAt(c);
+      const top = faceBottom - n * block;
+      for (let lx = 0; lx < block; lx++) {
+        const x = c * block + lx;
+        if (x >= width) break;
+        for (let y = top; y < faceBottom; y++) {
+          const ly = (y - top) % block;
+          const r = hash2(x, y);
+          let color = r < 0.18 ? CLIFF_DARK : r > 0.9 ? CLIFF_LIGHT : CLIFF_FACE; // 블록 안 얼음 결
+          if (ly === 0) color = CLIFF_LIGHT;
+          if (ly === block - 1 || lx === block - 1) color = CLIFF_LINE;
+          rect(ctx, color, x, y, 1, 1);
+        }
+        // 꼭대기 눈 덮개 (3칸) + 블록 앞으로 듬성듬성 흘러내린 눈
+        const drip = hash2(x, 51) < 0.35 ? 1 + (hash2(x, 52) < 0.3 ? 1 : 0) : 0;
+        for (let y = top - 3; y < top + drip; y++) rect(ctx, y < top - 1 ? PAL.snow : SNOW_SHADE, x, y, 1, 1);
+        rect(ctx, SNOW_EDGE, x, top + drip, 1, 1);
+        // 높은 열 옆면: 낮은 이웃 쪽 가장자리에 세로 그늘
+        const left = c > 0 ? blocksAt(c - 1) : n;
+        if (lx === 0 && left < n) for (let y = top; y < faceBottom - left * block; y++) rect(ctx, CLIFF_LINE, x, y, 1, 1);
+        // 발치 그림자
+        rect(ctx, PAL.groundShadow, x, faceBottom, 1, 2);
+        if (x % 2 === 0) rect(ctx, PAL.groundShadow, x, faceBottom + 2, 1, 1);
+      }
+    }
+  });
+
 const makeTreeSprite = () => outline(makeSprite(21, 30, (ctx) => {
   rect(ctx, PAL.wood, 9, 24, 3, 6);
   rect(ctx, PAL.woodLight, 9, 24, 1, 6);
@@ -1111,6 +1166,8 @@ type Flake = { x: number; y: number; speed: number; size: number };
 
 export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, worldHeight: number): Renderer {
   const screen = context2d(canvas);
+  let topInset = 0;
+  let contentTop = 0;
   const pixel = document.createElement("canvas");
   const px = context2d(pixel);
   // 낮/밤은 렌더러를 만들 때 한 번 정한다 (시그니처는 그대로)
@@ -1118,6 +1175,9 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   groundPal = night ? { ...PAL_DAY, ...PAL_NIGHT } : PAL_DAY;
   const reducedMotion = prefersReducedMotion();
   const ground = makeGround(worldWidth, worldHeight, groundPal);
+  /** 카메라가 마을 맨 위보다 더 올라갔을 때 그 위를 채우는 눈밭 (같은 무늬, 길·자국 없음) */
+  const TOP_STRIP = 200;
+  const topStrip = makeGround(worldWidth, TOP_STRIP, groundPal, { x: -9999, y: -9999 });
   // 굴린 자국은 땅과 따로 두어, 그림자와 눈덩이 아래에 그리고 오래된 자국은 스며 사라지게 한다
   const trail = document.createElement("canvas");
   trail.width = worldWidth;
@@ -1147,6 +1207,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   const ball = (r: number, roll: number) => moonlit(ballSprite(r, roll));
   const treeSprite = moonlit(makeTreeSprite());
   const houseSprite = moonlit(makeHouseSprite());
+  const snowCliff = moonlit(makeSnowCliffSprite(worldWidth));
   const cheerSprite = hero(makeCheerSprite());
   const mailboxEmpty = moonlit(makeMailboxSprite(false));
   const mailboxFull = moonlit(makeMailboxSprite(true));
@@ -1735,7 +1796,12 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const baseW = cssW / baseScale;
     const baseH = cssH / baseScale;
     let centerX = worldWidth < baseW ? worldWidth / 2 : clamp(player.x, baseW / 2, worldWidth - baseW / 2);
-    let centerY = worldHeight < baseH ? worldHeight / 2 : clamp(player.y, baseH / 2, worldHeight - baseH / 2);
+    // 위쪽은 표지판이 덮는 높이만큼, 그리고 마을 맨 위보다 높이 솟은 조각 머리만큼 마을 밖까지 더 올라갈 수 있다
+    const insetWorld = topInset / baseScale - contentTop;
+    let centerY =
+      worldHeight + insetWorld < baseH
+        ? (worldHeight - insetWorld) / 2
+        : clamp(player.y, baseH / 2 - insetWorld, worldHeight - baseH / 2);
     if (focus) {
       centerX += (focus.x - centerX) * t;
       centerY += (focus.y - centerY) * t;
@@ -1768,7 +1834,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     fadeTrails(performance.now() / 1000);
     rect(px, groundPal.ground, 0, 0, pw, ph);
     px.drawImage(ground, -camX, -camY);
+    if (camY < 0) px.drawImage(topStrip, -camX, -camY - TOP_STRIP);
     px.drawImage(trail, -camX, -camY);
+    // 마을 맨 위 경계의 눈 절벽 (길·자국 위, 눈사람·캐릭터 아래)
+    if (camY < SNOW_CLIFF_BOTTOM) px.drawImage(snowCliff, -camX, SNOW_CLIFF_BOTTOM - SNOW_CLIFF_H - camY);
     const hx = Math.round(HOUSE_POSITION.x - 24 - camX);
     const hy = Math.round(HOUSE_POSITION.y - 43 - camY);
     if (night) paintWindowGlow(px, hx + 16, hy + 47);
@@ -2046,5 +2115,20 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     }
   }
 
-  return { resize, paintTrail, burst, draw, focusOn, toWorld, toScreen, size: () => ({ width: cssW, height: cssH }) };
+  return {
+    resize,
+    paintTrail,
+    burst,
+    draw,
+    focusOn,
+    toWorld,
+    toScreen,
+    size: () => ({ width: cssW, height: cssH }),
+    setTopInset: (cssPx: number) => {
+      topInset = cssPx;
+    },
+    setContentTop: (worldY: number) => {
+      contentTop = Math.min(0, worldY);
+    },
+  };
 }
