@@ -54,6 +54,30 @@ export function stackHeadY(stack: Stack): number {
   return stack.y - stackTopHeight(stack);
 }
 
+/**
+ * 마을 화면에서 눈사람 몸이 차지하는 네모 (발밑 기준). 조각이 있으면 실제로 눈이 있는 칸만 센다.
+ * 팔·꼬리처럼 옆으로 길게 뻗은 조각도 그 끝까지 넓게 잡힌다.
+ */
+export function stackRect(stack: Stack): { left: number; right: number; top: number; bottom: number } {
+  const s = stack.sculpt;
+  if (s) {
+    let minCol = s.width;
+    let maxCol = -1;
+    for (let y = 0; y < s.height; y++) {
+      for (let x = 0; x < s.width; x++) {
+        if (s.cells[y * s.width + x] === 0) continue;
+        if (x < minCol) minCol = x;
+        if (x > maxCol) maxCol = x;
+      }
+    }
+    if (maxCol >= 0) {
+      return { left: stack.x - (s.originX - minCol), right: stack.x + (maxCol - s.originX), top: stackHeadY(stack), bottom: stack.y };
+    }
+  }
+  const r = stack.balls[0].r;
+  return { left: stack.x - r, right: stack.x + r, top: stack.y - stackTopHeight(stack), bottom: stack.y };
+}
+
 export function isLoose(stack: Stack): boolean {
   return stack.balls.length === 1 && !stack.finished;
 }
@@ -105,6 +129,8 @@ function zoneOwnerAt(world: World, x: number, y: number, r: number, ignoreId: nu
   const newHalf = Math.max(r, nameHalfWidth(NAME_MAX_CHARS));
   return world.stacks.find((s) => {
     if (s.id === ignoreId || !(s.finished || s.saved)) return false;
+    // 가로: 발밑 눈덩이와 이름표 폭만 본다. 조각이 옆으로 뻗은 끝까지 막으면 빈자리 찾기가 너무 어려워서,
+    // 조각끼리 겹치는 건 완성할 때 "다른 눈사람과 겹쳐요"로 알려 준다
     const half = Math.max(footRadius(s), nameHalfWidth(s.saved ? [...s.saved.authorName].length : NAME_MAX_CHARS));
     if (Math.abs(x - s.x) >= half + newHalf) return false;
     // 세로: 다른 눈사람의 머리 꼭대기부터 이름표 아래까지와, 새 눈덩이의 몸~이름표가 겹치면 막는다
@@ -442,7 +468,16 @@ export function finishStack(world: World, stackId: number, sculpt: Sculpt | null
   stack.finished = true;
   stack.sculpt = sculpt;
   stack.wobble = 0.4;
-  return [{ type: "finished", stackId }];
+  const events: GameEvent[] = [{ type: "finished", stackId }];
+  // 조각으로 커진 몸이 다른 눈사람과 겹치면 알려 준다 (완성은 막지 않는다. 부수고 옮겨 세울 수 있다)
+  const mine = stackRect(stack);
+  const hit = world.stacks.some((o) => {
+    if (o.id === stack.id || !(o.finished || o.saved)) return false;
+    const r = stackRect(o);
+    return mine.left < r.right && mine.right > r.left && mine.top < r.bottom && mine.bottom > r.top;
+  });
+  if (hit) events.push({ type: "overlapping" });
+  return events;
 }
 
 /**

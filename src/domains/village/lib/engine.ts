@@ -71,6 +71,8 @@ export type VillageGame = {
    * (카메라가 계속 움직이니 React state 대신 엔진이 직접 위치만 바꾼다)
    */
   setNearbyAnchor(el: HTMLElement | null): void;
+  /** 화면 위쪽 표지판·버튼 층 (말풍선이 피하고, 카메라가 그 아래까지 내려 보여 준다) */
+  setHeaderLayer(el: HTMLElement | null): void;
   /** 편지 안 넣은 눈사람 머리 위 봉투를 담는 층. 엔진이 매 프레임 위치를 옮긴다 */
   setUnsentMarkerLayer(el: HTMLElement | null): void;
   /** 완성했지만 아직 편지를 넣지 않은 눈사람 ID */
@@ -81,6 +83,10 @@ export type VillageGame = {
   setBreakCharging(charging: boolean): void;
   /** 아직 저장하지 않은 눈사람을 만드는 중인지 (굴리기·쌓기·조각, 완성 후 미저장) */
   hasUnsavedWork(): boolean;
+  /** 캐릭터가 화면 아래쪽 절반에 있는지 (알림을 캐릭터 반대쪽에 띄우려고 쓴다) */
+  playerInLowerHalf(): boolean;
+  /** 눈사람 가슴께의 화면 위치 (CSS px, 캔버스 기준). 편지 봉투가 날아갈 곳 */
+  stackChestScreen(stackId: number): { x: number; y: number } | null;
   destroy(): void;
 };
 
@@ -148,21 +154,49 @@ export function createVillageGame({
   let pendingCelebrate: number | null = null;
   let celebrate: { stackId: number; start: number } | null = null;
 
-  /** 눈사람 머리 꼭대기 바로 위에 요소를 띄운다. 화면 밖으로 나가지 않게 가장자리에서 멈춘다. */
-  const placeAnchor = (x: number, topY: number) => {
+  /** 화면 위쪽의 마을 이름 표지판·버튼을 담은 층. 이 칸들은 말풍선이 피해야 하고, 카메라도 그 아래까지 내려 보여 준다 */
+  let headerLayer: HTMLElement | null = null;
+  type Box = { left: number; right: number; top: number; bottom: number };
+  /** 표지판·버튼 하나하나의 네모 (캔버스 기준 CSS px) */
+  const headerBoxes = (): Box[] => {
+    const row = headerLayer?.firstElementChild;
+    if (!row) return [];
+    const base = canvas.getBoundingClientRect();
+    return Array.from(row.children, (c) => {
+      const r = c.getBoundingClientRect();
+      return { left: r.left - base.left, right: r.right - base.left, top: r.top - base.top, bottom: r.bottom - base.top };
+    }).filter((b) => b.right > b.left && b.bottom > b.top);
+  };
+  const overlaps = (a: Box, b: Box) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+
+  /**
+   * 요소를 마을 좌표 (x, topY) 바로 위에 띄운다. 화면 밖으로 나가지 않게 가장자리에서 멈춘다.
+   * belowY가 있으면: 위쪽에 자리가 모자랄 때(마을 맨 위 모서리 등) 그 지점 아래로 내려 띄운다.
+   * 위로 밀어 올리다 보면 말풍선이 눈사람·캐릭터를 덮거나 표지판 뒤로 숨기 때문이다.
+   */
+  const placeAnchor = (x: number, topY: number, belowY?: number) => {
     const el = nearbyAnchor;
     if (!el) return;
     const p = renderer.toScreen(x, topY - 2);
     const { width, height } = renderer.size();
     const margin = 8;
     const sx = Math.min(Math.max(p.x, el.offsetWidth / 2 + margin), width - el.offsetWidth / 2 - margin);
-    const sy = Math.min(Math.max(p.y, el.offsetHeight + margin), height - margin);
-    el.style.transform = `translate(${Math.round(sx)}px, ${Math.round(sy)}px) translate(-50%, -100%)`;
+    const above: Box = { left: sx - el.offsetWidth / 2, right: sx + el.offsetWidth / 2, top: p.y - el.offsetHeight, bottom: p.y };
+    if (belowY !== undefined && (above.top < margin || headerBoxes().some((b) => overlaps(above, b)))) {
+      const below = renderer.toScreen(x, belowY);
+      const sy = Math.min(below.y, height - el.offsetHeight - margin);
+      el.style.transform = `translate(${Math.round(sx)}px, ${Math.round(sy)}px) translate(-50%, 0)`;
+    } else {
+      const sy = Math.min(Math.max(p.y, el.offsetHeight + margin), height - margin);
+      el.style.transform = `translate(${Math.round(sx)}px, ${Math.round(sy)}px) translate(-50%, -100%)`;
+    }
     el.style.opacity = "1";
   };
-  /** 눈사람 머리 꼭대기 바로 위에 말풍선을 띄운다 */
+  /** 눈사람 머리 꼭대기 바로 위에 말풍선을 띄운다. 위쪽 자리가 모자라면 발밑 이름표 아래로 내린다 */
   // 말풍선은 실제로 눈이 있는 머리 꼭대기에서 4칸 더 위에 띄운다 (조각 틀 위쪽 빈 여백 높이는 빼야 크기마다 위치가 들쭉날쭉하지 않다)
-  const placeAnchorOnStack = (stack: Stack) => placeAnchor(stack.x, stackHeadY(stack) - 4);
+  // 아래로 내릴 때는 눈사람 발밑 이름표와, 그 앞에 선 캐릭터까지 피해서 둘 다 보이게 한다
+  const placeAnchorOnStack = (stack: Stack) =>
+    placeAnchor(stack.x, stackHeadY(stack) - 4, Math.max(stack.y + 10, world.player.y + 6));
 
   const findStack = (id: number): Stack | undefined => world.stacks.find((s) => s.id === id);
 
@@ -305,8 +339,17 @@ export function createVillageGame({
       world.player.dir = "down";
       if ("vibrate" in navigator) navigator.vibrate([20, 60, 20]);
     }
-    if (celebrate && world.time - celebrate.start > CELEBRATE_SECONDS) celebrate = null;
+    if (celebrate && world.time - celebrate.start > CELEBRATE_SECONDS) {
+      const done = celebrate.stackId;
+      celebrate = null;
+      emit([{ type: "celebrated", stackId: done }]);
+    }
 
+    // 카메라는 표지판·버튼 아래 끝까지 마을 밖을 더 보여 준다 (맨 위 줄이 표지판 뒤에 숨지 않게)
+    const boxes = headerBoxes();
+    renderer.setTopInset(boxes.length ? Math.max(...boxes.map((b) => b.bottom)) + 8 : 0);
+    // 조각으로 위로 키운 눈사람 머리가 마을 맨 위를 넘으면 그만큼 더 보여 준다
+    renderer.setContentTop(Math.min(0, ...world.stacks.map((s) => stackHeadY(s))) - 2);
     renderer.draw(world, {
       celebrate: celebrate ? { stackId: celebrate.stackId, t: world.time - celebrate.start } : null,
       joystick: sculptMode ? null : input.joystick(),
@@ -379,6 +422,9 @@ export function createVillageGame({
     setNearbyAnchor(el) {
       nearbyAnchor = el;
     },
+    setHeaderLayer(el) {
+      headerLayer = el;
+    },
     setUnsentMarkerLayer(el) {
       unsentMarkerLayer = el;
     },
@@ -387,6 +433,17 @@ export function createVillageGame({
     },
     setBreakCharging(charging) {
       chargeStart = charging ? performance.now() : null;
+    },
+    stackChestScreen(stackId) {
+      const stack = findStack(stackId);
+      if (!stack) return null;
+      // 머리 꼭대기와 발 사이 아래쪽 1/3쯤 (편지를 눈사람 몸에 쏙 넣는 자리)
+      const head = stackHeadY(stack);
+      return renderer.toScreen(stack.x, stack.y - (stack.y - head) * 0.4);
+    },
+    playerInLowerHalf() {
+      const p = renderer.toScreen(world.player.x, world.player.y);
+      return p.y > renderer.size().height / 2;
     },
     hasUnsavedWork() {
       if (editing || world.lift) return true;

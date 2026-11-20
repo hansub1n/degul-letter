@@ -20,6 +20,8 @@ function messageFor(event: GameEvent): string | null {
       return "계속 밀면 위로 올라가요";
     case "stackBlocked":
       return event.reason === "full" ? "4단까지만 쌓을 수 있어요" : "완성된 눈사람에는 더 쌓을 수 없어요";
+    case "overlapping":
+      return "다른 눈사람과 겹쳐요";
     case "zoneBlocked":
       return "다른 눈사람과 너무 가까워요. 조금 떨어져서 쌓아 주세요";
     case "stacked":
@@ -46,6 +48,10 @@ type Props = {
   onWriteLetter?: (stackId: number) => void;
   /** 저장된 내 눈사람을 부쉈을 때 */
   onSavedSnowmanBroken?: (savedId: string) => void;
+  /** 어떤 눈사람이든 부서졌을 때 (편지를 안 넣은 눈사람 목록에서 빼려고 쓴다) */
+  onSnowmanBroken?: (stackId: number) => void;
+  /** "완성!" 축하가 끝났을 때 (편지 창을 이 뒤에 띄운다) */
+  onSnowmanCelebrated?: (stackId: number) => void;
   /** 편지 버튼을 눌렀을 때 (어느 눈사람의 편지인지) */
   onOpenLetter?: (snowman: NearbySnowman) => void;
   /** 우체통 말풍선을 눌렀을 때 (주인: 우체통 열기, 방문자: 언제 열리는지 안내). 없으면 말풍선을 띄우지 않는다 */
@@ -64,6 +70,8 @@ type Props = {
 
 export type VillageGameApi = {
   hasUnsavedWork: () => boolean;
+  /** 눈사람 몸의 화면 위치 (페이지 기준 CSS px). 편지 봉투가 날아갈 곳 */
+  stackChestScreen: (stackId: number) => { x: number; y: number } | null;
 };
 
 export type MarkSaved = (rowId: string, authorName: string, hasLetter: boolean) => void;
@@ -76,6 +84,8 @@ export function VillageGame({
   unsentIds = [],
   onWriteLetter,
   onSavedSnowmanBroken,
+  onSnowmanBroken,
+  onSnowmanCelebrated,
   onOpenLetter,
   onOpenMailbox,
   door,
@@ -87,7 +97,11 @@ export function VillageGame({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [toast, setToast] = useState<{ text: string; key: number; side: "top" | "bottom" } | null>(null);
+  /** 알림은 캐릭터 반대쪽 절반에 띄운다. 말풍선(망치·끌·우체통)은 늘 캐릭터 근처라 겹치지 않는다 */
+  const showToast = (text: string) =>
+    setToast({ text, key: performance.now(), side: gameRef.current?.playerInLowerHalf() ? "top" : "bottom" });
   const [nearby, setNearby] = useState<NearbySnowman | null>(null);
   const [mailboxNear, setMailboxNear] = useState(false);
   const [doorNear, setDoorNear] = useState(false);
@@ -95,9 +109,9 @@ export function VillageGame({
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
   // 바뀔 수 있는 콜백은 ref로 최신 값을 들고 있는다 (게임 루프가 매 프레임 부르므로)
-  const callbacks = useRef({ onSnowmanFinished, onSavedSnowmanBroken });
+  const callbacks = useRef({ onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken, onSnowmanCelebrated });
   useEffect(() => {
-    callbacks.current = { onSnowmanFinished, onSavedSnowmanBroken };
+    callbacks.current = { onSnowmanFinished, onSavedSnowmanBroken, onSnowmanBroken, onSnowmanCelebrated };
   });
 
   useEffect(() => {
@@ -110,7 +124,7 @@ export function VillageGame({
       isOwner,
       onEvent: (event) => {
         const text = messageFor(event);
-        if (text) setToast({ text, key: performance.now() });
+        if (text) showToast(text);
         if (event.type === "finished") {
           const draft = game.exportSnowman(event.stackId);
           if (draft) {
@@ -119,13 +133,19 @@ export function VillageGame({
             );
           }
         }
-        if (event.type === "broken" && event.savedId) callbacks.current.onSavedSnowmanBroken?.(event.savedId);
+        if (event.type === "celebrated") callbacks.current.onSnowmanCelebrated?.(event.stackId);
+        if (event.type === "broken") {
+          callbacks.current.onSnowmanBroken?.(event.stackId);
+          if (event.savedId) callbacks.current.onSavedSnowmanBroken?.(event.savedId);
+        }
       },
       onNearbyChange: setNearby,
       onMailboxNearChange: setMailboxNear,
       onDoorNearChange: setDoorNear,
     });
     gameRef.current = game;
+    // 표지판 층은 게임보다 먼저 그려지므로, 게임을 만든 뒤 한 번 더 알려 준다
+    game.setHeaderLayer(headerRef.current);
     const hintTimer = window.setTimeout(() => setShowHint(false), 8000);
     return () => {
       window.clearTimeout(hintTimer);
@@ -146,6 +166,11 @@ export function VillageGame({
     if (!apiRef) return;
     apiRef.current = {
       hasUnsavedWork: () => Boolean(sculpting) || Boolean(gameRef.current?.hasUnsavedWork()),
+      stackChestScreen: (stackId) => {
+        const p = gameRef.current?.stackChestScreen(stackId);
+        const box = canvasRef.current?.getBoundingClientRect();
+        return p && box ? { x: p.x + box.left, y: p.y + box.top } : null;
+      },
     };
     return () => {
       apiRef.current = null;
@@ -196,6 +221,10 @@ export function VillageGame({
 
       {header && !sculpting && (
         <div
+          ref={(el) => {
+            headerRef.current = el;
+            gameRef.current?.setHeaderLayer(el);
+          }}
           className="absolute"
           style={{
             top: "calc(12px + env(safe-area-inset-top, 0px))",
@@ -211,9 +240,16 @@ export function VillageGame({
       {/* 조작 안내: 마을 이름보다 눈에 띄지 않게 아래쪽에 한 줄로, 몇 초 뒤 사라진다 */}
       {showHint && !sculpting && <PixelToast icon="arrow">끌어서 걷고, 눈덩이를 밀어 굴려요</PixelToast>}
 
-      {/* 알림: 위쪽 가운데. 마을 이름 표지판(위 12~78px)과 겹치지 않게 그 아래에 띄운다 */}
+      {/* 알림: 캐릭터가 화면 아래쪽에 있으면 위(마을 이름 표지판 아래), 위쪽에 있으면 아래에 띄운다 */}
       {toast && (
-        <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ top: "calc(96px + env(safe-area-inset-top, 0px))" }}>
+        <div
+          className="pointer-events-none absolute inset-x-0 flex justify-center px-[calc(var(--p)*4)]"
+          style={
+            toast.side === "top"
+              ? { top: "calc(96px + env(safe-area-inset-top, 0px))" }
+              : { bottom: "calc(96px + env(safe-area-inset-bottom, 0px))" }
+          }
+        >
           <PixelToast key={toast.key} placement="inline">
             {toast.text}
           </PixelToast>
@@ -274,9 +310,15 @@ export function VillageGame({
                   )}
                   {kind === "hammer" && (
                     <BreakButton
-                      onHoldChange={(holding) => gameRef.current?.setBreakCharging(holding)}
+                      onHoldChange={(holding) => {
+                        gameRef.current?.setBreakCharging(holding);
+                        // 편지를 넣은 내 눈사람: 망치질은 그대로 두고, 내리치는 동안 편지도 사라진다고만 알려 준다
+                        if (holding && nearby.savedId && nearby.hasLetter) {
+                          showToast("부수면 넣은 편지도 같이 사라져요");
+                        }
+                      }}
                       onBreak={() => gameRef.current?.breakNearby()}
-                      onTooShort={() => setToast({ text: "망치를 꾹 눌러야 부서져요", key: performance.now() })}
+                      onTooShort={() => showToast("망치를 꾹 눌러야 부서져요")}
                     />
                   )}
                 </Fragment>
