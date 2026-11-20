@@ -617,6 +617,9 @@ body {
   --box-fill: var(--night);
   --box-light: #2e2a55;
   --box-shade: var(--night);
+  /* 테두리를 밤 눈 반짝임 색으로: 남색 테두리는 어두운 밤 땅에 묻혀 상자 모양이 안 보였다 */
+  --box-line: #8e95c8;
+  --box-drop: #26224a;
   color: var(--snow);
 }
 
