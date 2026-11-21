@@ -14,7 +14,10 @@ import {
 } from "./render";
 import { ballHeights, breakStack, findNearbySnowman, finishStack, stackHeadY, step } from "./rules";
 import type { GameEvent, Stack } from "./types";
-import { createWorld, DOOR_POSITION, HOUSE_POSITION, MAILBOX_POSITION } from "./world";
+import { createWorld, HOUSE_POSITION, MAILBOX_POSITION } from "./world";
+
+/** 캐릭터가 집 벽에서 이만큼 안으로 오면 집 말풍선을 띄운다 (집 충돌 원 바깥 거리, 게임 픽셀) */
+const HOUSE_TOUCH = 10;
 
 /**
  * 근처 눈사람. finished면 조각은 끝났고, mine이면 부술 수 있다.
@@ -271,14 +274,18 @@ export function createVillageGame({
     // 조각 중이거나 완성 축하 중에는 말풍선을 띄우지 않는다 ("완성!" 글자를 가리지 않게)
     const celebrating = celebrate !== null || pendingCelebrate !== null;
     const nearby = sculptMode || celebrating || world.lift ? null : findNearbySnowman(world, isOwner);
-    // 우체통·집 문 가까이 오면 (눈사람 말풍선이 없을 때만) 그 위에 말풍선을 띄운다. 주인·방문자 모두.
+    // 우체통·집 가까이 오면 (눈사람 말풍선이 없을 때만) 그 위에 말풍선을 띄운다. 주인·방문자 모두.
     // 무엇을 할지(우체통 열기·로그아웃 / 우체통 안내·첫 화면으로)는 화면 쪽이 정한다.
-    // 둘 다 가까우면 더 가까운 쪽 하나만 띄운다.
+    // 집은 문 앞뿐 아니라 뒤·옆 어디서 붙어도 지붕 위 말풍선이 뜬다 (문 앞이 눈덩이로 막혀도 갈 수 있게).
+    // 우체통은 집 바로 옆이라, 우체통에 아주 가까우면 우체통을 먼저 띄운다.
     const spotsOpen = !nearby && !sculptMode && !celebrating;
-    const toMailbox = distance(world.player.x, world.player.y, MAILBOX_POSITION.x, MAILBOX_POSITION.y);
-    const toDoor = distance(world.player.x, world.player.y, DOOR_POSITION.x, DOOR_POSITION.y);
-    const mailboxNear = spotsOpen && toMailbox < 20 && toMailbox <= toDoor;
-    const doorNear = spotsOpen && toDoor < 20 && toDoor < toMailbox;
+    const { x: px, y: py } = world.player;
+    const toMailbox = distance(px, py, MAILBOX_POSITION.x, MAILBOX_POSITION.y);
+    const toHouse = Math.min(
+      ...world.obstacles.filter((ob) => ob.kind === "house").map((ob) => distance(px, py, ob.x, ob.y) - ob.r),
+    );
+    const mailboxNear = spotsOpen && toMailbox < 20 && (toMailbox < 14 || toHouse >= HOUSE_TOUCH);
+    const doorNear = spotsOpen && !mailboxNear && toHouse < HOUSE_TOUCH;
     if (doorNear !== lastDoorNear) {
       lastDoorNear = doorNear;
       onDoorNearChange?.(doorNear);
