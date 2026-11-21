@@ -5,6 +5,7 @@ import { ID, Permission, Role } from "appwrite";
 import { getAppwrite, TABLES } from "@/shared/lib/appwrite";
 import { ensureUserId } from "@/shared/lib/session";
 import { LETTER_MAX_LENGTH } from "./types";
+import { sealLetter } from "./lib/seal";
 
 /** 편지를 묻어 두고 편지 ID를 돌려준다 */
 export async function createLetter(villageId: string, authorName: string, content: string): Promise<string> {
@@ -14,7 +15,8 @@ export async function createLetter(villageId: string, authorName: string, conten
     databaseId,
     tableId: TABLES.letters,
     rowId: ID.unique(),
-    data: { villageId, authorId: userId, authorName, content: content.slice(0, LETTER_MAX_LENGTH) },
+    // 내용은 브라우저에서 봉인(암호화)해서 저장한다. 12/25에 서버만 풀 수 있다 (lib/seal.ts)
+    data: { villageId, authorId: userId, authorName, content: await sealLetter(content.slice(0, LETTER_MAX_LENGTH)) },
     // 읽기 권한 없음. 쓴 사람은 눈사람을 부술 때 편지도 지울 수 있게 지우기 권한만 준다.
     permissions: [Permission.delete(Role.user(userId))],
   });
