@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "setup:appwrite": "node --env-file=.env.local scripts/setup-appwrite.mjs",
-    "seal:letters": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/seal-letters.mjs"
+    "seal:letters": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/seal-letters.mjs",
+    "delete:account": "node --env-file=.env.local scripts/delete-account.mjs"
   },
   "dependencies": {
     "appwrite": "^29.2.0",
