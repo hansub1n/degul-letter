@@ -112,8 +112,6 @@ export function VillageGame({
   const [nearby, setNearby] = useState<NearbySnowman | null>(null);
   const [mailboxNear, setMailboxNear] = useState(false);
   const [doorNear, setDoorNear] = useState(false);
-  /** 안내 "조각해 볼까?" 마디: 이 화면에서 조각을 한 번이라도 열었는지 */
-  const [sculptedOnce, setSculptedOnce] = useState(false);
   const getGame = useCallback(() => gameRef.current, []);
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
@@ -250,7 +248,6 @@ export function VillageGame({
         game={getGame}
         isOwner={isOwner}
         hasVillage={guideHasVillage}
-        sculpted={sculptedOnce}
         letterSent={guideLetterSent}
         hidden={Boolean(sculpting)}
       />
@@ -306,6 +303,7 @@ export function VillageGame({
                       variant="primary"
                       size="sm"
                       icon="envelope"
+                      data-guide-spot="write"
                       onClick={() => onWriteLetter?.(nearby.id)}
                     >
                       편지 쓰기
@@ -320,7 +318,6 @@ export function VillageGame({
                       data-guide-spot="carve"
                       onClick={() => {
                         setSculpting(gameRef.current?.startSculpt() ?? null);
-                        setSculptedOnce(true);
                       }}
                     />
                   )}
