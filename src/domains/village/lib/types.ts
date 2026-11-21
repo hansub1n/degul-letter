@@ -57,6 +57,8 @@ export type World = {
   player: Player;
   stacks: Stack[];
   obstacles: Obstacle[];
+  /** 집 문 앞·우체통 앞처럼 눈덩이가 들어가지 못하는 자리. 캐릭터는 지나갈 수 있다 */
+  ballFree: Array<{ x: number; y: number; r: number }>;
   lift: Lift | null;
   push: PushState;
   spawnTimer: number;

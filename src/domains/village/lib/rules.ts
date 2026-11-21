@@ -92,6 +92,11 @@ function hitsObstacle(world: World, x: number, y: number, r: number): boolean {
   return world.obstacles.some((ob) => distance(x, y, ob.x, ob.y) < r + ob.r);
 }
 
+/** 눈덩이가 (x, y)에 들어갈 수 없는 자리(문 앞·우체통 앞)인지 */
+function inBallFreeZone(world: World, x: number, y: number, r: number): boolean {
+  return world.ballFree.some((z) => distance(x, y, z.x, z.y) < r + z.r);
+}
+
 function findStackAt(world: World, x: number, y: number, r: number, ignoreId?: number): Stack | undefined {
   return world.stacks.find((s) => s.id !== ignoreId && distance(x, y, s.x, s.y) < r + footRadius(s));
 }
@@ -144,6 +149,7 @@ function isFreeSpot(world: World, x: number, y: number, r: number): boolean {
   return (
     !outOfBounds(world, x, y, r) &&
     !hitsObstacle(world, x, y, r) &&
+    !inBallFreeZone(world, x, y, r) &&
     !findStackAt(world, x, y, r + 2) &&
     // 새 눈덩이도 다른 눈사람 자리에는 생기지 않게 한다
     !zoneOwnerAt(world, x, y, r, -1) &&
@@ -311,7 +317,7 @@ function pushBall(
   const ny = stack.y + bdy;
   const fr = footRadius(stack);
 
-  if (outOfBounds(world, nx, ny, fr) || hitsObstacle(world, nx, ny, fr)) {
+  if (outOfBounds(world, nx, ny, fr) || hitsObstacle(world, nx, ny, fr) || inBallFreeZone(world, nx, ny, fr)) {
     resetPush(world);
     return false;
   }
