@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { hasSeenSculptGuide, SculptToolGuide } from "./SculptToolGuide";
 import { PixelButton } from "@/shared/components/PixelButton";
 import type { PixelIconName } from "@/shared/components/PixelIcon";
 import { PixelToast } from "@/shared/components/PixelToast";
@@ -39,6 +41,13 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
   const [tool, setTool] = useState<SculptTool>("carve");
   const [size, setSize] = useState<1 | 3>(1);
   const [canUndo, setCanUndo] = useState(false);
+  /** 처음 조각하는 사람에게 도구 미리보기 카드를 띄운다 (이 브라우저에서 한 번) */
+  const [guideOpen, setGuideOpen] = useState(false);
+  useEffect(() => {
+    // 저장소는 브라우저에서만 읽을 수 있어서 한 박자 뒤에 정한다
+    const id = window.setTimeout(() => setGuideOpen(!hasSeenSculptGuide()), 0);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const publish = () => onChange(sculptRef.current);
 
@@ -89,7 +98,10 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
   const active = TOOLS.find((t) => t.id === tool);
 
   return (
-    <div className="fixed inset-0 z-20 select-none">
+    <>
+      {/* 창이 열리면 마을 화면 전체가 inert(조작 불가)가 되므로, 카드는 마을 화면 밖(body)에 띄운다 */}
+      {guideOpen && createPortal(<SculptToolGuide onClose={() => setGuideOpen(false)} />, document.body)}
+      <div className="fixed inset-0 z-20 select-none">
       {/* 손가락을 받는 투명한 판 */}
       <div
         className="absolute inset-0 touch-none"
@@ -145,6 +157,7 @@ export function SculptEditor({ initial, toCell, onChange, onDone, onCancel }: Pr
         />
         <PixelButton iconOnly icon="undo" aria-label="되돌리기" className="pointer-events-auto" onClick={undo} disabled={!canUndo} />
       </div>
-    </div>
+      </div>
+    </>
   );
 }

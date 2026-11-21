@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { isModalLocked, onModalLockChange } from "@/shared/lib/modalLock";
 import { SculptEditor } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
@@ -8,6 +8,7 @@ import { PixelButton } from "@/shared/components/PixelButton";
 import type { PixelIconName } from "@/shared/components/PixelIcon";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelToast } from "@/shared/components/PixelToast";
+import { DegulGuide } from "./DegulGuide";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
 import { createVillageGame, type NearbySnowman, type SculptSeed, type VillageGame as Game } from "../lib/engine";
 import type { GameEvent } from "../lib/types";
@@ -60,6 +61,10 @@ type Props = {
   door?: { icon: PixelIconName; label: string; onClick: () => void };
   /** 우체통에 모인 편지 수 (깃발이 올라간다) */
   mailCount?: number;
+  /** 안내: 놀러 온 친구에게 자기 마을이 있는지 */
+  guideHasVillage?: boolean;
+  /** 안내: 이 화면에서 편지를 넣어 눈사람을 세웠는지 (우체통·집 마디로 넘어간다) */
+  guideLetterSent?: boolean;
   /** 화면 위쪽에 띄울 것 (링크 보내기 등) */
   header?: ReactNode;
   /** 화면 위에 덮어 띄울 것 (입장 타이틀 등). 조작을 막지 않는다 */
@@ -90,6 +95,8 @@ export function VillageGame({
   onOpenMailbox,
   door,
   mailCount = 0,
+  guideHasVillage = false,
+  guideLetterSent = false,
   header,
   overlay,
   apiRef,
@@ -105,7 +112,9 @@ export function VillageGame({
   const [nearby, setNearby] = useState<NearbySnowman | null>(null);
   const [mailboxNear, setMailboxNear] = useState(false);
   const [doorNear, setDoorNear] = useState(false);
-  const [showHint, setShowHint] = useState(true);
+  /** 안내 "조각해 볼까?" 마디: 이 화면에서 조각을 한 번이라도 열었는지 */
+  const [sculptedOnce, setSculptedOnce] = useState(false);
+  const getGame = useCallback(() => gameRef.current, []);
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
   // 바뀔 수 있는 콜백은 ref로 최신 값을 들고 있는다 (게임 루프가 매 프레임 부르므로)
@@ -146,9 +155,7 @@ export function VillageGame({
     gameRef.current = game;
     // 표지판 층은 게임보다 먼저 그려지므로, 게임을 만든 뒤 한 번 더 알려 준다
     game.setHeaderLayer(headerRef.current);
-    const hintTimer = window.setTimeout(() => setShowHint(false), 8000);
     return () => {
-      window.clearTimeout(hintTimer);
       game.destroy();
       gameRef.current = null;
     };
@@ -237,8 +244,15 @@ export function VillageGame({
       )}
       {overlay}
 
-      {/* 조작 안내: 마을 이름보다 눈에 띄지 않게 아래쪽에 한 줄로, 몇 초 뒤 사라진다 */}
-      {showHint && !sculpting && <PixelToast icon="arrow">끌어서 걷고, 눈덩이를 밀어 굴려요</PixelToast>}
+      {/* 처음 온 사람 안내: 데굴이가 말하고 그 물건이 살짝 들썩인다 */}
+      <DegulGuide
+        game={getGame}
+        isOwner={isOwner}
+        hasVillage={guideHasVillage}
+        sculpted={sculptedOnce}
+        letterSent={guideLetterSent}
+        hidden={Boolean(sculpting)}
+      />
 
       {/* 알림: 캐릭터가 화면 아래쪽에 있으면 위(마을 이름 표지판 아래), 위쪽에 있으면 아래에 띄운다 */}
       {toast && (
@@ -302,7 +316,11 @@ export function VillageGame({
                       size="sm"
                       icon="carve"
                       aria-label="조각해서 완성하기"
-                      onClick={() => setSculpting(gameRef.current?.startSculpt() ?? null)}
+                      data-guide-spot="carve"
+                      onClick={() => {
+                        setSculpting(gameRef.current?.startSculpt() ?? null);
+                        setSculptedOnce(true);
+                      }}
                     />
                   )}
                   {kind === "letter" && (

@@ -57,6 +57,8 @@ export function VillageScreen() {
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [goHomeOpen, setGoHomeOpen] = useState(false);
+  /** 이 화면에서 편지를 넣어 눈사람을 세웠는지 (데굴이 안내가 우체통·집으로 넘어간다) */
+  const [letterSent, setLetterSent] = useState(false);
   /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
   const [flight, setFlight] = useState<{ stackId: number; key: number } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -202,6 +204,7 @@ export function VillageScreen() {
       }
       const { row, letterId } = saved;
       markSaved(row.id, name, letterId !== null);
+      if (letterId) setLetterSent(true);
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
       }
@@ -302,6 +305,8 @@ export function VillageScreen() {
         onSavedSnowmanBroken={(id) => void removeSaved(id)}
         isOwner={isOwner}
         mailCount={letterCount}
+        guideHasVillage={Boolean(myVillage)}
+        guideLetterSent={letterSent}
         // 우체통: 주인은 편지함을 열고, 친구는 언제 열리는지만 본다 (편지는 주인만 읽는다)
         onOpenMailbox={
           isOwner
@@ -362,6 +367,7 @@ export function VillageScreen() {
                 variant="primary"
                 iconOnly
                 icon="share"
+                data-guide-spot="share"
                 aria-label="링크 보내기"
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={() => {
@@ -375,11 +381,13 @@ export function VillageScreen() {
                 iconOnly
                 icon="houseDoor"
                 aria-label="내 마을 가기"
+                data-guide-spot="home"
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={() => goOrConfirm(`/v/${myVillage.code}`)}
               />
             ) : (
               <InviteTicket
+                data-guide-spot="invite"
                 className="pointer-events-auto ml-auto shrink-0"
                 // 로그인 안 한 방문자: 마을 위에 초대장 카드를 띄워 바로 카카오로 로그인한다.
                 // 이미 로그인했으면(마을만 아직 없음) 첫 화면의 닉네임 입력으로 간다
