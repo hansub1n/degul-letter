@@ -92,6 +92,11 @@ function hitsObstacle(world: World, x: number, y: number, r: number): boolean {
   return world.obstacles.some((ob) => distance(x, y, ob.x, ob.y) < r + ob.r);
 }
 
+/** 눈덩이가 (x, y)에 들어갈 수 없는 자리(문 앞·우체통 앞)인지 */
+function inBallFreeZone(world: World, x: number, y: number, r: number): boolean {
+  return world.ballFree.some((z) => distance(x, y, z.x, z.y) < r + z.r);
+}
+
 function findStackAt(world: World, x: number, y: number, r: number, ignoreId?: number): Stack | undefined {
   return world.stacks.find((s) => s.id !== ignoreId && distance(x, y, s.x, s.y) < r + footRadius(s));
 }
@@ -144,6 +149,7 @@ function isFreeSpot(world: World, x: number, y: number, r: number): boolean {
   return (
     !outOfBounds(world, x, y, r) &&
     !hitsObstacle(world, x, y, r) &&
+    !inBallFreeZone(world, x, y, r) &&
     !findStackAt(world, x, y, r + 2) &&
     // 새 눈덩이도 다른 눈사람 자리에는 생기지 않게 한다
     !zoneOwnerAt(world, x, y, r, -1) &&
@@ -271,14 +277,15 @@ function movePlayer(world: World, input: InputState, dt: number, events: GameEve
   const touched = findStackAt(world, p.x + dx, p.y + dy, PLAYER_RADIUS);
   if (touched && movingToward(p, touched, mx, my)) {
     if (isLoose(touched)) {
-      pushBall(world, touched, dx, dy, mx, my, dt, events);
+      if (pushBall(world, touched, dx, dy, mx, my, dt, events)) return;
     } else {
       touched.wobble = Math.max(touched.wobble, 0.15);
       resetPush(world);
     }
-    return;
+    // 벽에 붙어 밀리지 않는 눈덩이나 눈사람에 막히면, 그 자리에 멈추지 않고 나무·벽처럼 옆으로 미끄러진다
+  } else {
+    resetPush(world);
   }
-  resetPush(world);
 
   // 막히면 벽을 따라 미끄러지듯 한 축으로만 움직인다
   if (!playerBlocked(world, p.x + dx, p.y + dy, mx, my)) {
@@ -300,7 +307,7 @@ function pushBall(
   my: number,
   dt: number,
   events: GameEvent[],
-): void {
+): boolean {
   const ball = stack.balls[0];
   const heaviness = (ball.r - BALL_START_RADIUS) / (BALL_MAX_RADIUS - BALL_START_RADIUS);
   const slow = 1 - HEAVY_BALL_SLOWDOWN * heaviness;
@@ -310,15 +317,15 @@ function pushBall(
   const ny = stack.y + bdy;
   const fr = footRadius(stack);
 
-  if (outOfBounds(world, nx, ny, fr) || hitsObstacle(world, nx, ny, fr)) {
+  if (outOfBounds(world, nx, ny, fr) || hitsObstacle(world, nx, ny, fr) || inBallFreeZone(world, nx, ny, fr)) {
     resetPush(world);
-    return;
+    return false;
   }
 
   const other = findStackAt(world, nx, ny, fr, stack.id);
   if (other) {
     pushIntoStack(world, stack, other, mx, my, dt, events);
-    return;
+    return true;
   }
 
   resetPush(world);
@@ -330,6 +337,7 @@ function pushBall(
   world.player.x += bdx;
   world.player.y += bdy;
   events.push({ type: "rolled", x: nx, y: ny, r: ball.r });
+  return true;
 }
 
 /** 굴리던 눈덩이로 다른 눈덩이/눈사람을 정면으로 계속 밀면 위로 올린다. */

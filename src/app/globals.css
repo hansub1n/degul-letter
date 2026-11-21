@@ -1028,3 +1028,172 @@ body {
   position: relative;
   z-index: 1;
 }
+
+/* 데굴이 말풍선 꼬리: 상자 아래 가운데 도트 두 칸, 남색 테두리 */
+.speech-tail {
+  display: block;
+  width: calc(var(--p) * 2);
+  height: calc(var(--p) * 2);
+  margin-top: calc(var(--p) * -1);
+  background: var(--snow);
+  box-shadow:
+    var(--p) 0 0 var(--ink),
+    calc(var(--p) * -1) 0 0 var(--ink),
+    0 var(--p) 0 var(--ink);
+}
+
+/* 말풍선이 데굴이 발밑으로 내려가면 꼬리를 위로 */
+[data-below="1"] .speech {
+  flex-direction: column-reverse;
+}
+
+[data-below="1"] .speech-tail {
+  margin-top: 0;
+  margin-bottom: calc(var(--p) * -1);
+  box-shadow:
+    var(--p) 0 0 var(--ink),
+    calc(var(--p) * -1) 0 0 var(--ink),
+    0 calc(var(--p) * -1) 0 var(--ink);
+}
+
+/* 데굴이 안내가 짚어 주는 버튼: 노란 테두리 + 위에서 가리키는 노란 도트 화살표. 깜빡이지 않고 화살표만 한 칸씩 오르내린다 */
+[data-guide="carve"] [data-guide-spot="carve"],
+[data-guide="invite"] [data-guide-spot="invite"],
+[data-guide="home"] [data-guide-spot="home"],
+[data-guide="share"] [data-guide-spot="share"] {
+  position: relative;
+  outline: var(--p) solid var(--gold);
+  outline-offset: var(--p);
+}
+
+[data-guide="carve"] [data-guide-spot="carve"]::after,
+[data-guide="invite"] [data-guide-spot="invite"]::after,
+[data-guide="home"] [data-guide-spot="home"]::after,
+[data-guide="share"] [data-guide-spot="share"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(var(--p) * -7);
+  width: calc(var(--p) * 5);
+  height: calc(var(--p) * 3);
+  background: var(--gold);
+  /* 아래를 가리키는 계단 모양 도트 화살표 */
+  clip-path: polygon(0 0, 100% 0, 100% 34%, 80% 34%, 80% 67%, 60% 67%, 60% 100%, 40% 100%, 40% 67%, 20% 67%, 20% 34%, 0 34%);
+  margin-left: calc(var(--p) * -2.5);
+  animation: guide-point 0.9s steps(1, end) infinite;
+  pointer-events: none;
+}
+
+/* 화면 위쪽 버튼(초대장·내 마을·공유)은 위가 막혀 있어서 화살표를 아래에서 위로 가리킨다 */
+[data-guide="invite"] [data-guide-spot="invite"]::after,
+[data-guide="home"] [data-guide-spot="home"]::after,
+[data-guide="share"] [data-guide-spot="share"]::after {
+  top: auto;
+  bottom: calc(var(--p) * -7);
+  rotate: 180deg;
+}
+
+@keyframes guide-point {
+  50% {
+    translate: 0 calc(var(--p) * -1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-guide-spot]::after {
+    animation: none;
+  }
+}
+
+/* 첫 화면 조이스틱 안내(휴대폰): 터치 점이 손잡이에 내려앉아 오른쪽 → 왼쪽 위로 끌었다가 떼고 사라진다 */
+.joystick-demo-knob {
+  animation: joystick-drag 3.6s ease-in-out infinite;
+}
+
+.joystick-demo-touch {
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent);
+  animation: joystick-touch 3.6s ease-in-out infinite;
+}
+
+@keyframes joystick-drag {
+  0%,
+  14% {
+    transform: translate(0, 0);
+  }
+  30%,
+  40% {
+    transform: translate(30px, 0);
+  }
+  52% {
+    transform: translate(0, 0);
+  }
+  64%,
+  74% {
+    transform: translate(-20px, -22px);
+  }
+  88%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* 누르는 순간 살짝 작아지며 진해지고, 다 끈 뒤 떼면 사라진다 */
+@keyframes joystick-touch {
+  0% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  10%,
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+/* 첫 화면 방향키 안내(PC): → ← ↑ ↓ 순서로 하나씩 쑥 눌린다 */
+.arrow-key {
+  animation: arrow-key-press 3.2s steps(1, end) infinite;
+}
+
+.arrow-key-right {
+  animation-delay: 0s;
+}
+
+.arrow-key-left {
+  animation-delay: -2.4s;
+}
+
+.arrow-key-up {
+  animation-delay: -1.6s;
+}
+
+.arrow-key-down {
+  animation-delay: -0.8s;
+}
+
+@keyframes arrow-key-press {
+  0%,
+  22% {
+    background: var(--gold);
+    transform: translateY(var(--p));
+  }
+  25%,
+  100% {
+    background: var(--snow);
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joystick-demo-knob,
+  .joystick-demo-touch,
+  .arrow-key {
+    animation: none;
+  }
+}

@@ -26,6 +26,12 @@ export type RenderOverlay = {
   celebrate: { stackId: number; t: number } | null;
   /** 우체통에 모인 편지 수 (0보다 크면 깃발이 올라간다) */
   mailCount: number;
+  /** 우체통 오른쪽 위에 편지 수 빨간 동그라미를 띄울지 (마을 주인에게만) */
+  mailBadge: boolean;
+  /** 안내 중인 우체통·집: 1.8초마다 한 번 톡 뛴다 */
+  hop: "mailbox" | "house" | null;
+  /** 안내가 가리키는 눈덩이·눈사람 (노란 점선 동그라미) */
+  guideId: number | null;
 };
 
 /** 완성 축하 연출이 이어지는 시간 */
@@ -328,29 +334,6 @@ function outline(sprite: HTMLCanvasElement): HTMLCanvasElement {
 /** 외곽선을 두른 그림을 원래 그림의 왼쪽 위 (x, y)에 맞춰 그린다 */
 function drawOutlined(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, x: number, y: number): void {
   ctx.drawImage(sprite, x - 1, y - 1);
-}
-
-/** 사방 1칸 외곽선을 두른다. 조각 화면에서 눈사람이 차분한 눈밭 위에 또렷이 보이도록 쓴다 */
-function outlineAll(sprite: HTMLCanvasElement, color: string): HTMLCanvasElement {
-  const w = sprite.width;
-  const h = sprite.height;
-  const src = context2d(sprite).getImageData(0, 0, w, h).data;
-  const solid = (x: number, y: number): boolean => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return false;
-    return src[(y * w + x) * 4 + 3] !== 0;
-  };
-  return makeSprite(w + 2, h + 2, (ctx) => {
-    ctx.fillStyle = color;
-    for (let y = -1; y <= h; y++) {
-      for (let x = -1; x <= w; x++) {
-        if (solid(x, y)) continue;
-        if (solid(x + 1, y) || solid(x - 1, y) || solid(x, y + 1) || solid(x, y - 1)) {
-          ctx.fillRect(x + 1, y + 1, 1, 1);
-        }
-      }
-    }
-    ctx.drawImage(sprite, 1, 1);
-  });
 }
 
 /** 물체 밑동에 쌓인 눈: 위 한 줄은 들쭉날쭉, 가운데 한 줄은 꽉 차게, 아래 한 줄은 그늘 */
@@ -689,6 +672,48 @@ function playerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
 // ---------- 우체통 ----------
 
 /** 집 옆 빨간 우체통 14x18. 편지가 있으면 봉투가 삐죽 나오고 노란 깃발이 올라간다. 발밑 가운데가 (5, 17). */
+/** 3×5 도트 숫자 (우체통 편지 수 동그라미) */
+const BADGE_DIGITS: Record<string, readonly string[]> = {
+  "0": ["111", "101", "101", "101", "111"],
+  "1": ["010", "110", "010", "010", "111"],
+  "2": ["111", "001", "111", "100", "111"],
+  "3": ["111", "001", "111", "001", "111"],
+  "4": ["101", "101", "111", "001", "001"],
+  "5": ["111", "100", "111", "001", "111"],
+  "6": ["111", "100", "111", "101", "111"],
+  "7": ["111", "001", "001", "001", "001"],
+  "8": ["111", "101", "111", "101", "111"],
+  "9": ["111", "101", "111", "001", "111"],
+  "+": ["000", "010", "111", "010", "000"],
+};
+const BADGE_RED = "#F0453A";
+
+/**
+ * 카톡 알림처럼 빨간 동그라미에 흰 숫자. (cx, cy)가 가운데. 99통까지 그대로, 100통부터는 "99+" (두 자리부터 알약 모양으로 길어진다).
+ * 모서리를 한 칸씩 깎은 도트 알약 모양 + 남색 외곽선.
+ */
+function drawCountBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, count: number): void {
+  const text = count > 99 ? "99+" : String(count);
+  const textW = text.length * 4 - 1;
+  const w = Math.max(7, textW + 4);
+  const h = 7;
+  const x = Math.round(cx - w / 2);
+  const y = Math.round(cy - h / 2);
+  // 외곽선(남색) → 빨간 속 → 숫자
+  rect(ctx, PAL.ink, x, y - 1, w, h + 2);
+  rect(ctx, PAL.ink, x - 1, y, w + 2, h);
+  rect(ctx, BADGE_RED, x + 1, y, w - 2, h);
+  rect(ctx, BADGE_RED, x, y + 1, w, h - 2);
+  let tx = x + Math.floor((w - textW) / 2);
+  for (const ch of text) {
+    const rows = BADGE_DIGITS[ch];
+    rows.forEach((row, ry) => {
+      for (let rx = 0; rx < 3; rx++) if (row[rx] === "1") rect(ctx, "#FFFFFF", tx + rx, y + 1 + ry, 1, 1);
+    });
+    tx += 4;
+  }
+}
+
 function makeMailboxSprite(hasMail: boolean, flagUp = false): HTMLCanvasElement {
   return outline(makeSprite(14, 18, (ctx) => {
     if (hasMail) {
@@ -1243,17 +1268,13 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
   void document.fonts?.load(`10px ${pixelFontSmall}`).catch(() => undefined);
 
   // 조각 그림은 바뀔 때(version)만 다시 그리고, 그 외에는 만들어 둔 그림을 다시 쓴다
-  const sculptSprites = new Map<number, { source: Sculpt; version: number; image: HTMLCanvasElement; outlined: HTMLCanvasElement }>();
+  const sculptSprites = new Map<number, { source: Sculpt; version: number; image: HTMLCanvasElement }>();
   function sculptSprite(id: number, sculpt: Sculpt, version = 0): HTMLCanvasElement {
     const cached = sculptSprites.get(id);
     if (cached && cached.source === sculpt && cached.version === version) return cached.image;
     const image = moonlit(makeSprite(sculpt.width, sculpt.height, (ctx) => drawSculpt(ctx, sculpt, 0, 0, 1)));
-    sculptSprites.set(id, { source: sculpt, version, image, outlined: outlineAll(image, INK) });
+    sculptSprites.set(id, { source: sculpt, version, image });
     return image;
-  }
-  function sculptOutlined(id: number, sculpt: Sculpt, version = 0): HTMLCanvasElement {
-    sculptSprite(id, sculpt, version);
-    return sculptSprites.get(id)!.outlined;
   }
 
   // 내리는 눈 두 겹: 먼 눈(1px, 느리게 40개)과 가까운 눈(2px, 빠르게 12개).
@@ -1806,13 +1827,17 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const viewH = cssH / scale;
     const baseW = cssW / baseScale;
     const baseH = cssH / baseScale;
-    let centerX = worldWidth < baseW ? worldWidth / 2 : clamp(player.x, baseW / 2, worldWidth - baseW / 2);
+    // 카메라는 캐릭터의 반올림한 자리를 따라간다. 소수점 자리를 따라가면 카메라와 캐릭터가 따로 반올림돼서
+    // 캐릭터가 화면에서 1도트씩 앞뒤로 떨린다 (캐릭터 그림은 round(player.x - camX)로 그린다)
+    const followX = Math.round(player.x);
+    const followY = Math.round(player.y);
+    let centerX = worldWidth < baseW ? worldWidth / 2 : clamp(followX, baseW / 2, worldWidth - baseW / 2);
     // 위쪽은 표지판이 덮는 높이만큼, 그리고 마을 맨 위보다 높이 솟은 조각 머리만큼 마을 밖까지 더 올라갈 수 있다
     const insetWorld = topInset / baseScale - contentTop;
     let centerY =
       worldHeight + insetWorld < baseH
         ? (worldHeight - insetWorld) / 2
-        : clamp(player.y, baseH / 2 - insetWorld, worldHeight - baseH / 2);
+        : clamp(followY, baseH / 2 - insetWorld, worldHeight - baseH / 2);
     if (focus) {
       centerX += (focus.x - centerX) * t;
       centerY += (focus.y - centerY) * t;
@@ -1850,7 +1875,11 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     // 마을 맨 위 경계의 눈 절벽 (길·자국 위, 눈사람·캐릭터 아래)
     if (camY < SNOW_CLIFF_BOTTOM) px.drawImage(snowCliff, -camX, SNOW_CLIFF_BOTTOM - SNOW_CLIFF_H - camY);
     const hx = Math.round(HOUSE_POSITION.x - 24 - camX);
-    const hy = Math.round(HOUSE_POSITION.y - 43 - camY);
+    // 안내 중인 우체통·집은 1.8초마다 0.3초 동안 2칸 톡 뛴다 (깜빡임 없이 물건이 움직여서 알려 준다)
+    const hopNow = !reducedMotion && time % 1.8 < 0.3 ? -Math.round(Math.sin(((time % 1.8) / 0.3) * Math.PI) * 2) : 0;
+    const houseHop = overlay.hop === "house" ? hopNow : 0;
+    const mailHop = overlay.hop === "mailbox" ? hopNow : 0;
+    const hy = Math.round(HOUSE_POSITION.y - 43 - camY) + houseHop;
 
     // 아래쪽(y가 큰) 것이 앞에 오도록 y 순서로 그린다
     const layers: Array<{ y: number; paint: () => void }> = [];
@@ -1885,7 +1914,15 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
         // 편지가 있으면 금색 깃발이 0.8초마다 한 칸 까딱인다
         const flag = !reducedMotion && Math.floor(time / 0.8) % 2 === 1;
         const sprite = overlay.mailCount > 0 ? (flag ? mailboxFullFlag : mailboxFull) : mailboxEmpty;
-        drawOutlined(px, sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY));
+        // 안내 중이면 눈덩이처럼 발밑에 노란 점선 동그라미 (도는 점)
+        if (overlay.hop === "mailbox") {
+          px.fillStyle = PAL.gold;
+          for (let i = 0; i < 40; i += 2) {
+            const an = (i / 40) * Math.PI * 2 + time;
+            px.fillRect(Math.round(MAILBOX_POSITION.x - camX + Math.cos(an) * 9), Math.round(MAILBOX_POSITION.y - camY + Math.sin(an) * 4), 1, 1);
+          }
+        }
+        drawOutlined(px, sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY) + mailHop);
         groundSnow(px, MAILBOX_POSITION.x - 3 - camX, Math.round(MAILBOX_POSITION.y - camY), 7, night);
       },
     });
@@ -1899,7 +1936,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
             camX,
             camY,
             time,
-            stack.id === overlay.highlightId,
+            stack.id === overlay.highlightId || stack.id === overlay.guideId,
             charge,
             overlay.editing,
           ),
@@ -1977,6 +2014,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
 
     layers.sort((a, b) => a.y - b.y);
     for (const layer of layers) layer.paint();
+    // 우체통 편지 수: 앞에 선 눈사람·캐릭터에 가리지 않게 모든 그림 위에 그린다 (마을 주인에게만)
+    if (overlay.mailBadge && overlay.mailCount > 0) {
+      drawCountBadge(px, MAILBOX_POSITION.x + 8 - camX, MAILBOX_POSITION.y - 17 - camY, overlay.mailCount);
+    }
 
     // 눈사람이나 나무 뒤에 가려져도 캐릭터가 비쳐 보이게 한 번 더 반투명하게 그린다.
     // 가려지지 않았을 때는 같은 그림 위에 겹쳐 그리는 것이라 차이가 없다.
@@ -2009,7 +2050,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     }
 
     // 조각 화면: 확대가 끝나 갈수록 바쁜 마을(큰 점, 캐릭터, 다른 물체)을 차분한 눈밭으로 덮고
-    // 조각 중인 눈사람만 남색 외곽선과 함께 다시 그린다. 확대 자체는 그대로 둔다.
+    // 조각 중인 눈사람만 마을과 같은 모습으로 다시 그린다. 확대 자체는 그대로 둔다.
     const studio = overlay.editing ? Math.max(0, Math.min(1, (t - 0.3) / 0.7)) : 0;
     const studioStack = overlay.editing ? world.stacks.find((s) => s.id === overlay.editing?.stackId) : undefined;
     if (studio > 0 && overlay.editing && studioStack) {
@@ -2020,8 +2061,9 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const sx = Math.round(studioStack.x - camX);
       const sy = Math.round(studioStack.y - camY);
       shadow(px, sx, sy, studioStack.balls[0].r * 0.95);
-      const sprite = sculptOutlined(studioStack.id, sc, overlay.editing.version);
-      drawOutlined(px, sprite, Math.round(sx - sc.originX), Math.round(sy - (sc.height - 1)));
+      // 마을에 세웠을 때와 똑같은 그림으로 그린다 (테두리를 두르면 깎은 구멍이 검은 테두리로 보여 누르기와 헷갈렸다)
+      const sprite = sculptSprite(studioStack.id, sc, overlay.editing.version);
+      px.drawImage(sprite, Math.round(sx - sc.originX), Math.round(sy - (sc.height - 1)));
     }
 
     // 작은 도트 캔버스를 화면 크기로 키워서 옮긴다

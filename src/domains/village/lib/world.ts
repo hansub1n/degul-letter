@@ -43,6 +43,11 @@ export function createWorld(saved: readonly SavedSnowman[] = [], myId: string | 
     player: { x: 240, y: 200, dir: "down", walking: false, walkTime: 0 },
     stacks: [],
     obstacles: createObstacles(),
+    // 큰 눈덩이로 문 앞·우체통 앞을 막으면 말풍선(로그아웃·내 마을·우체통)에 다가갈 수 없어서 비워 둔다
+    ballFree: [
+      { x: DOOR_POSITION.x, y: DOOR_POSITION.y + 8, r: 14 },
+      { x: MAILBOX_POSITION.x, y: MAILBOX_POSITION.y + 6, r: 12 },
+    ],
     lift: null,
     push: { targetId: null, time: 0, warned: false },
     spawnTimer: 0,
