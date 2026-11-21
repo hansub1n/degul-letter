@@ -1058,6 +1058,7 @@ body {
 
 /* 데굴이 안내가 짚어 주는 버튼: 노란 테두리 + 위에서 가리키는 노란 도트 화살표. 깜빡이지 않고 화살표만 한 칸씩 오르내린다 */
 [data-guide="carve"] [data-guide-spot="carve"],
+[data-guide="write"] [data-guide-spot="write"],
 [data-guide="invite"] [data-guide-spot="invite"],
 [data-guide="home"] [data-guide-spot="home"],
 [data-guide="share"] [data-guide-spot="share"] {
@@ -1067,6 +1068,7 @@ body {
 }
 
 [data-guide="carve"] [data-guide-spot="carve"]::after,
+[data-guide="write"] [data-guide-spot="write"]::after,
 [data-guide="invite"] [data-guide-spot="invite"]::after,
 [data-guide="home"] [data-guide-spot="home"]::after,
 [data-guide="share"] [data-guide-spot="share"]::after {
