@@ -817,9 +817,19 @@ body {
 /* ---------- 홈: 눈에 박힌 나무 표지판 ---------- */
 
 /* 아래 나무판 높이를 세 상태에서 같게 둔다.
-   돌아온 사람 판(220px)이 제일 높아서, 3px 격자에 맞춰 74칸(222px)으로 올린다. */
+   마을 만들기 판(닉네임 + 만 14세 체크칸 + 버튼)이 제일 높아서, 3px 격자에 맞춰 86칸(258px)으로 올린다. */
 .home-board {
-  height: calc(var(--p) * 74);
+  height: calc(var(--p) * 86);
+}
+
+/* 판자에 새긴 홈: 짙은 나무색으로 파이고, 위쪽 안 모서리는 그늘(남색), 아래쪽 모서리는 빛 받는 밝은 나무색.
+   글씨는 크림색으로 외곽선 없이 새긴다 (첫 화면 마을 이름) */
+.home-carved {
+  background: var(--wood-deep);
+  color: var(--paper);
+  box-shadow:
+    inset 0 var(--p) 0 var(--ink),
+    0 var(--p) 0 var(--wood-light);
 }
 
 .home-board-body {
