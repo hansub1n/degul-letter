@@ -26,6 +26,8 @@ export type RenderOverlay = {
   celebrate: { stackId: number; t: number } | null;
   /** 우체통에 모인 편지 수 (0보다 크면 깃발이 올라간다) */
   mailCount: number;
+  /** 우체통 오른쪽 위에 편지 수 빨간 동그라미를 띄울지 (마을 주인에게만) */
+  mailBadge: boolean;
 };
 
 /** 완성 축하 연출이 이어지는 시간 */
@@ -689,6 +691,48 @@ function playerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
 // ---------- 우체통 ----------
 
 /** 집 옆 빨간 우체통 14x18. 편지가 있으면 봉투가 삐죽 나오고 노란 깃발이 올라간다. 발밑 가운데가 (5, 17). */
+/** 3×5 도트 숫자 (우체통 편지 수 동그라미) */
+const BADGE_DIGITS: Record<string, readonly string[]> = {
+  "0": ["111", "101", "101", "101", "111"],
+  "1": ["010", "110", "010", "010", "111"],
+  "2": ["111", "001", "111", "100", "111"],
+  "3": ["111", "001", "111", "001", "111"],
+  "4": ["101", "101", "111", "001", "001"],
+  "5": ["111", "100", "111", "001", "111"],
+  "6": ["111", "100", "111", "101", "111"],
+  "7": ["111", "001", "001", "001", "001"],
+  "8": ["111", "101", "111", "101", "111"],
+  "9": ["111", "101", "111", "001", "111"],
+  "+": ["000", "010", "111", "010", "000"],
+};
+const BADGE_RED = "#F0453A";
+
+/**
+ * 카톡 알림처럼 빨간 동그라미에 흰 숫자. (cx, cy)가 가운데. 99통까지 그대로, 100통부터는 "99+" (두 자리부터 알약 모양으로 길어진다).
+ * 모서리를 한 칸씩 깎은 도트 알약 모양 + 남색 외곽선.
+ */
+function drawCountBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, count: number): void {
+  const text = count > 99 ? "99+" : String(count);
+  const textW = text.length * 4 - 1;
+  const w = Math.max(7, textW + 4);
+  const h = 7;
+  const x = Math.round(cx - w / 2);
+  const y = Math.round(cy - h / 2);
+  // 외곽선(남색) → 빨간 속 → 숫자
+  rect(ctx, PAL.ink, x, y - 1, w, h + 2);
+  rect(ctx, PAL.ink, x - 1, y, w + 2, h);
+  rect(ctx, BADGE_RED, x + 1, y, w - 2, h);
+  rect(ctx, BADGE_RED, x, y + 1, w, h - 2);
+  let tx = x + Math.floor((w - textW) / 2);
+  for (const ch of text) {
+    const rows = BADGE_DIGITS[ch];
+    rows.forEach((row, ry) => {
+      for (let rx = 0; rx < 3; rx++) if (row[rx] === "1") rect(ctx, "#FFFFFF", tx + rx, y + 1 + ry, 1, 1);
+    });
+    tx += 4;
+  }
+}
+
 function makeMailboxSprite(hasMail: boolean, flagUp = false): HTMLCanvasElement {
   return outline(makeSprite(14, 18, (ctx) => {
     if (hasMail) {
@@ -1981,6 +2025,10 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
 
     layers.sort((a, b) => a.y - b.y);
     for (const layer of layers) layer.paint();
+    // 우체통 편지 수: 앞에 선 눈사람·캐릭터에 가리지 않게 모든 그림 위에 그린다 (마을 주인에게만)
+    if (overlay.mailBadge && overlay.mailCount > 0) {
+      drawCountBadge(px, MAILBOX_POSITION.x + 8 - camX, MAILBOX_POSITION.y - 17 - camY, overlay.mailCount);
+    }
 
     // 눈사람이나 나무 뒤에 가려져도 캐릭터가 비쳐 보이게 한 번 더 반투명하게 그린다.
     // 가려지지 않았을 때는 같은 그림 위에 겹쳐 그리는 것이라 차이가 없다.
