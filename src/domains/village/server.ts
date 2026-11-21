@@ -5,6 +5,7 @@
 
 import { AppwriteException, Client, ID, Permission, Query, Role, TablesDB } from "node-appwrite";
 import { verifyAccount } from "@/shared/lib/serverAccount";
+import { nicknameProblem } from "./lib/nickname";
 import { NICKNAME_MAX } from "./types";
 
 export class VillageCreateError extends Error {
@@ -76,6 +77,9 @@ export async function createVillageForUser(params: {
   if (!name || [...name].length > VILLAGE_NAME_MAX) {
     throw new VillageCreateError(400, `닉네임은 1~${VILLAGE_NAME_MAX}자로 적어 주세요`);
   }
+  // 화면과 같은 닉네임 규칙 (개발자 도구로 화면 검사를 건너뛰어도 서버에서 막는다)
+  const problem = nicknameProblem(name);
+  if (problem) throw new VillageCreateError(400, problem);
 
   // 1) 누구인지, 진짜 로그인했는지 (kakao·google 라벨 또는 Appwrite 연결 기록). prefs만 바꾼 익명 계정은 403
   const account = await verifyAccount(params.jwt);

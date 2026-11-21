@@ -5,6 +5,7 @@ import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
+import { nicknameProblem } from "../lib/nickname";
 import { NICKNAME_MAX } from "../types";
 import { LeaveConfirm } from "./LeaveConfirm";
 
@@ -34,7 +35,8 @@ export function FinishDialog(props: Props) {
   const [panelMinHeight, setPanelMinHeight] = useState<number | undefined>();
   const owner = props.mode === "owner";
   const name = nickname.trim();
-  const ready = Boolean(name && letter.trim());
+  const nameProblem = nicknameProblem(nickname);
+  const ready = Boolean(name && !nameProblem && letter.trim());
 
   // 쓰기 화면의 창 높이를 재 두고, 확인 화면에서도 같은 크기를 유지한다
   useLayoutEffect(() => {
@@ -116,7 +118,8 @@ export function FinishDialog(props: Props) {
         >
           <PixelField
             label="닉네임"
-            hint={`${nickname.length}/${NICKNAME_MAX}`}
+            // 규칙에 어긋나면 글자 수 자리에 이유를 빨갛게 보여 준다 (창 높이가 바뀌지 않게)
+            hint={nameProblem ? <span className="text-roof">{nameProblem}</span> : `${nickname.length}/${NICKNAME_MAX}`}
             value={nickname}
             maxLength={NICKNAME_MAX}
             onChange={(e) => setNickname(e.target.value)}
