@@ -361,6 +361,7 @@ export function createVillageGame({
       celebrate: celebrate ? { stackId: celebrate.stackId, t: world.time - celebrate.start } : null,
       joystick: sculptMode ? null : input.joystick(),
       mailCount,
+      mailBadge: isOwner,
       highlightId: nearby?.id ?? null,
       charge,
       hammer,
