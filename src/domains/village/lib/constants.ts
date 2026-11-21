@@ -33,5 +33,8 @@ export const POP_SECONDS = 0.55;
 /** 부서지는 순간 화면이 멈추는 시간 (히트스톱) */
 export const HIT_STOP_SECONDS = 0.07;
 
-/** 이 거리 안의 눈사람에 완성/부수기 버튼이 뜬다 */
-export const NEARBY_STACK_DISTANCE = 14;
+/**
+ * 이 거리 안의 눈사람에 완성/부수기 버튼이 뜬다.
+ * 쌓는 순간 캐릭터는 굴리던 눈덩이 뒤에 서 있다가 그 눈덩이가 위로 올라가면 그만큼 떨어지므로, 그 자리에서도 뜨게 넉넉히 둔다
+ */
+export const NEARBY_STACK_DISTANCE = 24;
