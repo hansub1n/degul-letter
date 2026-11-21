@@ -361,6 +361,20 @@ const ICONS = {
     ".....o.....",
   ],
   // 작은 집: 눈 지붕·흰 벽 + 나무 문 + 남색 외곽. 표지판 글자 옆에서는 scale 2·fit 로 쓴다
+  // 첫 화면 마을 이름 앞: 빨간 지붕, 크림 벽, 불 켜진 창문과 나무 문이 있는 마을 집
+  cottage: [
+    ".....oo.....",
+    "....orro....",
+    "...orrrro...",
+    "..orrrrrro..",
+    ".orrrrrrrro.",
+    "oooooooooooo",
+    ".oPPPPPPPPo.",
+    ".oPyyPPbbPo.",
+    ".oPyyPPbbPo.",
+    ".oPPPPPbbPo.",
+    ".oooooooooo.",
+  ],
   house: [
     "...oo...",
     "..owwo..",

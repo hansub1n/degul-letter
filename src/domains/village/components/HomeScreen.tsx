@@ -7,6 +7,7 @@ import { InviteLogin, isLoggedIn, LogoutConfirm } from "@/domains/auth";
 import { useChristmasLabel } from "@/domains/letter";
 import { PixelBadge } from "@/shared/components/PixelBadge";
 import { PixelButton } from "@/shared/components/PixelButton";
+import { PixelCheckbox } from "@/shared/components/PixelCheckbox";
 import { PixelField } from "@/shared/components/PixelField";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
@@ -25,6 +26,8 @@ export function HomeScreen() {
   const router = useRouter();
   const [mine, setMine] = useState<Village | null | undefined>(undefined);
   const [name, setName] = useState("");
+  /** 만 14세 이상이며 이용 약관에 동의하는지. 체크해야 마을을 만들 수 있다 */
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
   const [leaving, setLeaving] = useState(false);
@@ -60,7 +63,7 @@ export function HomeScreen() {
 
   const create = async () => {
     const trimmed = name.trim();
-    if (!trimmed || busy) return;
+    if (!trimmed || !agreed || busy) return;
     setBusy(true);
     setMessage(null);
     try {
@@ -84,8 +87,16 @@ export function HomeScreen() {
       )}
 
       {loaderDone && mine && (
-        <div className="flex w-full flex-1 flex-col justify-center gap-[calc(var(--p)*4)]">
-          <p className="text-label text-center">{mine.name}의 마을</p>
+        // 마을 만들기 판과 마지막 버튼이 같은 높이에서 끝나도록 판 아래쪽에 붙인다.
+        // 마을 이름은 판자를 파낸 홈 안에 크림색으로 새긴다
+        <div className="flex w-full flex-1 flex-col justify-end gap-[calc(var(--p)*4)]">
+          <p
+            // 닉네임 최대 8자("○○○○○○○○의 마을")도 한 줄에 들어가는 크기로 고정한다
+            className="home-carved flex h-[calc(var(--p)*16)] items-center justify-center gap-[calc(var(--p)*3)] whitespace-nowrap text-[18px] leading-[1.3] font-bold"
+          >
+            <PixelIcon name="cottage" scale={2} />
+            {mine.name}의 마을
+          </p>
           <PixelButton
             variant="primary"
             className="w-full"
@@ -104,7 +115,7 @@ export function HomeScreen() {
 
       {loaderDone && mine === null && loggedIn && (
         <form
-          className="flex w-full flex-col gap-[calc(var(--p)*4)]"
+          className="flex w-full flex-1 flex-col justify-end gap-[calc(var(--p)*4)]"
           onSubmit={(e) => {
             e.preventDefault();
             void create();
@@ -119,7 +130,14 @@ export function HomeScreen() {
             maxLength={NICKNAME_MAX}
             onChange={(e) => setName(e.target.value)}
           />
-          <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || busy}>
+          <PixelCheckbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)}>
+            만 14세 이상이며,{" "}
+            <Link href="/terms" className="underline decoration-1 underline-offset-[calc(var(--p)*1)]">
+              이용 약관
+            </Link>
+            에 동의해요
+          </PixelCheckbox>
+          <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || !agreed || busy}>
             {busy ? "만드는 중…" : "마을 만들기"}
           </PixelButton>
         </form>
