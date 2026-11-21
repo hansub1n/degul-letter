@@ -14,12 +14,13 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
+import { shareVillage } from "../share";
 import { BACKDROP_CARD_TOP } from "../lib/render";
 import { NICKNAME_MAX } from "../types";
 import type { Village } from "../types";
 import { HomeBackdrop } from "./HomeBackdrop";
 
-/** 첫 화면: 내 마을이 있으면 들어가기·링크 복사, 없으면 로그인 → 마을 만들기 */
+/** 첫 화면: 내 마을이 있으면 들어가기·친구에게 보내기, 없으면 로그인 → 마을 만들기 */
 export function HomeScreen() {
   const router = useRouter();
   const [mine, setMine] = useState<Village | null | undefined>(undefined);
@@ -73,15 +74,6 @@ export function HomeScreen() {
     }
   };
 
-  const copyLink = async (village: Village) => {
-    const url = `${window.location.origin}/v/${village.code}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setMessage("링크를 복사했어요. 친구에게 보내 주세요!");
-    } catch {
-      window.prompt("이 링크를 복사해서 친구에게 보내 주세요", url);
-    }
-  };
 
   const form = (
     <>
@@ -104,8 +96,8 @@ export function HomeScreen() {
           >
             내 마을 가기
           </PixelButton>
-          <PixelButton icon="send" className="w-full" onClick={() => copyLink(mine)}>
-            링크 복사하기
+          <PixelButton icon="share" className="w-full" onClick={() => void shareVillage(mine.code, setMessage)}>
+            친구에게 보내기
           </PixelButton>
         </div>
       )}

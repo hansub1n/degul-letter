@@ -156,18 +156,20 @@ const ICONS = {
     "osssssssssso",
     "oooooooooooo",
   ],
-  // 링크 보내기: 처음 종이비행기 모양 그대로, 흰 면 + 남색 외곽 + 오른쪽 아래 접힌 면 그늘
-  send: [
-    "..........oo",
-    "........oowo",
-    "......oowwwo",
-    "....oowwwso.",
-    "..oowwwwsso.",
-    "oowwwwwsso..",
-    "..oowwssso..",
-    "....oowsso..",
-    ".....oosso..",
-    "......oooo..",
+  // 공유: 아이폰식. 위로 올라가는 화살표와 아래가 둥근 열린 쟁반. 빨간 버튼 위에서 흰 모양으로 읽히게 흰 속 + 남색 외곽
+  share: [
+    ".....oo.....",
+    "....owwo....",
+    "...owwwwo...",
+    "..owwwwwwo..",
+    "...oowwoo...",
+    ".o..owwo..o.",
+    "owo.owwo.owo",
+    "owo.owwo.owo",
+    "owo..oo..owo",
+    "owoooooooowo",
+    ".owwwwwwwwo.",
+    "..oooooooo..",
   ],
   // 집 로그아웃: 반쯤 열린 문 안에서 불빛이 새어 나온다. 왼쪽 문틀이 무거워서 한 칸 오른쪽으로 옮겨 가운데로 보이게 한다
   houseDoor: [
@@ -370,8 +372,30 @@ const ICONS = {
     "oooooooo",
   ],
   // 페이지 넘기기 화살표
-  prev: ["....oo", "...ooo", "..oooo", ".ooooo", "oooooo", "oooooo", ".ooooo", "..oooo", "...ooo", "....oo"],
-  next: ["oo....", "ooo...", "oooo..", "ooooo.", "oooooo", "oooooo", "ooooo.", "oooo..", "ooo...", "oo...."],
+  prev: [
+    "....oo",
+    "...ooo",
+    "..oooo",
+    ".ooooo",
+    "oooooo",
+    "oooooo",
+    ".ooooo",
+    "..oooo",
+    "...ooo",
+    "....oo",
+  ],
+  next: [
+    "oo....",
+    "ooo...",
+    "oooo..",
+    "ooooo.",
+    "oooooo",
+    "oooooo",
+    "ooooo.",
+    "oooo..",
+    "ooo...",
+    "oo....",
+  ],
   // 붓 크기: 꺾쇠 안에 작은 눈 / 큰 눈
   brushSmall: [
     "ooo......ooo",
@@ -404,7 +428,10 @@ const ICONS = {
 } satisfies Record<string, string[]>;
 
 /** 같은 그림을 다른 이름으로도 부른다: 지시서의 `envelope`은 기존 `letter`와 같은 봉투다 */
-const ALIASES = { envelope: "letter" } as const satisfies Record<string, keyof typeof ICONS>;
+const ALIASES = { envelope: "letter" } as const satisfies Record<
+  string,
+  keyof typeof ICONS
+>;
 
 export type PixelIconName = keyof typeof ICONS | keyof typeof ALIASES;
 
@@ -421,7 +448,10 @@ type Props = {
 const GRID = 12;
 
 export function PixelIcon({ name, scale = 3, fit = false, className }: Props) {
-  const key = name in ALIASES ? ALIASES[name as keyof typeof ALIASES] : (name as keyof typeof ICONS);
+  const key =
+    name in ALIASES
+      ? ALIASES[name as keyof typeof ALIASES]
+      : (name as keyof typeof ICONS);
   const rows: readonly string[] = ICONS[key];
   const glyphW = Math.max(...rows.map((r) => r.length));
   const glyphH = rows.length;
@@ -456,7 +486,14 @@ export function PixelIcon({ name, scale = 3, fit = false, className }: Props) {
       className={className}
     >
       {rects.map((r, i) => (
-        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} style={{ fill: r.color }} />
+        <rect
+          key={i}
+          x={r.x}
+          y={r.y}
+          width={r.w}
+          height={1}
+          style={{ fill: r.color }}
+        />
       ))}
     </svg>
   );

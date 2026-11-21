@@ -21,6 +21,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
 import { ensureUserId, forgetUserId } from "@/shared/lib/session";
+import { shareVillage } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
@@ -242,25 +243,6 @@ export function VillageScreen() {
     }
   };
 
-  /** 휴대폰이면 공유 창(카카오톡 등)을 띄우고, 공유 창이 없는 곳(PC 등)에서는 링크를 복사한다 */
-  const shareLink = async () => {
-    const url = `${window.location.origin}/v/${village.code}`;
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share({ title: "데굴레터", text: `${village.name}의 마을에 눈사람을 세우고 편지를 남겨 줘!`, url });
-        return;
-      } catch (e) {
-        // 사용자가 공유 창을 닫은 경우엔 아무것도 하지 않는다
-        if ((e as DOMException).name === "AbortError") return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setStatus("링크를 복사했어요. 친구에게 보내 주세요!");
-    } catch {
-      window.prompt("이 링크를 복사해서 친구에게 보내 주세요", url);
-    }
-  };
 
   const leaveNow = (to: LeaveTarget) => {
     if (to === LOGOUT) void logout();
@@ -379,10 +361,12 @@ export function VillageScreen() {
               <PixelButton
                 variant="primary"
                 iconOnly
-                icon="send"
+                icon="share"
                 aria-label="링크 보내기"
                 className="pointer-events-auto ml-auto shrink-0"
-                onClick={shareLink}
+                onClick={() => {
+                  if (!isModalLocked()) void shareVillage(village.code, setStatus);
+                }}
               />
             ) : myVillage ? (
               // 내 마을이 있는 친구: 주인의 종이비행기 버튼과 같은 모양. 아이콘은 집 문 말풍선과 같은 반쯤 열린 문
