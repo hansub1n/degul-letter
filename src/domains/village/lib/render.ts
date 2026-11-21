@@ -1806,13 +1806,17 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     const viewH = cssH / scale;
     const baseW = cssW / baseScale;
     const baseH = cssH / baseScale;
-    let centerX = worldWidth < baseW ? worldWidth / 2 : clamp(player.x, baseW / 2, worldWidth - baseW / 2);
+    // 카메라는 캐릭터의 반올림한 자리를 따라간다. 소수점 자리를 따라가면 카메라와 캐릭터가 따로 반올림돼서
+    // 캐릭터가 화면에서 1도트씩 앞뒤로 떨린다 (캐릭터 그림은 round(player.x - camX)로 그린다)
+    const followX = Math.round(player.x);
+    const followY = Math.round(player.y);
+    let centerX = worldWidth < baseW ? worldWidth / 2 : clamp(followX, baseW / 2, worldWidth - baseW / 2);
     // 위쪽은 표지판이 덮는 높이만큼, 그리고 마을 맨 위보다 높이 솟은 조각 머리만큼 마을 밖까지 더 올라갈 수 있다
     const insetWorld = topInset / baseScale - contentTop;
     let centerY =
       worldHeight + insetWorld < baseH
         ? (worldHeight - insetWorld) / 2
-        : clamp(player.y, baseH / 2 - insetWorld, worldHeight - baseH / 2);
+        : clamp(followY, baseH / 2 - insetWorld, worldHeight - baseH / 2);
     if (focus) {
       centerX += (focus.x - centerX) * t;
       centerY += (focus.y - centerY) * t;
