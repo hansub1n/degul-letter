@@ -2,7 +2,7 @@
 
 import { sculptFromBalls, type Sculpt } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
-import { BALL_START_RADIUS, BREAK_HOLD_SECONDS, HIT_STOP_SECONDS } from "./constants";
+import { BREAK_HOLD_SECONDS, HIT_STOP_SECONDS } from "./constants";
 import { distance, easeInOutCubic } from "./geometry";
 import { createInput } from "./input";
 import {
@@ -447,9 +447,8 @@ export function createVillageGame({
     },
     hasUnsavedWork() {
       if (editing || world.lift) return true;
-      return world.stacks.some(
-        (s) => !s.saved && (s.finished || s.balls.length > 1 || s.balls.some((b) => b.r > BALL_START_RADIUS)),
-      );
+      // 눈덩이를 조금 굴린 것만으로는 묻지 않는다. 2단 이상 쌓았거나 완성한 눈사람이 있을 때만 "녹아요"를 묻는다
+      return world.stacks.some((s) => !s.saved && (s.finished || s.balls.length > 1));
     },
     destroy() {
       cancelAnimationFrame(rafId);
