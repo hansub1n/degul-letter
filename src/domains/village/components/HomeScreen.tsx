@@ -15,6 +15,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
+import { nicknameProblem } from "../lib/nickname";
 import { shareVillage } from "../share";
 import { BACKDROP_CARD_TOP } from "../lib/render";
 import { NICKNAME_MAX } from "../types";
@@ -28,6 +29,7 @@ export function HomeScreen() {
   const [name, setName] = useState("");
   /** 만 14세 이상이며 이용 약관에 동의하는지. 체크해야 마을을 만들 수 있다 */
   const [agreed, setAgreed] = useState(false);
+  const nameProblem = nicknameProblem(name);
   const [busy, setBusy] = useState(false);
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
   const [leaving, setLeaving] = useState(false);
@@ -63,7 +65,7 @@ export function HomeScreen() {
 
   const create = async () => {
     const trimmed = name.trim();
-    if (!trimmed || !agreed || busy) return;
+    if (!trimmed || nicknameProblem(trimmed) || !agreed || busy) return;
     setBusy(true);
     setMessage(null);
     try {
@@ -124,7 +126,8 @@ export function HomeScreen() {
           <PixelField
             id="home-nickname"
             label="내 닉네임"
-            hint={`${name.length}/${NICKNAME_MAX}`}
+            // 규칙에 어긋나면 글자 수 자리에 이유를 보여 준다 (판 높이가 바뀌지 않게). 나무 판 위라 빨강 대신 금색으로 읽히게
+            hint={nameProblem ? <span className="text-gold">{nameProblem}</span> : `${name.length}/${NICKNAME_MAX}`}
             placeholder="마을 이름이 돼요"
             value={name}
             maxLength={NICKNAME_MAX}
@@ -137,7 +140,7 @@ export function HomeScreen() {
             </Link>
             에 동의해요
           </PixelCheckbox>
-          <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || !agreed || busy}>
+          <PixelButton variant="primary" type="submit" className="w-full" disabled={!name.trim() || Boolean(nameProblem) || !agreed || busy}>
             {busy ? "만드는 중…" : "마을 만들기"}
           </PixelButton>
         </form>
