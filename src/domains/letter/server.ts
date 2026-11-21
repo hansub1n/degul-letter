@@ -1,9 +1,11 @@
 // 서버 전용: 12/25 이후 마을 주인에게만 편지를 꺼내 준다.
-// 편지 테이블에는 읽기 권한이 아무에게도 없어서, 여기서 서버 키(APPWRITE_API_KEY)로 대신 읽는다.
+// 편지 테이블에는 읽기 권한이 아무에게도 없어서, 여기서 서버 키(APPWRITE_API_KEY)로 대신 읽고
+// 비밀 열쇠(LETTER_PRIVATE_KEY)로 봉인을 푼다.
 // 브라우저 코드에서 import하면 안 된다 (서버 키가 필요하다). 그래서 index.ts로 내보내지 않는다.
 
 import { Account, Client, TablesDB } from "node-appwrite";
 import { isLetterOpen } from "./lib/dday";
+import { openSeal } from "./lib/seal";
 
 export class LetterAccessError extends Error {
   constructor(
@@ -19,10 +21,11 @@ function config() {
   const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
   const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
   const apiKey = process.env.APPWRITE_API_KEY;
-  if (!endpoint || !projectId || !databaseId || !apiKey) {
+  const letterKey = process.env.LETTER_PRIVATE_KEY;
+  if (!endpoint || !projectId || !databaseId || !apiKey || !letterKey) {
     throw new LetterAccessError(500, "서버 설정이 비어 있어요");
   }
-  return { endpoint, projectId, databaseId, apiKey };
+  return { endpoint, projectId, databaseId, apiKey, letterKey };
 }
 
 type Row = { $id: string } & Record<string, unknown>;
@@ -37,7 +40,7 @@ export async function openLetterForOwner(params: {
   letterId: string;
   now: number;
 }): Promise<{ authorName: string; content: string }> {
-  const { endpoint, projectId, databaseId, apiKey } = config();
+  const { endpoint, projectId, databaseId, apiKey, letterKey } = config();
 
   // 1) 누가 요청했는지: 브라우저가 보낸 JWT로 Appwrite에 물어본다
   let userId: string;
@@ -68,5 +71,13 @@ export async function openLetterForOwner(params: {
   const letter = await getRow("letters", params.letterId);
   if (letter.villageId !== params.villageId) throw new LetterAccessError(404, "편지를 찾을 수 없어요");
 
-  return { authorName: String(letter.authorName), content: String(letter.content) };
+  // 5) 봉인(암호화)을 비밀 열쇠로 푼다. 봉인 전에 저장된 예전 편지는 그대로 나온다
+  let content: string;
+  try {
+    content = await openSeal(String(letter.content), letterKey);
+  } catch (e) {
+    console.error(e);
+    throw new LetterAccessError(500, "편지를 열지 못했어요");
+  }
+  return { authorName: String(letter.authorName), content };
 }
