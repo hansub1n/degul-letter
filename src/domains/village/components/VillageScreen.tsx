@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AppwriteException } from "appwrite";
 import {
   christmasLabel,
   createLetter,
@@ -18,7 +19,8 @@ import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
-import { ensureUserId } from "@/shared/lib/session";
+import { describeError, reportClientError } from "@/shared/lib/clientError";
+import { ensureUserId, forgetUserId } from "@/shared/lib/session";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
@@ -132,7 +134,8 @@ export function VillageScreen() {
 
   useEffect(() => {
     if (!status) return;
-    const timer = window.setTimeout(() => setStatus(null), 2500);
+    // 저장 실패는 오류 번호를 찍어 보낼 수 있게 더 오래 둔다
+    const timer = window.setTimeout(() => setStatus(null), status.startsWith("저장하지 못했어요") ? 6000 : 2500);
     return () => window.clearTimeout(timer);
   }, [status]);
 
@@ -167,10 +170,31 @@ export function VillageScreen() {
   const save = async (job: PendingSave, name: string, letter: string) => {
     const { draft, markSaved } = job;
     setStatus("눈사람을 세우는 중…");
-    try {
-      // 편지를 먼저 묻고, 그 ID를 눈사람에 적어 둔다
+    let step: "letter" | "snowman" = "letter";
+    // 편지를 먼저 묻고, 그 ID를 눈사람에 적어 둔다. 눈사람 저장이 실패하면 짝 잃은 편지를 지운다.
+    const attempt = async (): Promise<{ row: SavedSnowman; letterId: string | null }> => {
+      step = "letter";
       const letterId = letter ? await createLetter(village.id, name, letter) : null;
-      const row = await saveSnowman(village.id, name, draft, letterId);
+      step = "snowman";
+      try {
+        return { row: await saveSnowman(village.id, name, draft, letterId), letterId };
+      } catch (e) {
+        if (letterId) await deleteLetter(letterId).catch(() => {});
+        throw e;
+      }
+    };
+    try {
+      let saved: { row: SavedSnowman; letterId: string | null };
+      try {
+        saved = await attempt();
+      } catch (e) {
+        // 계정 확인이 실패하면(401) 계정을 다시 읽어 한 번 더 해 본다
+        if (!(e instanceof AppwriteException && e.code === 401)) throw e;
+        reportClientError(`save-${step}-401-retry`, describeError(e));
+        forgetUserId();
+        saved = await attempt();
+      }
+      const { row, letterId } = saved;
       markSaved(row.id, name, letterId !== null);
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
@@ -179,9 +203,20 @@ export function VillageScreen() {
       else setStatus(isLetterOpen() ? "편지를 넣었어요. 지금 바로 열 수 있어요" : "편지를 넣었어요. 12월 25일에 열려요");
     } catch (e) {
       console.error(e);
+      const info = describeError(e);
+      reportClientError(
+        `save-${step}`,
+        info,
+        `balls=${draft.balls.length} sculpt=${draft.sculpt.width}x${draft.sculpt.height} letter=${letter.length}`,
+      );
       // 저장에 실패하면 다시 "편지 쓰기"로 시도할 수 있게 남겨 둔다
       setDrafts((m) => new Map(m).set(job.stackId, job));
-      setStatus("저장하지 못했어요. 인터넷 연결을 확인해 주세요.");
+      // 오류 번호를 같이 보여 줘서, 친구가 화면만 찍어 보내도 원인을 알 수 있게 한다
+      setStatus(
+        info.network
+          ? "저장하지 못했어요. 인터넷 연결을 확인해 주세요."
+          : `저장하지 못했어요. 잠시 후 다시 해 주세요 (오류 ${info.code})`,
+      );
     }
   };
 
