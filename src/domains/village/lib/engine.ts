@@ -2,7 +2,7 @@
 
 import { sculptFromBalls, type Sculpt } from "@/domains/snowman";
 import type { SavedSnowman, SnowmanDraft } from "../types";
-import { BREAK_HOLD_SECONDS, HIT_STOP_SECONDS } from "./constants";
+import { BALL_START_RADIUS, BREAK_HOLD_SECONDS, HIT_STOP_SECONDS } from "./constants";
 import { distance, easeInOutCubic } from "./geometry";
 import { createInput } from "./input";
 import {
@@ -12,7 +12,7 @@ import {
   type HammerView,
   type ScreenPad,
 } from "./render";
-import { ballHeights, breakStack, findNearbySnowman, finishStack, stackHeadY, step } from "./rules";
+import { addStack, ballHeights, breakStack, findNearbySnowman, finishStack, footRadius, stackHeadY, step } from "./rules";
 import type { GameEvent, Stack } from "./types";
 import { createWorld, HOUSE_POSITION, MAILBOX_POSITION } from "./world";
 
@@ -86,12 +86,26 @@ export type VillageGame = {
   setBreakCharging(charging: boolean): void;
   /** 아직 저장하지 않은 눈사람을 만드는 중인지 (굴리기·쌓기·조각, 완성 후 미저장) */
   hasUnsavedWork(): boolean;
+  /** 안내: 데굴이가 말할 때 살짝 들썩이게 할 물건 (화살표 없이 물건이 움직여서 알려 준다) */
+  setGuide(target: GuideTarget | null): void;
+  /** 데굴이 머리 위 말풍선 층. 엔진이 매 프레임 캐릭터 위로 옮긴다 */
+  setSpeechLayer(el: HTMLElement | null): void;
+  /** 처음 온 사람 안내 진행: 굴려 키운 눈덩이 수, 2단 이상 쌓았는지 */
+  guideProgress(): { grown: number; stacked: boolean };
   /** 캐릭터가 화면 아래쪽 절반에 있는지 (알림을 캐릭터 반대쪽에 띄우려고 쓴다) */
   playerInLowerHalf(): boolean;
   /** 눈사람 가슴께의 화면 위치 (CSS px, 캔버스 기준). 편지 봉투가 날아갈 곳 */
   stackChestScreen(stackId: number): { x: number; y: number } | null;
   destroy(): void;
 };
+
+/**
+ * 안내가 가리키는 물건. 눈덩이·눈사람은 노란 점선 동그라미, 우체통·집은 톡 뛰는 움직임으로 알려 준다.
+ * ball: 처음 굴릴 눈덩이, ball2: 하나 더 굴릴 눈덩이, stack: 쌓을 곳(굴린 눈덩이 중 큰 것), built: 쌓은 눈사람
+ */
+export type GuideTarget = "ball" | "ball2" | "stack" | "built" | "mailbox" | "house";
+/** 이만큼 커지면 "굴렸다"로 본다 (처음 반지름 4에서 조금만 굴려도 넘어가게) */
+const GUIDE_ROLLED_RADIUS = BALL_START_RADIUS + 1.5;
 
 /** 한 프레임이 너무 길면(탭 전환 등) 순간이동하지 않게 자른다 */
 const MAX_FRAME_SECONDS = 0.05;
@@ -153,6 +167,12 @@ export function createVillageGame({
   let lastMailboxNear = false;
   let lastDoorNear = false;
   let mailCount = 0;
+  let guideTarget: GuideTarget | null = null;
+  let speechLayer: HTMLElement | null = null;
+  /** 안내가 가리키는 눈덩이·눈사람. 정해 두면 캐릭터가 움직여도 다른 눈덩이로 옮겨 가지 않는다 */
+  let guideStackId: number | null = null;
+  /** 안내 1단계에서 처음 굴린 눈덩이. 3단계 "아까 밀었던 눈덩이 쪽으로"가 이 눈덩이를 가리킨다 */
+  let firstBallId: number | null = null;
   // 완성 축하: 완성되면 기다렸다가(pending) 카메라가 마을로 다 돌아오면 시작한다
   let pendingCelebrate: number | null = null;
   let celebrate: { stackId: number; start: number } | null = null;
@@ -177,6 +197,70 @@ export function createVillageGame({
    * belowY가 있으면: 위쪽에 자리가 모자랄 때(마을 맨 위 모서리 등) 그 지점 아래로 내려 띄운다.
    * 위로 밀어 올리다 보면 말풍선이 눈사람·캐릭터를 덮거나 표지판 뒤로 숨기 때문이다.
    */
+  /** 안내가 가리킬 물건. 눈덩이·눈사람은 Stack, 우체통·집은 이름 */
+  const pickGuide = (): Stack | "mailbox" | "house" | null => {
+    if (guideTarget === "mailbox" || guideTarget === "house") return guideTarget;
+    const kept = world.stacks.find((s) => s.id === guideStackId && !s.saved && !s.pop);
+    const p = world.player;
+    const mine = world.stacks.filter((s) => !s.saved && !s.finished && !s.pop);
+    const loose = mine.filter((s) => s.balls.length === 1);
+    const closest = (list: Stack[], x: number, y: number) =>
+      list.reduce<Stack | null>((best, s) => (!best || distance(x, y, s.x, s.y) < distance(x, y, best.x, best.y) ? s : best), null);
+    const grown = loose.filter((s) => s.balls[0].r >= GUIDE_ROLLED_RADIUS);
+    const fresh = loose.filter((s) => s.balls[0].r < GUIDE_ROLLED_RADIUS);
+    // 1단계에서 가리키던 눈덩이가 커지면 그게 "처음 굴린 눈덩이"다 (3단계에서 다시 가리킨다)
+    if (guideTarget === "ball" && kept && grown.includes(kept)) firstBallId = kept.id;
+    let pick: Stack | null = null;
+    if (guideTarget === "ball" || guideTarget === "ball2") {
+      pick = kept && fresh.includes(kept) ? kept : closest(fresh, p.x, p.y);
+    }
+    // 쌓을 곳: 굴린 눈덩이 중 가장 큰 것 (다른 눈덩이를 여기에 밀면 위로 올라간다)
+    if (guideTarget === "stack") {
+      const first = grown.find((s) => s.id === firstBallId);
+      pick = first ?? grown.reduce<Stack | null>((b, s) => (!b || s.balls[0].r > b.balls[0].r ? s : b), null);
+    }
+    if (guideTarget === "built") pick = mine.find((s) => s.balls.length > 1) ?? null;
+    guideStackId = pick?.id ?? null;
+    return pick;
+  };
+  /** 안내 첫마디: 데굴이 바로 옆에 굴릴 눈덩이가 없으면 하나 놓아 둔다 (멀리 찾아가지 않아도 바로 밀어 볼 수 있게) */
+  const placeBallNearPlayer = () => {
+    const p = world.player;
+    const near = world.stacks.some(
+      (s) => !s.saved && s.balls.length === 1 && !s.finished && distance(s.x, s.y, p.x, p.y) < 26,
+    );
+    if (near) return;
+    const r = BALL_START_RADIUS;
+    for (const [dx, dy] of [[16, 2], [-16, 2], [0, 16], [14, 12], [-14, 12]]) {
+      const x = p.x + dx;
+      const y = p.y + dy;
+      if (x < r || y < r || x > world.width - r || y > world.height - r) continue;
+      if (world.obstacles.some((ob) => distance(x, y, ob.x, ob.y) < r + ob.r + 2)) continue;
+      if (world.ballFree.some((z) => distance(x, y, z.x, z.y) < r + z.r)) continue;
+      if (world.stacks.some((s) => distance(x, y, s.x, s.y) < r + footRadius(s) + 4)) continue;
+      addStack(world, x, y, { r, roll: 0 });
+      return;
+    }
+  };
+  /** 데굴이 말풍선을 캐릭터 머리 위에 띄운다 */
+  // 눈사람·우체통·집 말풍선(버튼)이 머리 위에 떠 있으면 가리지 않게 데굴이 발밑으로 내린다
+  const placeSpeech = (hidden: boolean, below: boolean) => {
+    const el = speechLayer;
+    if (!el) return;
+    if (hidden) {
+      el.style.opacity = "0";
+      return;
+    }
+    const { width, height } = renderer.size();
+    const margin = 8;
+    const p = renderer.toScreen(world.player.x, below ? world.player.y + 4 : world.player.y - 16);
+    const sx = Math.min(Math.max(p.x, el.offsetWidth / 2 + margin), width - el.offsetWidth / 2 - margin);
+    el.dataset.below = below ? "1" : "";
+    el.style.transform = below
+      ? `translate(${Math.round(sx)}px, ${Math.round(Math.min(p.y, height - el.offsetHeight - margin))}px) translate(-50%, 0)`
+      : `translate(${Math.round(sx)}px, ${Math.round(Math.max(p.y, el.offsetHeight + margin))}px) translate(-50%, -100%)`;
+    el.style.opacity = "1";
+  };
   const placeAnchor = (x: number, topY: number, belowY?: number) => {
     const el = nearbyAnchor;
     if (!el) return;
@@ -357,11 +441,16 @@ export function createVillageGame({
     renderer.setTopInset(boxes.length ? Math.max(...boxes.map((b) => b.bottom)) + 8 : 0);
     // 조각으로 위로 키운 눈사람 머리가 마을 맨 위를 넘으면 그만큼 더 보여 준다
     renderer.setContentTop(Math.min(0, ...world.stacks.map((s) => stackHeadY(s))) - 2);
+    // 안내: 가리킬 눈덩이·눈사람에는 노란 점선 동그라미, 우체통·집은 톡 뛴다
+    const guide = guideTarget && !sculptMode && !celebrating ? pickGuide() : null;
+    placeSpeech(sculptMode || celebrating, Boolean(nearby) || mailboxNear || doorNear);
     renderer.draw(world, {
       celebrate: celebrate ? { stackId: celebrate.stackId, t: world.time - celebrate.start } : null,
       joystick: sculptMode ? null : input.joystick(),
       mailCount,
       mailBadge: isOwner,
+      hop: guide === "mailbox" || guide === "house" ? guide : null,
+      guideId: guide && typeof guide === "object" ? guide.id : null,
       highlightId: nearby?.id ?? null,
       charge,
       hammer,
@@ -452,6 +541,21 @@ export function createVillageGame({
     playerInLowerHalf() {
       const p = renderer.toScreen(world.player.x, world.player.y);
       return p.y > renderer.size().height / 2;
+    },
+    setGuide(target) {
+      if (target !== guideTarget) guideStackId = null;
+      guideTarget = target;
+      if (target === "ball") placeBallNearPlayer();
+    },
+    setSpeechLayer(el) {
+      speechLayer = el;
+    },
+    guideProgress() {
+      const mine = world.stacks.filter((s) => !s.saved);
+      return {
+        grown: mine.filter((s) => s.balls.length === 1 && s.balls[0].r >= GUIDE_ROLLED_RADIUS).length,
+        stacked: mine.some((s) => s.balls.length > 1),
+      };
     },
     hasUnsavedWork() {
       if (editing || world.lift) return true;

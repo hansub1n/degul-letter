@@ -28,6 +28,10 @@ export type RenderOverlay = {
   mailCount: number;
   /** 우체통 오른쪽 위에 편지 수 빨간 동그라미를 띄울지 (마을 주인에게만) */
   mailBadge: boolean;
+  /** 안내 중인 우체통·집: 1.8초마다 한 번 톡 뛴다 */
+  hop: "mailbox" | "house" | null;
+  /** 안내가 가리키는 눈덩이·눈사람 (노란 점선 동그라미) */
+  guideId: number | null;
 };
 
 /** 완성 축하 연출이 이어지는 시간 */
@@ -1898,7 +1902,11 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
     // 마을 맨 위 경계의 눈 절벽 (길·자국 위, 눈사람·캐릭터 아래)
     if (camY < SNOW_CLIFF_BOTTOM) px.drawImage(snowCliff, -camX, SNOW_CLIFF_BOTTOM - SNOW_CLIFF_H - camY);
     const hx = Math.round(HOUSE_POSITION.x - 24 - camX);
-    const hy = Math.round(HOUSE_POSITION.y - 43 - camY);
+    // 안내 중인 우체통·집은 1.8초마다 0.3초 동안 2칸 톡 뛴다 (깜빡임 없이 물건이 움직여서 알려 준다)
+    const hopNow = !reducedMotion && time % 1.8 < 0.3 ? -Math.round(Math.sin(((time % 1.8) / 0.3) * Math.PI) * 2) : 0;
+    const houseHop = overlay.hop === "house" ? hopNow : 0;
+    const mailHop = overlay.hop === "mailbox" ? hopNow : 0;
+    const hy = Math.round(HOUSE_POSITION.y - 43 - camY) + houseHop;
 
     // 아래쪽(y가 큰) 것이 앞에 오도록 y 순서로 그린다
     const layers: Array<{ y: number; paint: () => void }> = [];
@@ -1933,7 +1941,15 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
         // 편지가 있으면 금색 깃발이 0.8초마다 한 칸 까딱인다
         const flag = !reducedMotion && Math.floor(time / 0.8) % 2 === 1;
         const sprite = overlay.mailCount > 0 ? (flag ? mailboxFullFlag : mailboxFull) : mailboxEmpty;
-        drawOutlined(px, sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY));
+        // 안내 중이면 눈덩이처럼 발밑에 노란 점선 동그라미 (도는 점)
+        if (overlay.hop === "mailbox") {
+          px.fillStyle = PAL.gold;
+          for (let i = 0; i < 40; i += 2) {
+            const an = (i / 40) * Math.PI * 2 + time;
+            px.fillRect(Math.round(MAILBOX_POSITION.x - camX + Math.cos(an) * 9), Math.round(MAILBOX_POSITION.y - camY + Math.sin(an) * 4), 1, 1);
+          }
+        }
+        drawOutlined(px, sprite, Math.round(MAILBOX_POSITION.x - 5 - camX), Math.round(MAILBOX_POSITION.y - 17 - camY) + mailHop);
         groundSnow(px, MAILBOX_POSITION.x - 3 - camX, Math.round(MAILBOX_POSITION.y - camY), 7, night);
       },
     });
@@ -1947,7 +1963,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
             camX,
             camY,
             time,
-            stack.id === overlay.highlightId,
+            stack.id === overlay.highlightId || stack.id === overlay.guideId,
             charge,
             overlay.editing,
           ),
