@@ -91,7 +91,7 @@ export type VillageGame = {
   /** 데굴이 머리 위 말풍선 층. 엔진이 매 프레임 캐릭터 위로 옮긴다 */
   setSpeechLayer(el: HTMLElement | null): void;
   /** 처음 온 사람 안내 진행: 굴려 키운 눈덩이 수, 2단 이상 쌓았는지 */
-  guideProgress(): { walked: boolean; grown: number; stacked: boolean };
+  guideProgress(): { walked: boolean; grown: number; stacked: boolean; finished: boolean };
   /** 캐릭터가 화면 아래쪽 절반에 있는지 (알림을 캐릭터 반대쪽에 띄우려고 쓴다) */
   playerInLowerHalf(): boolean;
   /** 눈사람 가슴께의 화면 위치 (CSS px, 캔버스 기준). 편지 봉투가 날아갈 곳 */
@@ -103,9 +103,11 @@ export type VillageGame = {
  * 안내가 가리키는 물건. 눈덩이·눈사람은 노란 점선 동그라미, 우체통·집은 톡 뛰는 움직임으로 알려 준다.
  * ball: 처음 굴릴 눈덩이, ball2: 하나 더 굴릴 눈덩이, stack: 쌓을 곳(굴린 눈덩이 중 큰 것), built: 쌓은 눈사람
  */
-export type GuideTarget = "ball" | "ball2" | "stack" | "built" | "mailbox" | "house";
+export type GuideTarget = "ball" | "ball2" | "stack" | "built" | "write" | "mailbox" | "house";
 /** 이만큼 커지면 "굴렸다"로 본다 (처음 반지름 4에서 조금만 굴려도 넘어가게) */
 const GUIDE_ROLLED_RADIUS = BALL_START_RADIUS + 1.5;
+/** 가리키던 눈덩이에서 이만큼 멀어지면 가까운 눈덩이로 표시를 옮긴다 (게임 픽셀) */
+const GUIDE_KEEP_DISTANCE = 70;
 
 /** 한 프레임이 너무 길면(탭 전환 등) 순간이동하지 않게 자른다 */
 const MAX_FRAME_SECONDS = 0.05;
@@ -214,7 +216,9 @@ export function createVillageGame({
     if (guideTarget === "ball" && kept && grown.includes(kept)) firstBallId = kept.id;
     let pick: Stack | null = null;
     if (guideTarget === "ball" || guideTarget === "ball2") {
-      pick = kept && fresh.includes(kept) ? kept : closest(fresh, p.x, p.y);
+      // 가리키던 눈덩이에서 멀리 떠나면(우체통·집 구경 등) 지금 자리에서 가장 가까운 눈덩이로 옮긴다 (화면 밖 눈덩이를 "이 눈덩이"라 부르지 않게)
+      const keep = kept && fresh.includes(kept) && distance(kept.x, kept.y, p.x, p.y) < GUIDE_KEEP_DISTANCE;
+      pick = keep ? kept : closest(fresh, p.x, p.y);
     }
     // 쌓을 곳: 굴린 눈덩이 중 가장 큰 것 (다른 눈덩이를 여기에 밀면 위로 올라간다)
     if (guideTarget === "stack") {
@@ -222,6 +226,7 @@ export function createVillageGame({
       pick = first ?? grown.reduce<Stack | null>((b, s) => (!b || s.balls[0].r > b.balls[0].r ? s : b), null);
     }
     if (guideTarget === "built") pick = mine.find((s) => s.balls.length > 1) ?? null;
+    if (guideTarget === "write") pick = world.stacks.find((s) => !s.saved && s.finished) ?? null;
     guideStackId = pick?.id ?? null;
     return pick;
   };
@@ -558,7 +563,9 @@ export function createVillageGame({
         // 조금이라도 걸어 보면 첫 화면의 손가락 조이스틱 안내를 거둔다
         walked: distance(world.player.x, world.player.y, guideStart.x, guideStart.y) > 10,
         grown: mine.filter((s) => s.balls.length === 1 && s.balls[0].r >= GUIDE_ROLLED_RADIUS).length,
-        stacked: mine.some((s) => s.balls.length > 1),
+        stacked: mine.some((s) => s.balls.length > 1 && !s.finished),
+        // 완성했지만 아직 편지를 넣지 않은 눈사람 (편지 창을 닫은 경우)
+        finished: mine.some((s) => s.finished),
       };
     },
     hasUnsavedWork() {

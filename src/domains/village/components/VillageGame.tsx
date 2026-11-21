@@ -8,7 +8,7 @@ import { PixelButton } from "@/shared/components/PixelButton";
 import type { PixelIconName } from "@/shared/components/PixelIcon";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelToast } from "@/shared/components/PixelToast";
-import { DegulGuide } from "./DegulGuide";
+import { DegulGuide, isGuideRunning } from "./DegulGuide";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
 import { createVillageGame, type NearbySnowman, type SculptSeed, type VillageGame as Game } from "../lib/engine";
 import type { GameEvent } from "../lib/types";
@@ -112,8 +112,6 @@ export function VillageGame({
   const [nearby, setNearby] = useState<NearbySnowman | null>(null);
   const [mailboxNear, setMailboxNear] = useState(false);
   const [doorNear, setDoorNear] = useState(false);
-  /** 안내 "조각해 볼까?" 마디: 이 화면에서 조각을 한 번이라도 열었는지 */
-  const [sculptedOnce, setSculptedOnce] = useState(false);
   const getGame = useCallback(() => gameRef.current, []);
   const [sculpting, setSculpting] = useState<SculptSeed | null>(null);
 
@@ -132,7 +130,8 @@ export function VillageGame({
       myId,
       isOwner,
       onEvent: (event) => {
-        const text = messageFor(event);
+        // 안내 중에는 데굴이가 같은 말을 하므로 "눈사람이 됐어요" 알림은 띄우지 않는다
+        const text = event.type === "stacked" && event.height === 2 && isGuideRunning() ? null : messageFor(event);
         if (text) showToast(text);
         if (event.type === "finished") {
           const draft = game.exportSnowman(event.stackId);
@@ -249,7 +248,6 @@ export function VillageGame({
         game={getGame}
         isOwner={isOwner}
         hasVillage={guideHasVillage}
-        sculpted={sculptedOnce}
         letterSent={guideLetterSent}
         hidden={Boolean(sculpting)}
       />
@@ -305,6 +303,7 @@ export function VillageGame({
                       variant="primary"
                       size="sm"
                       icon="envelope"
+                      data-guide-spot="write"
                       onClick={() => onWriteLetter?.(nearby.id)}
                     >
                       편지 쓰기
@@ -319,7 +318,6 @@ export function VillageGame({
                       data-guide-spot="carve"
                       onClick={() => {
                         setSculpting(gameRef.current?.startSculpt() ?? null);
-                        setSculptedOnce(true);
                       }}
                     />
                   )}
