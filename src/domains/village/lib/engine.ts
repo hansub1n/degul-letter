@@ -91,7 +91,7 @@ export type VillageGame = {
   /** 데굴이 머리 위 말풍선 층. 엔진이 매 프레임 캐릭터 위로 옮긴다 */
   setSpeechLayer(el: HTMLElement | null): void;
   /** 처음 온 사람 안내 진행: 굴려 키운 눈덩이 수, 2단 이상 쌓았는지 */
-  guideProgress(): { grown: number; stacked: boolean };
+  guideProgress(): { walked: boolean; grown: number; stacked: boolean };
   /** 캐릭터가 화면 아래쪽 절반에 있는지 (알림을 캐릭터 반대쪽에 띄우려고 쓴다) */
   playerInLowerHalf(): boolean;
   /** 눈사람 가슴께의 화면 위치 (CSS px, 캔버스 기준). 편지 봉투가 날아갈 곳 */
@@ -129,6 +129,8 @@ export function createVillageGame({
   onDoorNearChange,
 }: VillageGameOptions): VillageGame {
   const world = createWorld(saved, myId);
+  /** 손가락 안내를 거둘 때 쓰는 처음 자리 */
+  const guideStart = { x: world.player.x, y: world.player.y };
   // 개발 중 브라우저 콘솔에서 상태를 들여다보기 위한 손잡이 (배포 빌드에는 들어가지 않는다)
   if (process.env.NODE_ENV === "development") Object.assign(window, { __degulWorld: world });
   const input = createInput(canvas);
@@ -553,6 +555,8 @@ export function createVillageGame({
     guideProgress() {
       const mine = world.stacks.filter((s) => !s.saved);
       return {
+        // 조금이라도 걸어 보면 첫 화면의 손가락 조이스틱 안내를 거둔다
+        walked: distance(world.player.x, world.player.y, guideStart.x, guideStart.y) > 10,
         grown: mine.filter((s) => s.balls.length === 1 && s.balls[0].r >= GUIDE_ROLLED_RADIUS).length,
         stacked: mine.some((s) => s.balls.length > 1),
       };

@@ -1104,3 +1104,96 @@ body {
     animation: none;
   }
 }
+
+/* 첫 화면 조이스틱 안내(휴대폰): 터치 점이 손잡이에 내려앉아 오른쪽 → 왼쪽 위로 끌었다가 떼고 사라진다 */
+.joystick-demo-knob {
+  animation: joystick-drag 3.6s ease-in-out infinite;
+}
+
+.joystick-demo-touch {
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent);
+  animation: joystick-touch 3.6s ease-in-out infinite;
+}
+
+@keyframes joystick-drag {
+  0%,
+  14% {
+    transform: translate(0, 0);
+  }
+  30%,
+  40% {
+    transform: translate(30px, 0);
+  }
+  52% {
+    transform: translate(0, 0);
+  }
+  64%,
+  74% {
+    transform: translate(-20px, -22px);
+  }
+  88%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* 누르는 순간 살짝 작아지며 진해지고, 다 끈 뒤 떼면 사라진다 */
+@keyframes joystick-touch {
+  0% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  10%,
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+/* 첫 화면 방향키 안내(PC): → ← ↑ ↓ 순서로 하나씩 쑥 눌린다 */
+.arrow-key {
+  animation: arrow-key-press 3.2s steps(1, end) infinite;
+}
+
+.arrow-key-right {
+  animation-delay: 0s;
+}
+
+.arrow-key-left {
+  animation-delay: -2.4s;
+}
+
+.arrow-key-up {
+  animation-delay: -1.6s;
+}
+
+.arrow-key-down {
+  animation-delay: -0.8s;
+}
+
+@keyframes arrow-key-press {
+  0%,
+  22% {
+    background: var(--gold);
+    transform: translateY(var(--p));
+  }
+  25%,
+  100% {
+    background: var(--snow);
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joystick-demo-knob,
+  .joystick-demo-touch,
+  .arrow-key {
+    animation: none;
+  }
+}

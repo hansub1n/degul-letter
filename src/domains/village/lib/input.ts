@@ -14,7 +14,11 @@ export type GameInput = {
 
 const JOYSTICK_RADIUS = 40;
 const DRAG_START_DISTANCE = 6;
-const MOVE_KEYS = new Set(["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"]);
+/**
+ * 움직이는 키는 글자(e.key)가 아니라 키보드 자리(e.code)로 본다.
+ * 한글 입력 상태에서는 W·A·S·D가 ㅈ·ㅁ·ㄴ·ㅇ으로 들어와 글자로 보면 움직이지 않았다.
+ */
+const MOVE_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"]);
 
 type Drag = { pointerId: number; startX: number; startY: number; dx: number; dy: number; active: boolean };
 
@@ -37,7 +41,7 @@ export function createInput(target: HTMLElement): GameInput {
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
-    const key = e.key.toLowerCase();
+    const key = e.code;
     if (!MOVE_KEYS.has(key)) return;
     // 모달이 열려 있으면 마을은 멈추고, 입력칸의 글자·화살표는 그대로 둔다
     if (isModalLocked()) return;
@@ -45,7 +49,7 @@ export function createInput(target: HTMLElement): GameInput {
     pressed.add(key);
   };
   const onKeyUp = (e: KeyboardEvent) => {
-    pressed.delete(e.key.toLowerCase());
+    pressed.delete(e.code);
   };
   const onBlur = () => freeze();
 
@@ -96,8 +100,8 @@ export function createInput(target: HTMLElement): GameInput {
   return {
     read() {
       if (isModalLocked()) return { x: 0, y: 0 };
-      let x = axis(["arrowleft", "a"], ["arrowright", "d"]);
-      let y = axis(["arrowup", "w"], ["arrowdown", "s"]);
+      let x = axis(["ArrowLeft", "KeyA"], ["ArrowRight", "KeyD"]);
+      let y = axis(["ArrowUp", "KeyW"], ["ArrowDown", "KeyS"]);
       if (drag?.active) {
         x += drag.dx / JOYSTICK_RADIUS;
         y += drag.dy / JOYSTICK_RADIUS;
