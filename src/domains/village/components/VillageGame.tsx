@@ -8,7 +8,7 @@ import { PixelButton } from "@/shared/components/PixelButton";
 import type { PixelIconName } from "@/shared/components/PixelIcon";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelToast } from "@/shared/components/PixelToast";
-import { DegulGuide } from "./DegulGuide";
+import { DegulGuide, isGuideRunning } from "./DegulGuide";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
 import { createVillageGame, type NearbySnowman, type SculptSeed, type VillageGame as Game } from "../lib/engine";
 import type { GameEvent } from "../lib/types";
@@ -132,7 +132,8 @@ export function VillageGame({
       myId,
       isOwner,
       onEvent: (event) => {
-        const text = messageFor(event);
+        // 안내 중에는 데굴이가 같은 말을 하므로 "눈사람이 됐어요" 알림은 띄우지 않는다
+        const text = event.type === "stacked" && event.height === 2 && isGuideRunning() ? null : messageFor(event);
         if (text) showToast(text);
         if (event.type === "finished") {
           const draft = game.exportSnowman(event.stackId);

@@ -35,7 +35,7 @@ function stepsFor(isOwner: boolean, hasVillage: boolean): Step[] {
     { target: "ball", say: "안녕!\n이 눈덩이를 밀어 볼래?", done: (c) => c.grown >= 1 || c.stacked },
     { target: "ball2", say: "잘했어!\n이번엔 다른 눈덩이도 굴려 보자!", done: (c) => c.grown >= 2 || c.stacked },
     { target: "stack", say: "거의 다 왔어!\n아까 밀었던 눈덩이 쪽으로 계속 밀어 줘!", done: (c) => c.stacked },
-    { target: "built", spot: "carve", say: "짜잔! 눈사람이 됐어!\n끌 버튼으로 조각해 볼까?", done: (c) => c.sculpted },
+    { target: "built", spot: "carve", say: "짜잔! 눈사람이 됐어!\n이제 눈사람에 디테일을 더해 볼까?", done: (c) => c.sculpted },
     { target: null, say: null, done: (c) => c.letterSent },
     {
       target: "mailbox",
@@ -45,6 +45,11 @@ function stepsFor(isOwner: boolean, hasVillage: boolean): Step[] {
     },
     last,
   ];
+}
+
+/** 안내가 아직 진행 중인지 (끝까지 본 적이 없으면 true). 안내와 겹치는 알림을 뺄 때 쓴다 */
+export function isGuideRunning(): boolean {
+  return !readDone();
 }
 
 function readDone(): boolean {
