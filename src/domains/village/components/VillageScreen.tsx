@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AppwriteException } from "appwrite";
 import {
   christmasLabel,
   createLetter,
@@ -18,7 +19,9 @@ import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
-import { ensureUserId } from "@/shared/lib/session";
+import { describeError, reportClientError } from "@/shared/lib/clientError";
+import { ensureUserId, forgetUserId } from "@/shared/lib/session";
+import { shareVillage } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
@@ -122,6 +125,7 @@ export function VillageScreen() {
         setLoaded({ village, saved, myId, myVillage, loggedIn });
       } catch (e) {
         console.error(e);
+        reportClientError("load-village", describeError(e), { code });
         if (alive) setProblem("error");
       }
     })();
@@ -132,7 +136,8 @@ export function VillageScreen() {
 
   useEffect(() => {
     if (!status) return;
-    const timer = window.setTimeout(() => setStatus(null), 2500);
+    // 저장 실패는 오류 번호를 찍어 보낼 수 있게 더 오래 둔다
+    const timer = window.setTimeout(() => setStatus(null), status.startsWith("저장하지 못했어요") ? 6000 : 2500);
     return () => window.clearTimeout(timer);
   }, [status]);
 
@@ -167,10 +172,35 @@ export function VillageScreen() {
   const save = async (job: PendingSave, name: string, letter: string) => {
     const { draft, markSaved } = job;
     setStatus("눈사람을 세우는 중…");
-    try {
-      // 편지를 먼저 묻고, 그 ID를 눈사람에 적어 둔다
+    let step: "session" | "letter" | "snowman" = "session";
+    let retried = false;
+    // 계정 확인 → 편지 → 눈사람 순서. 편지 ID를 눈사람에 적어 두고, 눈사람 저장이 실패하면 짝 잃은 편지를 지운다.
+    const attempt = async (): Promise<{ row: SavedSnowman; letterId: string | null }> => {
+      step = "session";
+      await ensureUserId();
+      step = "letter";
       const letterId = letter ? await createLetter(village.id, name, letter) : null;
-      const row = await saveSnowman(village.id, name, draft, letterId);
+      step = "snowman";
+      try {
+        return { row: await saveSnowman(village.id, name, draft, letterId), letterId };
+      } catch (e) {
+        if (letterId) await deleteLetter(letterId).catch(() => {});
+        throw e;
+      }
+    };
+    try {
+      let saved: { row: SavedSnowman; letterId: string | null };
+      try {
+        saved = await attempt();
+      } catch (e) {
+        // 계정 확인이 실패하면(401) 계정을 다시 읽어 한 번 더 해 본다
+        if (!(e instanceof AppwriteException && e.code === 401)) throw e;
+        reportClientError(`save-${step}-401`, describeError(e), { willRetry: true });
+        retried = true;
+        forgetUserId();
+        saved = await attempt();
+      }
+      const { row, letterId } = saved;
       markSaved(row.id, name, letterId !== null);
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
@@ -179,9 +209,24 @@ export function VillageScreen() {
       else setStatus(isLetterOpen() ? "편지를 넣었어요. 지금 바로 열 수 있어요" : "편지를 넣었어요. 12월 25일에 열려요");
     } catch (e) {
       console.error(e);
+      const info = describeError(e);
+      reportClientError(`save-${step}`, info, {
+        retried,
+        isOwner,
+        balls: draft.balls.length,
+        sculptW: draft.sculpt.width,
+        sculptH: draft.sculpt.height,
+        nameLength: name.length,
+        letterLength: letter.length,
+      });
       // 저장에 실패하면 다시 "편지 쓰기"로 시도할 수 있게 남겨 둔다
       setDrafts((m) => new Map(m).set(job.stackId, job));
-      setStatus("저장하지 못했어요. 인터넷 연결을 확인해 주세요.");
+      // 오류 번호를 같이 보여 줘서, 친구가 화면만 찍어 보내도 원인을 알 수 있게 한다
+      setStatus(
+        info.network
+          ? "저장하지 못했어요. 인터넷 연결을 확인해 주세요."
+          : `저장하지 못했어요. 잠시 후 다시 해 주세요 (오류 ${info.code})`,
+      );
     }
   };
 
@@ -198,25 +243,6 @@ export function VillageScreen() {
     }
   };
 
-  /** 휴대폰이면 공유 창(카카오톡 등)을 띄우고, 공유 창이 없는 곳(PC 등)에서는 링크를 복사한다 */
-  const shareLink = async () => {
-    const url = `${window.location.origin}/v/${village.code}`;
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share({ title: "데굴레터", text: `${village.name}의 마을에 눈사람을 세우고 편지를 남겨 줘!`, url });
-        return;
-      } catch (e) {
-        // 사용자가 공유 창을 닫은 경우엔 아무것도 하지 않는다
-        if ((e as DOMException).name === "AbortError") return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setStatus("링크를 복사했어요. 친구에게 보내 주세요!");
-    } catch {
-      window.prompt("이 링크를 복사해서 친구에게 보내 주세요", url);
-    }
-  };
 
   const leaveNow = (to: LeaveTarget) => {
     if (to === LOGOUT) void logout();
@@ -335,10 +361,12 @@ export function VillageScreen() {
               <PixelButton
                 variant="primary"
                 iconOnly
-                icon="send"
+                icon="share"
                 aria-label="링크 보내기"
                 className="pointer-events-auto ml-auto shrink-0"
-                onClick={shareLink}
+                onClick={() => {
+                  if (!isModalLocked()) void shareVillage(village.code, setStatus);
+                }}
               />
             ) : myVillage ? (
               // 내 마을이 있는 친구: 주인의 종이비행기 버튼과 같은 모양. 아이콘은 집 문 말풍선과 같은 반쯤 열린 문

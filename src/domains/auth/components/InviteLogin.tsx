@@ -27,6 +27,8 @@ type Props = {
   variant: "page" | "overlay";
   /** 있으면 "나중에 할게요"와 베일 누르기로 닫는다 (친구 마을로 돌아가기) */
   onClose?: () => void;
+  /** 있으면 로그인 버튼 아래에 "로그인 없이 마을 구경하기"를 둔다 (첫 화면: 로그인 없이 체험 마을로) */
+  onTry?: () => void;
 };
 
 /** 항공우편 테두리 안의 점선 절취선. 도트 칸으로 찍어서 배율과 상관없이 또렷하게 한다. */
@@ -44,7 +46,7 @@ function Perforation() {
  * 내 마을 만들기 초대장: 항공우편 카드 안에서 카카오 또는 구글로 로그인한다.
  * 친구 마을의 초대장 티켓과 첫 화면이 같은 카드를 쓴다. 로그인하면 첫 화면으로 돌아와 닉네임을 입력한다.
  */
-export function InviteLogin({ variant, onClose }: Props) {
+export function InviteLogin({ variant, onClose, onTry }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 실패·안내 문구는 카드 안에 끼우지 않고(카드가 늘어나 버튼이 밀린다) 아래 알림으로 잠깐 띄운다
@@ -148,6 +150,11 @@ export function InviteLogin({ variant, onClose }: Props) {
             <Perforation />
             <div className="flex flex-col items-center gap-[calc(var(--p)*5)]">
               <LoginMethods busy={busy} onKakao={() => void kakao()} onGoogle={() => void google()} />
+              {onTry && (
+                <PixelButton variant="ghost" size="sm" disabled={busy} onClick={onTry}>
+                  로그인 없이 마을 구경하기
+                </PixelButton>
+              )}
               {onClose && (
                 <PixelButton variant="ghost" size="sm" disabled={busy} onClick={onClose}>
                   나중에 할게요

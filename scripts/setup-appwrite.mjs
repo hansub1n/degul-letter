@@ -144,11 +144,33 @@ async function setupIdentities() {
   await waitColumns(tableId);
 }
 
+async function setupClientErrors() {
+  const tableId = "client_errors";
+  console.log("🧯 client_errors");
+  // 브라우저에서 난 오류 기록 (/api/client-error). 닉네임·편지 내용은 없다.
+  // 권한을 아무에게도 주지 않는다. 서버(API 키)만 쓰고, 조회도 서버 키로만 한다.
+  await ensure("테이블", () =>
+    tables.createTable({ databaseId, tableId, name: "client_errors", permissions: [], rowSecurity: false }),
+  );
+  await ensure("where", () => tables.createVarcharColumn({ databaseId, tableId, key: "where", size: 40, required: true }));
+  await ensure("code", () => tables.createVarcharColumn({ databaseId, tableId, key: "code", size: 10, required: true }));
+  await ensure("type", () => tables.createVarcharColumn({ databaseId, tableId, key: "type", size: 60, required: false }));
+  await ensure("message", () =>
+    tables.createVarcharColumn({ databaseId, tableId, key: "message", size: 300, required: false }),
+  );
+  await ensure("context", () =>
+    tables.createVarcharColumn({ databaseId, tableId, key: "context", size: 1500, required: false }),
+  );
+  await ensure("ua", () => tables.createVarcharColumn({ databaseId, tableId, key: "ua", size: 300, required: false }));
+  await waitColumns(tableId);
+}
+
 try {
   await setupVillages();
   await setupSnowmen();
   await setupLetters();
   await setupIdentities();
+  await setupClientErrors();
   console.log("\n🎉 Appwrite 테이블 준비 완료");
 } catch (e) {
   console.error("\n❌ 실패:", e?.message ?? e);
