@@ -42,8 +42,8 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection heading="2. 편지 보호">
-        <p>편지는 쓴 사람도, 마을 주인도 브라우저에서 바로 읽을 수 없게 저장해요.</p>
-        <p>한국 시간 12월 25일 0시부터 마을 주인에게만 서버가 꺼내서 보여 줘요.</p>
+        <p>편지는 쓰는 순간 기기에서 암호화해서 저장해요. 저장된 편지는 알아볼 수 없는 글자라, 데이터베이스를 열어 봐도 내용을 읽을 수 없어요.</p>
+        <p>한국 시간 12월 25일 0시부터 마을 주인만 열어 볼 수 있어요.</p>
       </LegalSection>
 
       <LegalSection heading="3. 보관과 삭제">
