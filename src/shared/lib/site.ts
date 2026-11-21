@@ -6,6 +6,9 @@ export const SITE_TITLE = "데굴레터 — 크리스마스에 열리는 눈사�
 export const SITE_DESCRIPTION =
   "내 마을 링크를 보내면 친구들이 눈사람을 세우고 편지를 남겨요. 편지는 12월 25일에 열려요.";
 
+/** 첫 화면 "로그인 없이 마을 구경하기"로 누구나 들어가 볼 수 있는 체험 마을 (데굴이의 마을) */
+export const DEMO_VILLAGE_CODE = "4896ke";
+
 /** 카톡 미리보기용 한 줄 설명. 제목 칸에는 SITE_NAME만 넣어 "데굴레터 / 한 줄 설명" 두 줄로 보이게 한다 */
 export const SITE_SHARE_DESCRIPTION = "친구들이 내 마을에 눈사람을 세우고 크리스마스 편지를 남겨요";
 
