@@ -11,6 +11,7 @@ import { PixelField } from "@/shared/components/PixelField";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
+import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
 import { BACKDROP_CARD_TOP } from "../lib/render";
@@ -195,7 +196,15 @@ export function HomeScreen() {
         </button>
       )}
 
-      {inviting && <InviteLogin variant="page" />}
+      {inviting && (
+        <InviteLogin
+          variant="page"
+          onTry={() => {
+            setLeaving(true);
+            router.push(`/v/${DEMO_VILLAGE_CODE}`);
+          }}
+        />
+      )}
       <nav style={{ bottom: "calc(var(--p) * 3 + env(safe-area-inset-bottom, 0px))" }} className="text-caption fixed left-1/2 z-30 flex w-max -translate-x-1/2 whitespace-nowrap gap-[calc(var(--p)*2)] bg-paper px-[calc(var(--p)*3)] py-[var(--p)] text-ink">
         <Link href="/privacy">개인정보 처리방침</Link>
         <span aria-hidden>·</span>
