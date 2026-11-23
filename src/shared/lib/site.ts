@@ -29,4 +29,4 @@ export function villageShareText(name: string): { title: string; shareTitle: str
  * 닉네임을 넣으면 긴 닉네임에서 카톡 말풍선 한 줄(약 21자)을 넘어 줄이 바뀐다.
  * 공유는 마을 주인만 하니 "내 마을"로 쓰고, 누구 마을인지는 아래 미리보기 카드가 알려 준다.
  */
-export const VILLAGE_SHARE_MESSAGE = "눈사람이랑 크리스마스 편지 남겨 줘! ⛄";
+export const VILLAGE_SHARE_MESSAGE = "눈사람이랑 크리스마스 편지 남겨 줘⛄";
