@@ -12,16 +12,16 @@ import { PixelField } from "@/shared/components/PixelField";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
-import { useIsTouch } from "@/shared/hooks/useIsTouch";
 import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
 import { nicknameProblem } from "../lib/nickname";
-import { shareVillage } from "../share";
+import { tryNativeShare } from "../share";
 import { BACKDROP_CARD_TOP } from "../lib/render";
 import { NICKNAME_MAX } from "../types";
 import type { Village } from "../types";
 import { HomeBackdrop } from "./HomeBackdrop";
+import { SharePopup } from "./SharePopup";
 
 /** 첫 화면: 내 마을이 있으면 들어가기·친구에게 보내기, 없으면 로그인 → 마을 만들기 */
 export function HomeScreen() {
@@ -30,7 +30,8 @@ export function HomeScreen() {
   const [name, setName] = useState("");
   /** 만 14세 이상이며 이용 약관에 동의하는지. 체크해야 마을을 만들 수 있다 */
   const [agreed, setAgreed] = useState(false);
-  const touch = useIsTouch();
+  /** 데스크톱 공유하기 팝업 (주소 + 복사 버튼) */
+  const [shareOpen, setShareOpen] = useState(false);
   const nameProblem = nicknameProblem(name);
   const [busy, setBusy] = useState(false);
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
@@ -111,9 +112,17 @@ export function HomeScreen() {
           >
             내 마을 가기
           </PixelButton>
-          {/* 휴대폰은 공유 창, 데스크톱은 바로 복사 (share.ts) */}
-          <PixelButton icon={touch ? "share" : "copy"} className="w-full" onClick={() => void shareVillage(mine.code, setMessage)}>
-            {touch ? "친구에게 보내기" : "링크 복사하기"}
+          {/* 휴대폰은 공유 창, 데스크톱은 공유하기 팝업 (share.ts) */}
+          <PixelButton
+            icon="share"
+            className="w-full"
+            onClick={() =>
+              void tryNativeShare(mine.code).then((shared) => {
+                if (!shared) setShareOpen(true);
+              })
+            }
+          >
+            친구에게 보내기
           </PixelButton>
         </div>
       )}
@@ -229,6 +238,7 @@ export function HomeScreen() {
       {/* 아래 개인정보·약관 링크와 겹치지 않게 그 위로 올린다 */}
       {message && <PixelToast lift={24}>{message}</PixelToast>}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
+      {shareOpen && mine && <SharePopup code={mine.code} onClose={() => setShareOpen(false)} />}
     </main>
   );
 }
