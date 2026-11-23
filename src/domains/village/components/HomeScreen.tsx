@@ -12,6 +12,7 @@ import { PixelField } from "@/shared/components/PixelField";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
+import { useIsTouch } from "@/shared/hooks/useIsTouch";
 import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
 import { createVillage, findMyVillage } from "../api";
@@ -29,6 +30,7 @@ export function HomeScreen() {
   const [name, setName] = useState("");
   /** 만 14세 이상이며 이용 약관에 동의하는지. 체크해야 마을을 만들 수 있다 */
   const [agreed, setAgreed] = useState(false);
+  const touch = useIsTouch();
   const nameProblem = nicknameProblem(name);
   const [busy, setBusy] = useState(false);
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
@@ -109,8 +111,9 @@ export function HomeScreen() {
           >
             내 마을 가기
           </PixelButton>
-          <PixelButton icon="share" className="w-full" onClick={() => void shareVillage(mine.code, setMessage)}>
-            친구에게 보내기
+          {/* 휴대폰은 공유 창, 데스크톱은 바로 복사 (share.ts) */}
+          <PixelButton icon={touch ? "share" : "copy"} className="w-full" onClick={() => void shareVillage(mine.code, setMessage)}>
+            {touch ? "친구에게 보내기" : "링크 복사하기"}
           </PixelButton>
         </div>
       )}
