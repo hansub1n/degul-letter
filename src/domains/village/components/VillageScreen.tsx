@@ -20,6 +20,7 @@ import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
+import { useIsTouch } from "@/shared/hooks/useIsTouch";
 import { ensureUserId, forgetUserId } from "@/shared/lib/session";
 import { shareVillage } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
@@ -57,6 +58,7 @@ export function VillageScreen() {
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [goHomeOpen, setGoHomeOpen] = useState(false);
+  const touch = useIsTouch();
   /** 이 화면에서 편지를 넣어 눈사람을 세웠는지 (데굴이 안내가 우체통·집으로 넘어간다) */
   const [letterSent, setLetterSent] = useState(false);
   /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
@@ -366,9 +368,10 @@ export function VillageScreen() {
               <PixelButton
                 variant="primary"
                 iconOnly
-                icon="share"
+                // 휴대폰은 공유 창, 데스크톱은 바로 복사 (share.ts)
+                icon={touch ? "share" : "copy"}
                 data-guide-spot="share"
-                aria-label="링크 보내기"
+                aria-label={touch ? "링크 보내기" : "링크 복사"}
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={() => {
                   if (!isModalLocked()) void shareVillage(village.code, setStatus);
