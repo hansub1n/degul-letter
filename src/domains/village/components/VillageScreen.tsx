@@ -20,9 +20,8 @@ import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
-import { useIsTouch } from "@/shared/hooks/useIsTouch";
 import { ensureUserId, forgetUserId } from "@/shared/lib/session";
-import { shareVillage } from "../share";
+import { tryNativeShare } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
@@ -31,6 +30,7 @@ import { GoHomeConfirm } from "./GoHomeConfirm";
 import { LetterFlight } from "./LetterFlight";
 import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
+import { SharePopup } from "./SharePopup";
 import { VillageSign } from "./VillageSign";
 
 /** "완성!" 축하가 끝나고 편지 창이 뜨기 전 한 박자 쉬는 시간 (바로 뜨면 뚝 끊기는 느낌이 든다) */
@@ -58,7 +58,8 @@ export function VillageScreen() {
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [goHomeOpen, setGoHomeOpen] = useState(false);
-  const touch = useIsTouch();
+  /** 데스크톱 공유하기 팝업 (주소 + 복사 버튼) */
+  const [shareOpen, setShareOpen] = useState(false);
   /** 이 화면에서 편지를 넣어 눈사람을 세웠는지 (데굴이 안내가 우체통·집으로 넘어간다) */
   const [letterSent, setLetterSent] = useState(false);
   /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
@@ -368,13 +369,16 @@ export function VillageScreen() {
               <PixelButton
                 variant="primary"
                 iconOnly
-                // 휴대폰은 공유 창, 데스크톱은 바로 복사 (share.ts)
-                icon={touch ? "share" : "copy"}
+                // 휴대폰은 공유 창, 데스크톱은 공유하기 팝업 (share.ts)
+                icon="share"
                 data-guide-spot="share"
-                aria-label={touch ? "링크 보내기" : "링크 복사"}
+                aria-label="친구에게 보내기"
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={() => {
-                  if (!isModalLocked()) void shareVillage(village.code, setStatus);
+                  if (isModalLocked()) return;
+                  void tryNativeShare(village.code).then((shared) => {
+                    if (!shared) setShareOpen(true);
+                  });
                 }}
               />
             ) : myVillage ? (
@@ -460,6 +464,7 @@ export function VillageScreen() {
         />
       )}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
+      {shareOpen && <SharePopup code={village.code} onClose={() => setShareOpen(false)} />}
       {goHomeOpen && (
         <GoHomeConfirm
           hasVillage={myVillage !== null}

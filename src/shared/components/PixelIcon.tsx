@@ -156,21 +156,6 @@ const ICONS = {
     "osssssssssso",
     "oooooooooooo",
   ],
-  // 링크 복사(데스크톱 공유 버튼): 뒤 종이 위에 귀퉁이 접힌 문서(글 두 줄)가 겹친 복사 모양. 흰 속 + 남색 외곽
-  copy: [
-    ".oooooo.....",
-    "owwwwwwo....",
-    "owwoooooo...",
-    "owwowwwwoo..",
-    "owwowwwwowo.",
-    "owwowwwwoooo",
-    "owwowwwwwwwo",
-    "owwowooooowo",
-    "owwowwwwwwwo",
-    ".ooowooooowo",
-    "...owwwwwwwo",
-    "...ooooooooo",
-  ],
   // 공유: 아이폰식. 위로 올라가는 화살표와 아래가 둥근 열린 쟁반. 빨간 버튼 위에서 흰 모양으로 읽히게 흰 속 + 남색 외곽
   share: [
     ".....oo.....",
