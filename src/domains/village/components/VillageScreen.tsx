@@ -8,6 +8,7 @@ import {
   createLetter,
   deleteLetter,
   isLetterOpen,
+  HiddenSnowmen,
   LetterBox,
   LetterCard,
   openLetter,
@@ -29,6 +30,7 @@ import { FinishDialog } from "./FinishDialog";
 import { GoHomeConfirm } from "./GoHomeConfirm";
 import { LetterFlight } from "./LetterFlight";
 import { LeaveConfirm } from "./LeaveConfirm";
+import { OwnerMenu } from "./OwnerMenu";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { SharePopup } from "./SharePopup";
 import { VillageSign } from "./VillageSign";
@@ -84,6 +86,7 @@ export function VillageScreen() {
   const visibleLetters = letters.filter((l) => !hiddenIds.has(l.snowmanId));
   const letterCount = visibleLetters.length;
   const [mailboxOpen, setMailboxOpen] = useState(false);
+  const [hiddenListOpen, setHiddenListOpen] = useState(false);
   const [openingLetter, setOpeningLetter] = useState<{ authorName: string; savedId: string } | null>(null);
 
   useEffect(() => {
@@ -107,6 +110,7 @@ export function VillageScreen() {
       setLetters([]);
       setHiddenIds(new Set());
       setMailboxOpen(false);
+      setHiddenListOpen(false);
       setOpeningLetter(null);
       try {
         const myId = await ensureUserId();
@@ -276,7 +280,7 @@ export function VillageScreen() {
     hidingRef.current = true;
     try {
       await changeHidden(snowmanId, true);
-      setStatus("눈사람을 숨겼어요. 우체통의 '숨긴 눈사람'에서 다시 보이게 할 수 있어요");
+      setStatus("눈사람을 숨겼어요. 메뉴의 '숨긴 눈사람'에서 다시 보이게 할 수 있어요");
     } catch (e) {
       console.error(e);
       setStatus("숨기지 못했어요. 잠시 후 다시 해 주세요");
@@ -296,6 +300,13 @@ export function VillageScreen() {
   };
 
   const hasUnsaved = () => drafts.size > 0 || pending !== null || Boolean(gameApiRef.current?.hasUnsavedWork());
+
+  /** 집 문과 상단 메뉴가 같은 로그아웃을 쓴다. 메뉴는 집 앞이 눈사람에 막혔을 때의 나갈 곳이다 */
+  const askLogout = () => {
+    if (isModalLocked()) return;
+    if (hasUnsaved()) setLeaveTo(LOGOUT);
+    else setLogoutOpen(true);
+  };
 
   /** 편지를 안 넣은 눈사람이 있으면 녹는다고 먼저 묻고, 없으면 바로 떠난다 */
   const goOrConfirm = (to: LeaveTarget) => {
@@ -370,11 +381,7 @@ export function VillageScreen() {
               ? {
                   icon: "houseDoor",
                   label: "로그아웃",
-                  onClick: () => {
-                    if (isModalLocked()) return;
-                    if (hasUnsaved()) setLeaveTo(LOGOUT);
-                    else setLogoutOpen(true);
-                  },
+                  onClick: askLogout,
                 }
               : undefined
             : // 놀러 온 친구: 집 앞에서 내 마을로 (마을이 없으면 첫 화면에서 마을 만들기).
@@ -407,21 +414,33 @@ export function VillageScreen() {
               }
             />
             {isOwner ? (
-              <PixelButton
-                variant="primary"
-                iconOnly
-                // 휴대폰은 공유 창, 데스크톱은 공유하기 팝업 (share.ts)
-                icon="share"
-                data-guide-spot="share"
-                aria-label="친구에게 보내기"
-                className="pointer-events-auto ml-auto shrink-0"
-                onClick={() => {
-                  if (isModalLocked()) return;
-                  void tryNativeShare(village.code).then((shared) => {
-                    if (!shared) setShareOpen(true);
-                  });
-                }}
-              />
+              <div className="pointer-events-auto ml-auto shrink-0">
+                <OwnerMenu
+                  hiddenCount={hiddenSnowmen.length}
+                  canLogout={loggedIn}
+                  onOpenHidden={() => {
+                    if (isModalLocked()) return;
+                    setHiddenListOpen(true);
+                  }}
+                  onLogout={askLogout}
+                >
+                <PixelButton
+                  variant="primary"
+                  iconOnly
+                  // 휴대폰은 공유 창, 데스크톱은 공유하기 팝업 (share.ts)
+                  icon="share"
+                  data-guide-spot="share"
+                  aria-label="친구에게 보내기"
+                  className="shrink-0"
+                  onClick={() => {
+                    if (isModalLocked()) return;
+                    void tryNativeShare(village.code).then((shared) => {
+                      if (!shared) setShareOpen(true);
+                    });
+                  }}
+                />
+                </OwnerMenu>
+              </div>
             ) : myVillage ? (
               // 내 마을이 있는 친구: 주인의 종이비행기 버튼과 같은 모양. 아이콘은 집 문 말풍선과 같은 반쯤 열린 문
               <PixelButton
@@ -459,10 +478,15 @@ export function VillageScreen() {
         <LetterBox
           recipientName={village.name}
           letters={visibleLetters}
-          hiddenSnowmen={hiddenSnowmen}
-          onUnhide={unhideSnowman}
           openLetter={(letterId) => openLetter(village.id, letterId)}
           onClose={() => setMailboxOpen(false)}
+        />
+      )}
+      {hiddenListOpen && (
+        <HiddenSnowmen
+          items={hiddenSnowmen}
+          onUnhide={unhideSnowman}
+          onClose={() => setHiddenListOpen(false)}
         />
       )}
       {openingLetter && (

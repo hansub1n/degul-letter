@@ -385,6 +385,21 @@ const ICONS = {
     "owwbbwwo",
     "oooooooo",
   ],
+  // 메뉴: 톱니. 이가 여덟 방향으로 끊겨 튀어나오고, 가운데 구멍은 네모다
+  gear: [
+    "..o..oo..o..",
+    ".ooo.oo.ooo.",
+    "o.oooooooo.o",
+    "o.olhhhhlo.o",
+    "oolhhhhhhloo",
+    "o.lhh..hhl.o",
+    "o.lhh..hhl.o",
+    "oolhhhhhhloo",
+    "o.olhhhhlo.o",
+    "o.oooooooo.o",
+    ".ooo.oo.ooo.",
+    "..o..oo..o..",
+  ],
   // 페이지 넘기기 화살표
   prev: [
     "....oo",

@@ -444,6 +444,26 @@ body {
   outline-offset: var(--p);
 }
 
+/* 주인 메뉴 항목: 상자 하나 안의 글자 줄. 가리키면 눈 그늘, 키보드는 금색 테두리 */
+.menu-item {
+  padding: calc(var(--p) * 2) calc(var(--p) * 3);
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+}
+
+.menu-item:hover,
+.menu-item:active {
+  background: var(--snow-shade);
+}
+
+.menu-item:focus-visible {
+  outline: var(--p) solid var(--gold);
+  outline-offset: calc(var(--p) * -1);
+}
+
 @media (hover: hover) {
   .pixel-box.pixel-btn:hover:not(:disabled):not(.pixel-box-on) {
     transform: translateY(calc(var(--p) * -1));

@@ -457,7 +457,7 @@ export function popPose(stack: Stack): { x: number; y: number; h: number; r: num
 /**
  * 캐릭터 가까이 있는 눈사람(2단 이상). 완성한 눈사람도 포함한다(부수기는 할 수 있으니까).
  * 남의 눈사람은 빼되, 마을 주인(isOwner)에게는 방문자의 눈사람도 포함한다(편지를 보러 가거나 숨기러 갈 수 있게).
- * 숨긴 눈사람은 누구에게도 잡히지 않는다 (작성자도 못 부수고, 주인도 우체통의 숨긴 목록에서만 다시 보이게 한다).
+ * 숨긴 눈사람은 누구에게도 잡히지 않는다 (작성자도 못 부수고, 주인도 메뉴의 숨긴 목록에서만 다시 보이게 한다).
  */
 export function findNearbySnowman(world: World, isOwner = false): Stack | null {
   const p = world.player;
