@@ -13,6 +13,7 @@ import {
   type ScreenPad,
 } from "./render";
 import { addStack, ballHeights, breakStack, findNearbySnowman, finishStack, footRadius, stackHeadY, step } from "./rules";
+import type { StoryCardSnowman } from "./storyCard";
 import type { GameEvent, Stack } from "./types";
 import { createWorld, HOUSE_POSITION, MAILBOX_POSITION } from "./world";
 
@@ -69,6 +70,8 @@ export type VillageGame = {
   /** 저장이 끝난 눈사람에 저장 ID와 이름을 붙인다 (이름표가 생기고, 부수면 저장된 것도 지운다) */
   markSaved(stackId: number, rowId: string, authorName: string, hasLetter: boolean): void;
   breakNearby(): void;
+  /** 마을에 저장되어 서 있는 눈사람들 (스토리 카드에 그릴 재료. 편지 내용은 들어 있지 않다) */
+  storySnowmen(): StoryCardSnowman[];
   /**
    * 근처 눈사람 머리 위에 띄울 화면 요소를 알려 준다. 엔진이 매 프레임 이 요소를 눈사람 위로 옮긴다.
    * (카메라가 계속 움직이니 React state 대신 엔진이 직접 위치만 바꾼다)
@@ -515,6 +518,23 @@ export function createVillageGame({
     markSaved(stackId, rowId, authorName, hasLetter) {
       const stack = findStack(stackId);
       if (stack) stack.saved = { rowId, mine: true, authorName, hasLetter };
+    },
+    storySnowmen() {
+      return world.stacks.flatMap((s) =>
+        s.finished && s.saved && !s.pop
+          ? [
+              {
+                savedId: s.saved.rowId,
+                x: s.x,
+                y: s.y,
+                balls: s.balls.map((b) => b.r),
+                sculpt: s.sculpt,
+                // 숨긴 눈사람 표시(owner-moderation)가 있는 쪽에서는 그 값을 따른다
+                hidden: (s.saved as { hidden?: boolean }).hidden === true,
+              },
+            ]
+          : [],
+      );
     },
     breakNearby: () => {
       chargeStart = null;

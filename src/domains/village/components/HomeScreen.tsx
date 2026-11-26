@@ -14,14 +14,15 @@ import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
-import { createVillage, findMyVillage } from "../api";
+import { createVillage, findMyVillage, listSnowmen } from "../api";
 import { nicknameProblem } from "../lib/nickname";
-import { tryNativeShare } from "../share";
 import { BACKDROP_CARD_TOP } from "../lib/render";
+import { toStoryCardSnowman, type StoryCardSnowman } from "../lib/storyCard";
 import { NICKNAME_MAX } from "../types";
 import type { Village } from "../types";
 import { HomeBackdrop } from "./HomeBackdrop";
 import { SharePopup } from "./SharePopup";
+import { StoryShareDialog } from "./StoryShareDialog";
 
 /** 첫 화면: 내 마을이 있으면 들어가기·친구에게 보내기, 없으면 로그인 → 마을 만들기 */
 export function HomeScreen() {
@@ -32,6 +33,8 @@ export function HomeScreen() {
   const [agreed, setAgreed] = useState(false);
   /** 데스크톱 공유하기 팝업 (주소 + 복사 버튼) */
   const [shareOpen, setShareOpen] = useState(false);
+  /** 스토리 카드 창. 마을 화면 밖이라 눈사람을 서버에서 불러와 연다 */
+  const [story, setStory] = useState<StoryCardSnowman[] | null>(null);
   const nameProblem = nicknameProblem(name);
   const [busy, setBusy] = useState(false);
   /** 마을로 들어가는 중: 카드가 한 칸 내려가며 사라진다 */
@@ -112,16 +115,8 @@ export function HomeScreen() {
           >
             내 마을 가기
           </PixelButton>
-          {/* 휴대폰은 공유 창, 데스크톱은 공유하기 팝업 (share.ts) */}
-          <PixelButton
-            icon="share"
-            className="w-full"
-            onClick={() =>
-              void tryNativeShare(mine.code).then((shared) => {
-                if (!shared) setShareOpen(true);
-              })
-            }
-          >
+          {/* 링크 보내기·스토리 카드는 공유하기 팝업에서 한다 (share.ts) */}
+          <PixelButton icon="share" className="w-full" onClick={() => setShareOpen(true)}>
             친구에게 보내기
           </PixelButton>
         </div>
@@ -238,7 +233,22 @@ export function HomeScreen() {
       {/* 아래 개인정보·약관 링크와 겹치지 않게 그 위로 올린다 */}
       {message && <PixelToast lift={24}>{message}</PixelToast>}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
-      {shareOpen && mine && <SharePopup code={mine.code} onClose={() => setShareOpen(false)} />}
+      {shareOpen && mine && (
+        <SharePopup
+          code={mine.code}
+          onStoryCard={() => {
+            setShareOpen(false);
+            listSnowmen(mine.id)
+              .then((rows) => setStory(rows.map(toStoryCardSnowman)))
+              .catch((e) => {
+                console.error(e);
+                setMessage("스토리 카드를 만들지 못했어요. 잠시 후 다시 해 주세요");
+              });
+          }}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
+      {story && mine && <StoryShareDialog villageName={mine.name} snowmen={story} onClose={() => setStory(null)} />}
     </main>
   );
 }

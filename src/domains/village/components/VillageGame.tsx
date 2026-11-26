@@ -11,6 +11,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { DegulGuide, isGuideRunning } from "./DegulGuide";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
 import { createVillageGame, type NearbySnowman, type SculptSeed, type VillageGame as Game } from "../lib/engine";
+import type { StoryCardSnowman } from "../lib/storyCard";
 import type { GameEvent } from "../lib/types";
 
 const BREAK_HOLD_MS = BREAK_HOLD_SECONDS * 1000;
@@ -77,6 +78,8 @@ export type VillageGameApi = {
   hasUnsavedWork: () => boolean;
   /** 눈사람 몸의 화면 위치 (페이지 기준 CSS px). 편지 봉투가 날아갈 곳 */
   stackChestScreen: (stackId: number) => { x: number; y: number } | null;
+  /** 마을에 저장되어 서 있는 눈사람들 (스토리 카드 재료) */
+  storySnowmen: () => StoryCardSnowman[];
 };
 
 export type MarkSaved = (rowId: string, authorName: string, hasLetter: boolean) => void;
@@ -177,6 +180,7 @@ export function VillageGame({
         const box = canvasRef.current?.getBoundingClientRect();
         return p && box ? { x: p.x + box.left, y: p.y + box.top } : null;
       },
+      storySnowmen: () => gameRef.current?.storySnowmen() ?? [],
     };
     return () => {
       apiRef.current = null;

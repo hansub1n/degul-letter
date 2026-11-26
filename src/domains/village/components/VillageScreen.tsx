@@ -21,8 +21,8 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
 import { ensureUserId, forgetUserId } from "@/shared/lib/session";
-import { tryNativeShare } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
+import type { StoryCardSnowman } from "../lib/storyCard";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
@@ -31,6 +31,7 @@ import { LetterFlight } from "./LetterFlight";
 import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { SharePopup } from "./SharePopup";
+import { StoryShareDialog } from "./StoryShareDialog";
 import { VillageSign } from "./VillageSign";
 
 /** "완성!" 축하가 끝나고 편지 창이 뜨기 전 한 박자 쉬는 시간 (바로 뜨면 뚝 끊기는 느낌이 든다) */
@@ -48,6 +49,9 @@ type Loaded = {
 type LeaveTarget = string | typeof LOGOUT;
 const LOGOUT = Symbol("logout");
 
+/** 스토리 카드 창. afterLetter면 편지를 넣은 직후 안내(봉투가 날아가는 연출이 끝나면 띄운다) */
+type StoryCard = { snowmen: StoryCardSnowman[]; focusId: string | null; afterLetter: boolean };
+
 type PendingSave = { stackId: number; draft: SnowmanDraft; markSaved: MarkSaved };
 
 /** 공유 링크(/v/[code])로 들어온 마을. 저장된 눈사람을 불러와 세우고, 새로 완성한 눈사람과 편지를 저장한다. */
@@ -60,6 +64,7 @@ export function VillageScreen() {
   const [goHomeOpen, setGoHomeOpen] = useState(false);
   /** 데스크톱 공유하기 팝업 (주소 + 복사 버튼) */
   const [shareOpen, setShareOpen] = useState(false);
+  const [story, setStory] = useState<StoryCard | null>(null);
   /** 이 화면에서 편지를 넣어 눈사람을 세웠는지 (데굴이 안내가 우체통·집으로 넘어간다) */
   const [letterSent, setLetterSent] = useState(false);
   /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
@@ -98,6 +103,7 @@ export function VillageScreen() {
       setLeaveTo(null);
       setLogoutOpen(false);
       setGoHomeOpen(false);
+      setStory(null);
       setInviteOpen(false);
       setStatus(null);
       setLetters([]);
@@ -207,7 +213,10 @@ export function VillageScreen() {
       }
       const { row, letterId } = saved;
       markSaved(row.id, name, letterId !== null);
-      if (letterId) setLetterSent(true);
+      if (letterId) {
+        setLetterSent(true);
+        setStory({ snowmen: gameApiRef.current?.storySnowmen() ?? [], focusId: row.id, afterLetter: true });
+      }
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
       }
@@ -369,16 +378,14 @@ export function VillageScreen() {
               <PixelButton
                 variant="primary"
                 iconOnly
-                // 휴대폰은 공유 창, 데스크톱은 공유하기 팝업 (share.ts)
+                // 링크 보내기·스토리 카드는 공유하기 팝업에서 한다 (share.ts)
                 icon="share"
                 data-guide-spot="share"
                 aria-label="친구에게 보내기"
                 className="pointer-events-auto ml-auto shrink-0"
                 onClick={() => {
                   if (isModalLocked()) return;
-                  void tryNativeShare(village.code).then((shared) => {
-                    if (!shared) setShareOpen(true);
-                  });
+                  setShareOpen(true);
                 }}
               />
             ) : myVillage ? (
@@ -464,7 +471,24 @@ export function VillageScreen() {
         />
       )}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
-      {shareOpen && <SharePopup code={village.code} onClose={() => setShareOpen(false)} />}
+      {shareOpen && (
+        <SharePopup
+          code={village.code}
+          onStoryCard={() => {
+            setShareOpen(false);
+            setStory({ snowmen: gameApiRef.current?.storySnowmen() ?? [], focusId: null, afterLetter: false });
+          }}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
+      {story && !(story.afterLetter && flight) && (
+        <StoryShareDialog
+          villageName={village.name}
+          snowmen={story.snowmen}
+          focusId={story.focusId}
+          onClose={() => setStory(null)}
+        />
+      )}
       {goHomeOpen && (
         <GoHomeConfirm
           hasVillage={myVillage !== null}
