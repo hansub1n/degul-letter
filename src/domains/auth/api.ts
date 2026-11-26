@@ -3,7 +3,7 @@
 
 import { getAppwrite } from "@/shared/lib/appwrite";
 import { isLoggedInAccount, KAKAO_LABEL } from "@/shared/lib/loginLabels";
-import { ensureUserId, forgetUserId, SessionRateLimitError } from "@/shared/lib/session";
+import { ensureUserId, forgetUserId } from "@/shared/lib/session";
 
 /**
  * 지금 계정이 로그인(카카오·구글)으로 지켜지고 있는지. 화면 표시용이고, 진짜 확인은 서버가 한다.
@@ -18,21 +18,11 @@ export async function isLoggedIn(): Promise<boolean> {
   return isLoggedInAccount({ labels: user.labels, identityCount: total });
 }
 
-/** 로그인을 시작하는 순간에 세션을 만든다 (읽기만 할 때는 만들지 않는다). 한도(429)면 안내 문구로 멈추고, 다른 실패는 새 계정으로 로그인한다. */
-async function prepareSession(): Promise<void> {
-  try {
-    await ensureUserId();
-  } catch (e) {
-    if (e instanceof SessionRateLimitError) throw e;
-  }
-}
-
 /**
- * 카카오 로그인 페이지로 보낸다. 지금 익명 계정이 있으면 서버가 카카오 계정에 잇는다.
+ * 카카오 로그인 페이지로 보낸다. 지금 익명 계정이 있으면 서버가 카카오 계정에 잇고, 세션이 없으면(읽기만 한 방문자) 익명 세션을 만들지 않고 바로 로그인한다.
  * returnTo: 로그인 뒤 돌아올 우리 사이트 경로
  */
 export async function startKakaoLogin(returnTo: string): Promise<void> {
-  await prepareSession();
   const { account } = getAppwrite();
   let jwt: string | null = null;
   try {
@@ -55,7 +45,6 @@ export async function startKakaoLogin(returnTo: string): Promise<void> {
  * 앱 안 브라우저에서는 호출하지 않는다. 그 안내는 초대장 카드가 맡는다.
  */
 export async function startGoogleLogin(returnTo: string): Promise<void> {
-  await prepareSession();
   const { account } = getAppwrite();
   let jwt: string | null = null;
   try {
