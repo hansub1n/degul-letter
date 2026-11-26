@@ -173,7 +173,7 @@ export function InviteLogin({ variant, onClose, onTry, intro = false }: Props) {
             <div className="flex flex-col items-center gap-[calc(var(--p)*5)]">
               <LoginMethods busy={busy} onKakao={() => void kakao()} onGoogle={() => void google()} />
               {onTry && (
-                <PixelButton icon="cottage" className="w-full" disabled={busy} onClick={onTry}>
+                <PixelButton variant="ghost" size="sm" disabled={busy} onClick={onTry}>
                   로그인 없이 마을 구경하기
                 </PixelButton>
               )}
