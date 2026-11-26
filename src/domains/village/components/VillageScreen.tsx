@@ -22,7 +22,7 @@ import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
 import { ensureUserId, forgetUserId } from "@/shared/lib/session";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
-import type { StoryCardSnowman } from "../lib/storyCard";
+import type { StoryCardPlayer, StoryCardSnowman } from "../lib/storyCard";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
@@ -50,7 +50,12 @@ type LeaveTarget = string | typeof LOGOUT;
 const LOGOUT = Symbol("logout");
 
 /** 스토리 카드 창. afterLetter면 편지를 넣은 직후 안내(봉투가 날아가는 연출이 끝나면 띄운다) */
-type StoryCard = { snowmen: StoryCardSnowman[]; focusId: string | null; afterLetter: boolean };
+type StoryCard = {
+  snowmen: StoryCardSnowman[];
+  focusId: string | null;
+  player: StoryCardPlayer | null;
+  afterLetter: boolean;
+};
 
 type PendingSave = { stackId: number; draft: SnowmanDraft; markSaved: MarkSaved };
 
@@ -215,7 +220,12 @@ export function VillageScreen() {
       markSaved(row.id, name, letterId !== null);
       if (letterId) {
         setLetterSent(true);
-        setStory({ snowmen: gameApiRef.current?.storySnowmen() ?? [], focusId: row.id, afterLetter: true });
+        setStory({
+          snowmen: gameApiRef.current?.storySnowmen() ?? [],
+          focusId: row.id,
+          player: gameApiRef.current?.storyPlayer() ?? null,
+          afterLetter: true,
+        });
       }
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
@@ -476,7 +486,12 @@ export function VillageScreen() {
           code={village.code}
           onStoryCard={() => {
             setShareOpen(false);
-            setStory({ snowmen: gameApiRef.current?.storySnowmen() ?? [], focusId: null, afterLetter: false });
+            setStory({
+              snowmen: gameApiRef.current?.storySnowmen() ?? [],
+              focusId: null,
+              player: null,
+              afterLetter: false,
+            });
           }}
           onClose={() => setShareOpen(false)}
         />
@@ -486,6 +501,7 @@ export function VillageScreen() {
           villageName={village.name}
           snowmen={story.snowmen}
           focusId={story.focusId}
+          player={story.player}
           onClose={() => setStory(null)}
         />
       )}

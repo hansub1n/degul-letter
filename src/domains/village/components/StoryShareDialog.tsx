@@ -17,7 +17,7 @@ type Props = StoryCardInput & {
 type Card = { blob: Blob; url: string };
 
 /** 인스타 스토리용 카드(1080x1920)를 미리 보여 주고, 눈사람 대회 참여 안내와 함께 공유하거나 내려받게 하는 창 */
-export function StoryShareDialog({ villageName, snowmen, focusId, onClose }: Props) {
+export function StoryShareDialog({ villageName, snowmen, focusId, player, onClose }: Props) {
   const [card, setCard] = useState<Card | null>(null);
   const [failed, setFailed] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -28,7 +28,7 @@ export function StoryShareDialog({ villageName, snowmen, focusId, onClose }: Pro
   useEffect(() => {
     let alive = true;
     let url: string | null = null;
-    renderStoryCard({ villageName, snowmen, focusId })
+    renderStoryCard({ villageName, snowmen, focusId, player })
       .then((blob) => {
         if (!alive) return;
         url = URL.createObjectURL(blob);

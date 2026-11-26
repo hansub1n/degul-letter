@@ -11,7 +11,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { DegulGuide, isGuideRunning } from "./DegulGuide";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
 import { createVillageGame, type NearbySnowman, type SculptSeed, type VillageGame as Game } from "../lib/engine";
-import type { StoryCardSnowman } from "../lib/storyCard";
+import type { StoryCardPlayer, StoryCardSnowman } from "../lib/storyCard";
 import type { GameEvent } from "../lib/types";
 
 const BREAK_HOLD_MS = BREAK_HOLD_SECONDS * 1000;
@@ -80,6 +80,7 @@ export type VillageGameApi = {
   stackChestScreen: (stackId: number) => { x: number; y: number } | null;
   /** 마을에 저장되어 서 있는 눈사람들 (스토리 카드 재료) */
   storySnowmen: () => StoryCardSnowman[];
+  storyPlayer: () => StoryCardPlayer | null;
 };
 
 export type MarkSaved = (rowId: string, authorName: string, hasLetter: boolean) => void;
@@ -181,6 +182,7 @@ export function VillageGame({
         return p && box ? { x: p.x + box.left, y: p.y + box.top } : null;
       },
       storySnowmen: () => gameRef.current?.storySnowmen() ?? [],
+      storyPlayer: () => gameRef.current?.storyPlayer() ?? null,
     };
     return () => {
       apiRef.current = null;
