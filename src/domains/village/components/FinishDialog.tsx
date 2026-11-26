@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
+import { profanityProblem } from "@/shared/lib/profanity";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
@@ -36,7 +37,8 @@ export function FinishDialog(props: Props) {
   const owner = props.mode === "owner";
   const name = nickname.trim();
   const nameProblem = nicknameProblem(nickname);
-  const ready = Boolean(name && !nameProblem && letter.trim());
+  const letterProblem = profanityProblem(letter, "text");
+  const ready = Boolean(name && !nameProblem && letter.trim() && !letterProblem);
 
   // 쓰기 화면의 창 높이를 재 두고, 확인 화면에서도 같은 크기를 유지한다
   useLayoutEffect(() => {
@@ -134,7 +136,7 @@ export function FinishDialog(props: Props) {
               </span>
             }
             label={owner ? "크리스마스의 나에게" : `${props.recipient}에게`}
-            hint={`${letter.length}/${LETTER_MAX_LENGTH}`}
+            hint={letterProblem ? <span className="text-roof">{letterProblem}</span> : `${letter.length}/${LETTER_MAX_LENGTH}`}
             value={letter}
             maxLength={LETTER_MAX_LENGTH}
             onChange={(e) => setLetter(e.target.value)}

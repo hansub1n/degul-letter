@@ -77,7 +77,7 @@ export async function createVillageForUser(params: {
   if (!name || [...name].length > VILLAGE_NAME_MAX) {
     throw new VillageCreateError(400, `닉네임은 1~${VILLAGE_NAME_MAX}자로 적어 주세요`);
   }
-  // 화면과 같은 닉네임 규칙 (개발자 도구로 화면 검사를 건너뛰어도 서버에서 막는다)
+  // 화면과 같은 닉네임 규칙·금칙어 검사 (개발자 도구로 화면 검사를 건너뛰어도 서버에서 막는다)
   const problem = nicknameProblem(name);
   if (problem) throw new VillageCreateError(400, problem);
 
