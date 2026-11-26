@@ -22,7 +22,7 @@ import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
 import { ensureUserId, forgetUserId } from "@/shared/lib/session";
 import { tryNativeShare } from "../share";
-import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
+import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman, setSnowmanHidden } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
@@ -78,7 +78,11 @@ export function VillageScreen() {
   // 눈사람 ID → 편지 ID. 편지 개수를 세고, 눈사람을 부술 때 편지도 지우는 데 쓴다.
   // 마을에 온 편지 목록 (눈사람 ID → 편지 ID, 보낸 사람). 우체통 목록·편지 수·부술 때 편지 지우기에 쓴다.
   const [letters, setLetters] = useState<Array<{ snowmanId: string; letterId: string; authorName: string }>>([]);
-  const letterCount = letters.length;
+  // 주인이 숨긴 눈사람 ID. 숨긴 눈사람의 편지는 우체통 격자·편지 수·열람에서 빠진다 (눈사람과 편지는 한 덩어리)
+  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set());
+  const hidingRef = useRef(false);
+  const visibleLetters = letters.filter((l) => !hiddenIds.has(l.snowmanId));
+  const letterCount = visibleLetters.length;
   const [mailboxOpen, setMailboxOpen] = useState(false);
   const [openingLetter, setOpeningLetter] = useState<{ authorName: string; savedId: string } | null>(null);
 
@@ -101,6 +105,7 @@ export function VillageScreen() {
       setInviteOpen(false);
       setStatus(null);
       setLetters([]);
+      setHiddenIds(new Set());
       setMailboxOpen(false);
       setOpeningLetter(null);
       try {
@@ -124,6 +129,7 @@ export function VillageScreen() {
         });
         const [saved, myVillage, loggedIn] = await Promise.all([savedPromise, minePromise, loggedInPromise]);
         if (!alive) return;
+        setHiddenIds(new Set(saved.filter((s) => s.hidden).map((s) => s.id)));
         setLetters(
           saved.flatMap((s) => (s.letterId ? [{ snowmanId: s.id, letterId: s.letterId, authorName: s.authorName }] : [])),
         );
@@ -173,6 +179,9 @@ export function VillageScreen() {
 
   const { village, saved, myId, myVillage, loggedIn } = loaded;
   const isOwner = village.ownerId === myId;
+  const hiddenSnowmen = saved
+    .filter((s) => hiddenIds.has(s.id))
+    .map((s) => ({ id: s.id, authorName: s.authorName, hasLetter: s.letterId !== null }));
 
   const save = async (job: PendingSave, name: string, letter: string) => {
     const { draft, markSaved } = job;
@@ -250,6 +259,37 @@ export function VillageScreen() {
   };
 
 
+  /** 주인이 방문자 눈사람을 숨기거나 다시 보이게 한다. 서버가 주인인지 확인하고 성공하면 화면에 맞춘다 */
+  const changeHidden = async (snowmanId: string, hidden: boolean) => {
+    await setSnowmanHidden(snowmanId, hidden);
+    setHiddenIds((ids) => {
+      const next = new Set(ids);
+      if (hidden) next.add(snowmanId);
+      else next.delete(snowmanId);
+      return next;
+    });
+    gameApiRef.current?.setSnowmanHidden(snowmanId, hidden);
+  };
+
+  const hideSnowman = async (snowmanId: string) => {
+    if (hidingRef.current) return;
+    hidingRef.current = true;
+    try {
+      await changeHidden(snowmanId, true);
+      setStatus("눈사람을 숨겼어요. 우체통의 '숨긴 눈사람'에서 다시 보이게 할 수 있어요");
+    } catch (e) {
+      console.error(e);
+      setStatus("숨기지 못했어요. 잠시 후 다시 해 주세요");
+    } finally {
+      hidingRef.current = false;
+    }
+  };
+
+  const unhideSnowman = async (snowmanId: string) => {
+    await changeHidden(snowmanId, false);
+    setStatus("눈사람이 다시 보여요");
+  };
+
   const leaveNow = (to: LeaveTarget) => {
     if (to === LOGOUT) void logout();
     else router.push(to);
@@ -307,6 +347,7 @@ export function VillageScreen() {
         }}
         onSavedSnowmanBroken={(id) => void removeSaved(id)}
         isOwner={isOwner}
+        onHideSnowman={isOwner ? (id) => void hideSnowman(id) : undefined}
         mailCount={letterCount}
         guideHasVillage={Boolean(myVillage)}
         guideLetterSent={letterSent}
@@ -417,18 +458,20 @@ export function VillageScreen() {
       {mailboxOpen && (
         <LetterBox
           recipientName={village.name}
-          letters={letters}
+          letters={visibleLetters}
+          hiddenSnowmen={hiddenSnowmen}
+          onUnhide={unhideSnowman}
           openLetter={(letterId) => openLetter(village.id, letterId)}
           onClose={() => setMailboxOpen(false)}
         />
       )}
       {openingLetter && (
         <LetterCard
-          letterId={letters.find((l) => l.snowmanId === openingLetter.savedId)?.letterId}
+          letterId={visibleLetters.find((l) => l.snowmanId === openingLetter.savedId)?.letterId}
           authorName={openingLetter.authorName}
           recipientName={village.name}
           onOpen={async () => {
-            const letterId = letters.find((l) => l.snowmanId === openingLetter.savedId)?.letterId;
+            const letterId = visibleLetters.find((l) => l.snowmanId === openingLetter.savedId)?.letterId;
             if (!letterId) throw new Error("편지를 찾을 수 없어요");
             return openLetter(village.id, letterId);
           }}

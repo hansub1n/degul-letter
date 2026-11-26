@@ -119,3 +119,45 @@ export async function createVillageForUser(params: {
   }
   throw new VillageCreateError(500, "마을을 만들지 못했어요");
 }
+
+/**
+ * 마을 주인이 방문자 눈사람을 숨기거나 다시 보이게 한다. 행은 지우지 않고 hidden 칸 하나만 바꾼다.
+ * 눈사람 모양·이름·자리·편지는 이 함수로 바꿀 수 없다. 편지는 눈사람과 한 덩어리라, 숨기면 편지도 함께 빠진다
+ * (편지 열기 서버가 hidden 눈사람의 편지를 거절한다). 로그인 안 한 사람·다른 마을 주인은 403.
+ */
+export async function setSnowmanHiddenForOwner(params: {
+  jwt: string | undefined;
+  snowmanId: unknown;
+  hidden: unknown;
+}): Promise<{ id: string; hidden: boolean }> {
+  const { endpoint, projectId, databaseId, apiKey } = config();
+
+  const account = params.jwt ? await verifyAccount(params.jwt) : null;
+  if (!account) throw new VillageCreateError(403, "마을 주인만 숨길 수 있어요");
+
+  if (typeof params.snowmanId !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9._-]{0,35}$/.test(params.snowmanId)) {
+    throw new VillageCreateError(400, "잘못된 요청이에요");
+  }
+  if (typeof params.hidden !== "boolean") throw new VillageCreateError(400, "잘못된 요청이에요");
+
+  const tables = new TablesDB(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey));
+  let snowman: { $id: string; villageId: string };
+  try {
+    snowman = (await tables.getRow({ databaseId, tableId: "snowmen", rowId: params.snowmanId })) as unknown as typeof snowman;
+  } catch (e) {
+    if (e instanceof AppwriteException && e.code === 404) throw new VillageCreateError(404, "눈사람을 찾을 수 없어요");
+    throw e;
+  }
+
+  let village: { ownerId: string };
+  try {
+    village = (await tables.getRow({ databaseId, tableId: "villages", rowId: snowman.villageId })) as unknown as typeof village;
+  } catch (e) {
+    if (e instanceof AppwriteException && e.code === 404) throw new VillageCreateError(404, "마을을 찾을 수 없어요");
+    throw e;
+  }
+  if (village.ownerId !== account.userId) throw new VillageCreateError(403, "마을 주인만 숨길 수 있어요");
+
+  await tables.updateRow({ databaseId, tableId: "snowmen", rowId: snowman.$id, data: { hidden: params.hidden } });
+  return { id: snowman.$id, hidden: params.hidden };
+}

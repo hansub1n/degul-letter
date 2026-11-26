@@ -323,6 +323,11 @@ function pushBall(
   }
 
   const other = findStackAt(world, nx, ny, fr, stack.id);
+  // 숨긴 눈사람은 보이지 않으니 알림도 띄우지 않는다. 그 자리는 벽처럼 막기만 한다
+  if (other?.saved?.hidden) {
+    resetPush(world);
+    return false;
+  }
   if (other) {
     pushIntoStack(world, stack, other, mx, my, dt, events);
     return true;
@@ -451,16 +456,18 @@ export function popPose(stack: Stack): { x: number; y: number; h: number; r: num
 
 /**
  * 캐릭터 가까이 있는 눈사람(2단 이상). 완성한 눈사람도 포함한다(부수기는 할 수 있으니까).
- * 남의 눈사람은 빼되, 마을 주인(canOpenLetters)에게는 편지가 든 눈사람도 포함한다(편지를 보러 갈 수 있게).
+ * 남의 눈사람은 빼되, 마을 주인(isOwner)에게는 방문자의 눈사람도 포함한다(편지를 보러 가거나 숨기러 갈 수 있게).
+ * 숨긴 눈사람은 누구에게도 잡히지 않는다 (작성자도 못 부수고, 주인도 우체통의 숨긴 목록에서만 다시 보이게 한다).
  */
-export function findNearbySnowman(world: World, canOpenLetters = false): Stack | null {
+export function findNearbySnowman(world: World, isOwner = false): Stack | null {
   const p = world.player;
   let best: Stack | null = null;
   let bestDist = Infinity;
   for (const s of world.stacks) {
     if (s.balls.length < 2 || s.pop) continue;
-    // 남이 만든 눈사람은 조각도 부수기도 못 한다. 마을 주인이 편지를 보러 갈 때만 말풍선을 띄운다.
-    if (s.saved && !s.saved.mine && !(canOpenLetters && s.saved.hasLetter)) continue;
+    if (s.saved?.hidden) continue;
+    // 남이 만든 눈사람은 조각도 부수기도 못 한다. 마을 주인에게만 편지를 보거나 숨기는 말풍선을 띄운다.
+    if (s.saved && !s.saved.mine && !isOwner) continue;
     const d = distance(p.x, p.y, s.x, s.y) - footRadius(s) - PLAYER_RADIUS;
     if (d < NEARBY_STACK_DISTANCE && d < bestDist) {
       best = s;
@@ -495,7 +502,7 @@ export function finishStack(world: World, stackId: number, sculpt: Sculpt | null
 export function breakStack(world: World, stackId: number): GameEvent[] {
   if (world.lift) return [];
   const stack = world.stacks.find((s) => s.id === stackId);
-  if (!stack || (stack.saved && !stack.saved.mine)) return [];
+  if (!stack || (stack.saved && (!stack.saved.mine || stack.saved.hidden))) return [];
 
   world.stacks = world.stacks.filter((s) => s.id !== stackId);
   const heights = ballHeights(stack);

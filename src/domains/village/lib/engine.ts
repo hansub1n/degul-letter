@@ -69,6 +69,8 @@ export type VillageGame = {
   /** 저장이 끝난 눈사람에 저장 ID와 이름을 붙인다 (이름표가 생기고, 부수면 저장된 것도 지운다) */
   markSaved(stackId: number, rowId: string, authorName: string, hasLetter: boolean): void;
   breakNearby(): void;
+  /** 마을 주인이 숨기거나 다시 보이게 한 눈사람을 화면에 맞춘다 (숨겨도 그 자리는 그대로 막힌다) */
+  setSnowmanHidden(rowId: string, hidden: boolean): void;
   /**
    * 근처 눈사람 머리 위에 띄울 화면 요소를 알려 준다. 엔진이 매 프레임 이 요소를 눈사람 위로 옮긴다.
    * (카메라가 계속 움직이니 React state 대신 엔진이 직접 위치만 바꾼다)
@@ -447,7 +449,7 @@ export function createVillageGame({
     const boxes = headerBoxes();
     renderer.setTopInset(boxes.length ? Math.max(...boxes.map((b) => b.bottom)) + 8 : 0);
     // 조각으로 위로 키운 눈사람 머리가 마을 맨 위를 넘으면 그만큼 더 보여 준다
-    renderer.setContentTop(Math.min(0, ...world.stacks.map((s) => stackHeadY(s))) - 2);
+    renderer.setContentTop(Math.min(0, ...world.stacks.filter((s) => !s.saved?.hidden).map((s) => stackHeadY(s))) - 2);
     // 안내: 가리킬 눈덩이·눈사람에는 노란 점선 동그라미, 우체통·집은 톡 뛴다
     const guide = guideTarget && !sculptMode && !celebrating ? pickGuide() : null;
     placeSpeech(sculptMode || celebrating, Boolean(nearby) || mailboxNear || doorNear);
@@ -514,7 +516,14 @@ export function createVillageGame({
     },
     markSaved(stackId, rowId, authorName, hasLetter) {
       const stack = findStack(stackId);
-      if (stack) stack.saved = { rowId, mine: true, authorName, hasLetter };
+      if (stack) stack.saved = { rowId, mine: true, authorName, hasLetter, hidden: false };
+    },
+    setSnowmanHidden(rowId, hidden) {
+      const stack = world.stacks.find((s) => s.saved?.rowId === rowId);
+      if (!stack?.saved) return;
+      stack.saved.hidden = hidden;
+      stack.wobble = 0;
+      chargeStart = null;
     },
     breakNearby: () => {
       chargeStart = null;

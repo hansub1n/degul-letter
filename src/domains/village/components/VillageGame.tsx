@@ -55,6 +55,8 @@ type Props = {
   onSnowmanCelebrated?: (stackId: number) => void;
   /** 편지 버튼을 눌렀을 때 (어느 눈사람의 편지인지) */
   onOpenLetter?: (snowman: NearbySnowman) => void;
+  /** 마을 주인이 방문자 눈사람의 "숨기기"를 눌렀을 때 (저장 ID). 숨기는 일은 화면 쪽이 서버에 부탁한 뒤 hideSnowman으로 알려 준다 */
+  onHideSnowman?: (savedId: string) => void;
   /** 우체통 말풍선을 눌렀을 때 (주인: 우체통 열기, 방문자: 언제 열리는지 안내). 없으면 말풍선을 띄우지 않는다 */
   onOpenMailbox?: () => void;
   /** 집 문 앞 말풍선 (주인: 로그아웃, 방문자: 첫 화면으로). 없으면 말풍선을 띄우지 않는다 */
@@ -75,6 +77,8 @@ type Props = {
 
 export type VillageGameApi = {
   hasUnsavedWork: () => boolean;
+  /** 숨긴(또는 다시 보이게 한) 눈사람을 마을 화면에 맞춘다. 숨겨도 그 자리는 계속 막힌다 */
+  setSnowmanHidden: (savedId: string, hidden: boolean) => void;
   /** 눈사람 몸의 화면 위치 (페이지 기준 CSS px). 편지 봉투가 날아갈 곳 */
   stackChestScreen: (stackId: number) => { x: number; y: number } | null;
 };
@@ -92,6 +96,7 @@ export function VillageGame({
   onSnowmanBroken,
   onSnowmanCelebrated,
   onOpenLetter,
+  onHideSnowman,
   onOpenMailbox,
   door,
   mailCount = 0,
@@ -172,6 +177,7 @@ export function VillageGame({
     if (!apiRef) return;
     apiRef.current = {
       hasUnsavedWork: () => Boolean(sculpting) || Boolean(gameRef.current?.hasUnsavedWork()),
+      setSnowmanHidden: (savedId, hidden) => gameRef.current?.setSnowmanHidden(savedId, hidden),
       stackChestScreen: (stackId) => {
         const p = gameRef.current?.stackChestScreen(stackId);
         const box = canvasRef.current?.getBoundingClientRect();
@@ -324,6 +330,17 @@ export function VillageGame({
                   {kind === "letter" && (
                     <PixelButton iconOnly size="sm" icon="envelope" aria-label="편지 보기" onClick={() => onOpenLetter?.(nearby)} />
                   )}
+                  {kind === "hide" && (
+                    <PixelButton
+                      size="sm"
+                      aria-label="이 눈사람 숨기기"
+                      onClick={() => {
+                        if (nearby.savedId) onHideSnowman?.(nearby.savedId);
+                      }}
+                    >
+                      숨기기
+                    </PixelButton>
+                  )}
                   {kind === "hammer" && (
                     <BreakButton
                       onHoldChange={(holding) => {
@@ -351,15 +368,18 @@ export function VillageGame({
  * - 조각 전인 내 눈사람: 끌, 망치
  * - 완성했지만 편지를 아직 안 넣은 내 눈사람: 편지 쓰기, 망치
  * - 완성한 내 눈사람: 망치 (주인이 자기 마을에 세운 것엔 편지가 없다)
- * - 남의 눈사람(마을 주인에게만 보임): 편지
+ * - 남의 눈사람(마을 주인에게만 보임): 편지(있으면), 숨기기
  */
 function bubbleButtons(
   snowman: NearbySnowman,
   isOwner: boolean,
   unsent: boolean,
-): Array<"write" | "carve" | "letter" | "hammer"> {
-  if (!snowman.mine) return isOwner && snowman.hasLetter ? ["letter"] : [];
-  const buttons: Array<"write" | "carve" | "letter" | "hammer"> = [];
+): Array<"write" | "carve" | "letter" | "hide" | "hammer"> {
+  if (!snowman.mine) {
+    if (!isOwner || !snowman.savedId) return [];
+    return snowman.hasLetter ? ["letter", "hide"] : ["hide"];
+  }
+  const buttons: Array<"write" | "carve" | "letter" | "hide" | "hammer"> = [];
   // 완성했지만 편지 창을 취소한 눈사람: 다시 편지를 쓸 수 있다
   if (snowman.finished && !snowman.savedId && unsent) buttons.push("write");
   if (!snowman.finished) buttons.push("carve");

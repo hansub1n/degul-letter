@@ -1927,6 +1927,8 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       },
     });
     for (const stack of world.stacks) {
+      // 숨긴 눈사람은 그리지 않는다. 충돌·자리 계산은 rules.ts가 그대로 하므로 그 자리는 계속 막힌다
+      if (stack.saved?.hidden) continue;
       const charge = overlay.charge?.id === stack.id ? overlay.charge.progress : 0;
       layers.push({
         y: popPose(stack)?.y ?? stack.y,
@@ -2085,7 +2087,7 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       const px = world.player.x;
       const py = world.player.y;
       const dist = (s: (typeof world.stacks)[number]) => Math.hypot(s.x - px, s.y - py);
-      const tagged = world.stacks.filter((stack) => stack.saved && !stack.pop).sort((a, b) => dist(b) - dist(a));
+      const tagged = world.stacks.filter((stack) => stack.saved && !stack.saved.hidden && !stack.pop).sort((a, b) => dist(b) - dist(a));
       const near = tagged.length > 0 && dist(tagged[tagged.length - 1]) < NAME_NEAR_DISTANCE ? tagged[tagged.length - 1] : null;
       for (const stack of tagged) {
         if (!stack.saved) continue;

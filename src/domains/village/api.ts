@@ -16,6 +16,8 @@ type SnowmanRow = Models.Row & {
   balls: string;
   sculpt: string;
   letterId: string | null;
+  /** 컬럼을 만들기 전에 저장된 행은 비어 있다 (= 보이는 상태) */
+  hidden?: boolean | null;
 };
 
 const toVillage = (r: VillageRow): Village => ({ id: r.$id, name: r.name, code: r.code, ownerId: r.ownerId });
@@ -36,6 +38,7 @@ const toSnowman = (r: SnowmanRow): SavedSnowman => {
     balls,
     sculpt: decodeSculpt(r.sculpt),
     letterId: r.letterId || null,
+    hidden: r.hidden === true,
   };
 };
 
@@ -126,4 +129,22 @@ export async function saveSnowman(
 export async function deleteSnowman(snowmanId: string): Promise<void> {
   const { tables, databaseId } = getAppwrite();
   await tables.deleteRow({ databaseId, tableId: TABLES.snowmen, rowId: snowmanId });
+}
+
+/**
+ * 마을 주인이 눈사람을 숨기거나 다시 보이게 한다. 행은 그대로 두고 hidden만 바뀐다.
+ * 주인만 할 수 있어서, 브라우저는 "나는 이 사람이에요" 증명(JWT)을 들고 우리 서버(/api/snowmen/hide)에 부탁한다.
+ */
+export async function setSnowmanHidden(snowmanId: string, hidden: boolean): Promise<void> {
+  await ensureUserId();
+  const { jwt } = await getAppwrite().account.createJWT();
+  const res = await fetch("/api/snowmen/hide", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ snowmanId, hidden }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? "처리하지 못했어요");
+  }
 }
