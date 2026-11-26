@@ -224,6 +224,7 @@ export function HomeScreen() {
       {inviting && (
         <InviteLogin
           variant="page"
+          intro
           onTry={() => {
             setLeaving(true);
             router.push(`/v/${DEMO_VILLAGE_CODE}`);
