@@ -5,7 +5,7 @@ import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 
 type Props = {
-  /** 이미 자기 마을이 있으면 "내 마을로", 없으면(로그인은 했지만 아직 안 만든 경우) "내 마을 만들기" */
+  /** 이미 자기 마을이 있으면 "내 마을 가기", 없으면(로그인은 했지만 아직 안 만든 경우) "내 마을 만들기" */
   hasVillage: boolean;
   onGo: () => void;
   onClose: () => void;
@@ -38,7 +38,7 @@ export function VisitorCtaDialog({ hasVillage, onGo, onClose }: Props) {
             )}
           </p>
           <PixelButton variant="primary" className="w-full" onClick={onGo}>
-            {hasVillage ? "내 마을로" : "내 마을 만들기"}
+            {hasVillage ? "내 마을 가기" : "내 마을 만들기"}
           </PixelButton>
         </div>
       </div>
