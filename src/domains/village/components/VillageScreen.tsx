@@ -32,6 +32,7 @@ import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { SharePopup } from "./SharePopup";
 import { VillageSign } from "./VillageSign";
+import { VisitorCtaDialog } from "./VisitorCtaDialog";
 
 /** "완성!" 축하가 끝나고 편지 창이 뜨기 전 한 박자 쉬는 시간 (바로 뜨면 뚝 끊기는 느낌이 든다) */
 const AFTER_CELEBRATE_PAUSE_MS = 350;
@@ -66,6 +67,8 @@ export function VillageScreen() {
   /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
   const [flight, setFlight] = useState<{ stackId: number; key: number } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  /** 방문자가 저장에 성공한 직후 "나도 마을 만들기" 창을 띄울지 (안내를 봤든 껐든 상관없다) */
+  const [ctaOpen, setCtaOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
@@ -100,6 +103,7 @@ export function VillageScreen() {
       setLogoutOpen(false);
       setGoHomeOpen(false);
       setInviteOpen(false);
+      setCtaOpen(false);
       setStatus(null);
       setLetters([]);
       setMailboxOpen(false);
@@ -211,6 +215,7 @@ export function VillageScreen() {
       }
       const { row, letterId } = saved;
       markSaved(row.id, name, letterId !== null);
+      if (!isOwner) setCtaOpen(true);
       if (letterId) setLetterSent(true);
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
@@ -260,6 +265,8 @@ export function VillageScreen() {
     if (to === LOGOUT) void logout();
     else router.push(to);
   };
+
+  const closeCta = () => setCtaOpen(false);
 
   const hasUnsaved = () => drafts.size > 0 || pending !== null || Boolean(gameApiRef.current?.hasUnsavedWork());
 
@@ -467,6 +474,23 @@ export function VillageScreen() {
         />
       )}
       {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
+      {/* 저장 직후: 편지 봉투가 날아가는 연출이 끝난 뒤 띄운다. 닫아도 오른쪽 위 초대장 티켓은 그대로다 */}
+      {ctaOpen && !flight && !pending && !inviteOpen && !isOwner && (
+        loggedIn || myVillage ? (
+          <VisitorCtaDialog
+            hasVillage={myVillage !== null}
+            onGo={() => {
+              closeCta();
+              const to = myVillage ? `/v/${myVillage.code}` : "/";
+              if (hasUnsaved()) setLeaveTo(to);
+              else leaveNow(to);
+            }}
+            onClose={closeCta}
+          />
+        ) : (
+          <InviteLogin variant="overlay" onClose={closeCta} />
+        )
+      )}
       {flight && (
         <LetterFlight
           key={flight.key}
