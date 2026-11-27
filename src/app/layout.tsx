@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import { TIME_OF_DAY_SCRIPT } from "@/shared/hooks/useTimeOfDay";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_SHARE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/shared/lib/site";
 import "./globals.css";
@@ -59,7 +60,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: TIME_OF_DAY_SCRIPT }} />
       </head>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        {/* 페이지뷰만 센다. 커스텀 이벤트는 보내지 않으므로 닉네임·편지 내용은 분석에 넘어가지 않는다 */}
+        <Analytics />
+      </body>
     </html>
   );
 }

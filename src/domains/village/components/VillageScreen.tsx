@@ -21,7 +21,7 @@ import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
-import { ensureUserId, forgetUserId } from "@/shared/lib/session";
+import { ensureUserId, forgetUserId, peekUserId, SessionRateLimitError } from "@/shared/lib/session";
 import { tryNativeShare } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman, setSnowmanHidden } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
@@ -34,6 +34,7 @@ import { OwnerMenu } from "./OwnerMenu";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { SharePopup } from "./SharePopup";
 import { VillageSign } from "./VillageSign";
+import { VisitorCtaDialog } from "./VisitorCtaDialog";
 
 /** "완성!" 축하가 끝나고 편지 창이 뜨기 전 한 박자 쉬는 시간 (바로 뜨면 뚝 끊기는 느낌이 든다) */
 const AFTER_CELEBRATE_PAUSE_MS = 350;
@@ -41,7 +42,8 @@ const AFTER_CELEBRATE_PAUSE_MS = 350;
 type Loaded = {
   village: Village;
   saved: SavedSnowman[];
-  myId: string;
+  /** 이 브라우저에 이미 있는 세션의 계정. 읽기만 하는 방문자는 세션이 없어 null */
+  myId: string | null;
   myVillage: Village | null;
   /** 카카오 로그인 상태. 주인은 로그아웃 말풍선, 방문자는 초대장(로그인 카드)을 띄울지 정한다 */
   loggedIn: boolean;
@@ -67,6 +69,8 @@ export function VillageScreen() {
   /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
   const [flight, setFlight] = useState<{ stackId: number; key: number } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  /** 방문자가 저장에 성공한 직후 "나도 마을 만들기" 창을 띄울지 (안내를 봤든 껐든 상관없다) */
+  const [ctaOpen, setCtaOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
@@ -106,6 +110,7 @@ export function VillageScreen() {
       setLogoutOpen(false);
       setGoHomeOpen(false);
       setInviteOpen(false);
+      setCtaOpen(false);
       setStatus(null);
       setLetters([]);
       setHiddenIds(new Set());
@@ -113,24 +118,27 @@ export function VillageScreen() {
       setHiddenListOpen(false);
       setOpeningLetter(null);
       try {
-        const myId = await ensureUserId();
-        const village = await getVillageByCode(code);
+        // 마을·눈사람 읽기는 누구나 읽기라 세션 없이 한다. 익명 세션은 쓰기가 필요한 순간에 만든다.
+        const [myId, village] = await Promise.all([peekUserId(), getVillageByCode(code)]);
         if (!village) {
           if (alive) setProblem("notFound");
           return;
         }
         const savedPromise = listSnowmen(village.id);
         const minePromise =
-          village.ownerId === myId
+          myId === null || village.ownerId === myId
             ? Promise.resolve(null)
             : findMyVillage().catch((err) => {
                 console.error(err);
                 return null;
               });
-        const loggedInPromise = isLoggedIn().catch((err) => {
-          console.error(err);
-          return false;
-        });
+        const loggedInPromise =
+          myId === null
+            ? Promise.resolve(false)
+            : isLoggedIn().catch((err) => {
+                console.error(err);
+                return false;
+              });
         const [saved, myVillage, loggedIn] = await Promise.all([savedPromise, minePromise, loggedInPromise]);
         if (!alive) return;
         setHiddenIds(new Set(saved.filter((s) => s.hidden).map((s) => s.id)));
@@ -182,7 +190,7 @@ export function VillageScreen() {
   }
 
   const { village, saved, myId, myVillage, loggedIn } = loaded;
-  const isOwner = village.ownerId === myId;
+  const isOwner = myId !== null && village.ownerId === myId;
   const hiddenSnowmen = saved
     .filter((s) => hiddenIds.has(s.id))
     .map((s) => ({ id: s.id, authorName: s.authorName, hasLetter: s.letterId !== null }));
@@ -220,6 +228,7 @@ export function VillageScreen() {
       }
       const { row, letterId } = saved;
       markSaved(row.id, name, letterId !== null);
+      if (!isOwner) setCtaOpen(true);
       if (letterId) setLetterSent(true);
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
@@ -242,7 +251,9 @@ export function VillageScreen() {
       setDrafts((m) => new Map(m).set(job.stackId, job));
       // 오류 번호를 같이 보여 줘서, 친구가 화면만 찍어 보내도 원인을 알 수 있게 한다
       setStatus(
-        info.network
+        e instanceof SessionRateLimitError
+          ? e.message
+          : info.network
           ? "저장하지 못했어요. 인터넷 연결을 확인해 주세요."
           : `저장하지 못했어요. 잠시 후 다시 해 주세요 (오류 ${info.code})`,
       );
@@ -299,6 +310,8 @@ export function VillageScreen() {
     else router.push(to);
   };
 
+  const closeCta = () => setCtaOpen(false);
+
   const hasUnsaved = () => drafts.size > 0 || pending !== null || Boolean(gameApiRef.current?.hasUnsavedWork());
 
   /** 집 문과 상단 메뉴가 같은 로그아웃을 쓴다. 메뉴는 집 앞이 눈사람에 막혔을 때의 나갈 곳이다 */
@@ -328,6 +341,11 @@ export function VillageScreen() {
         onSnowmanFinished={(stackId, draft, markSaved) => {
           const job = { stackId, draft, markSaved };
           brokenRef.current.delete(stackId);
+          // 저장(쓰기)이 곧 필요하니 지금 세션을 만들어 둔다. 한도(429)면 편지를 쓰기 전에 알려 준다
+          void ensureUserId().catch((err) => {
+            if (err instanceof SessionRateLimitError) setStatus(err.message);
+            else console.error(err);
+          });
           celebratingRef.current.set(stackId, job);
           setDrafts((m) => new Map(m).set(stackId, job));
         }}
@@ -523,6 +541,23 @@ export function VillageScreen() {
         />
       )}
       {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
+      {/* 저장 직후: 편지 봉투가 날아가는 연출이 끝난 뒤 띄운다. 닫아도 오른쪽 위 초대장 티켓은 그대로다 */}
+      {ctaOpen && !flight && !pending && !inviteOpen && !isOwner && (
+        loggedIn || myVillage ? (
+          <VisitorCtaDialog
+            hasVillage={myVillage !== null}
+            onGo={() => {
+              closeCta();
+              const to = myVillage ? `/v/${myVillage.code}` : "/";
+              if (hasUnsaved()) setLeaveTo(to);
+              else leaveNow(to);
+            }}
+            onClose={closeCta}
+          />
+        ) : (
+          <InviteLogin variant="overlay" onClose={closeCta} />
+        )
+      )}
       {flight && (
         <LetterFlight
           key={flight.key}

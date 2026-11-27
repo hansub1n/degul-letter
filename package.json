@@ -12,6 +12,7 @@
     "delete:account": "node --env-file=.env.local scripts/delete-account.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "appwrite": "^29.2.0",
     "galmuri": "2.40.3",
     "next": "16.4.5",

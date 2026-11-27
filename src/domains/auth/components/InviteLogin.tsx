@@ -29,6 +29,8 @@ type Props = {
   onClose?: () => void;
   /** 있으면 로그인 버튼 아래에 "로그인 없이 마을 구경하기"를 둔다 (첫 화면: 로그인 없이 체험 마을로) */
   onTry?: () => void;
+  /** 처음 온 사람에게 서비스 이름과 한 줄 설명을 먼저 보여 준다 (첫 화면). 없으면 로그인 안내 문구만 둔다 */
+  intro?: boolean;
 };
 
 /** 항공우편 테두리 안의 점선 절취선. 도트 칸으로 찍어서 배율과 상관없이 또렷하게 한다. */
@@ -46,7 +48,7 @@ function Perforation() {
  * 내 마을 만들기 초대장: 항공우편 카드 안에서 카카오 또는 구글로 로그인한다.
  * 친구 마을의 초대장 티켓과 첫 화면이 같은 카드를 쓴다. 로그인하면 첫 화면으로 돌아와 닉네임을 입력한다.
  */
-export function InviteLogin({ variant, onClose, onTry }: Props) {
+export function InviteLogin({ variant, onClose, onTry, intro = false }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 실패·안내 문구는 카드 안에 끼우지 않고(카드가 늘어나 버튼이 밀린다) 아래 알림으로 잠깐 띄운다
@@ -136,16 +138,36 @@ export function InviteLogin({ variant, onClose, onTry }: Props) {
             </div>
             <header className="flex flex-col gap-[calc(var(--p)*4)] pt-[calc(var(--p)*1)]">
               <p className="text-label text-roof pr-[calc(var(--p)*22)]">초대장</p>
-              <h1 id="invite-login-title" className="text-title pr-[calc(var(--p)*22)]">
-                내 마을을
-                <br />
-                지켜 줄 열쇠
-              </h1>
-              <p className="text-body text-muted">
-                어느 기기에서든 친구들의 눈사람과 편지가
-                <br />
-                녹지 않고 내 마을에 남아요
-              </p>
+              {intro ? (
+                <>
+                  <h1 id="invite-login-title" className="text-title pr-[calc(var(--p)*22)]">
+                    데굴레터
+                  </h1>
+                  <p className="text-body font-bold">
+                    친구들이 내 마을에 눈사람을 세우고
+                    <br />
+                    크리스마스에 열어 볼 편지를 남겨요
+                  </p>
+                  <p className="text-body text-muted">
+                    로그인하면 눈사람과 편지가
+                    <br />
+                    녹지 않고 내 마을에 남아요
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 id="invite-login-title" className="text-title pr-[calc(var(--p)*22)]">
+                    내 마을을
+                    <br />
+                    지켜 줄 열쇠
+                  </h1>
+                  <p className="text-body text-muted">
+                    어느 기기에서든 친구들의 눈사람과 편지가
+                    <br />
+                    녹지 않고 내 마을에 남아요
+                  </p>
+                </>
+              )}
             </header>
             <Perforation />
             <div className="flex flex-col items-center gap-[calc(var(--p)*5)]">
