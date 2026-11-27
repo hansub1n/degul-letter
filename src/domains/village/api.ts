@@ -16,6 +16,8 @@ type SnowmanRow = Models.Row & {
   balls: string;
   sculpt: string;
   letterId: string | null;
+  /** 컬럼을 만들기 전에 저장된 행은 비어 있다 (= 보이는 상태) */
+  hidden?: boolean | null;
 };
 
 const toVillage = (r: VillageRow): Village => ({ id: r.$id, name: r.name, code: r.code, ownerId: r.ownerId });
@@ -36,16 +38,18 @@ const toSnowman = (r: SnowmanRow): SavedSnowman => {
     balls,
     sculpt: decodeSculpt(r.sculpt),
     letterId: r.letterId || null,
+    hidden: r.hidden === true,
   };
 };
 
-/** 내 것만 고치고 지울 수 있게: 누구나 읽기, 고치기·지우기는 나만 */
-const ownedBy = (userId: string) => [
-  Permission.read(Role.any()),
-  Permission.update(Role.user(userId)),
-  Permission.delete(Role.user(userId)),
-];
+/**
+ * 눈사람 권한: 누구나 읽기, 지우기는 만든 사람만. 고치기(update)는 아무에게도 주지 않는다.
+ * 저장한 눈사람을 고치는 화면이 없고, 고치기를 열어 두면 작성자가 주인이 숨긴 눈사람(hidden)을 되돌리거나
+ * 이름을 금칙어로 바꿀 수 있다. 숨기기는 서버(/api/snowmen/hide)가 서버 키로 한다.
+ */
+const snowmanPermissions = (userId: string) => [Permission.read(Role.any()), Permission.delete(Role.user(userId))];
 
+/** 내 마을 조회는 내 계정이 필요해서 세션을 만든 뒤 한다 */
 export async function findMyVillage(): Promise<Village | null> {
   const userId = await ensureUserId();
   const { tables, databaseId } = getAppwrite();
@@ -76,6 +80,7 @@ export async function createVillage(name: string): Promise<Village> {
   return { id: data.id, name: data.name, code: data.code, ownerId: data.ownerId };
 }
 
+/** 마을 읽기는 누구나 읽기라 세션 없이 한다 */
 export async function getVillageByCode(code: string): Promise<Village | null> {
   const { tables, databaseId } = getAppwrite();
   const { rows } = await tables.listRows<VillageRow>({
@@ -86,6 +91,7 @@ export async function getVillageByCode(code: string): Promise<Village | null> {
   return rows[0] ? toVillage(rows[0]) : null;
 }
 
+/** 눈사람 목록도 세션 없이 읽는다 */
 export async function listSnowmen(villageId: string): Promise<SavedSnowman[]> {
   const { tables, databaseId } = getAppwrite();
   const { rows } = await tables.listRows<SnowmanRow>({
@@ -118,7 +124,7 @@ export async function saveSnowman(
       sculpt: encodeSculpt(draft.sculpt),
       letterId,
     },
-    permissions: ownedBy(userId),
+    permissions: snowmanPermissions(userId),
   });
   return toSnowman(row);
 }
@@ -126,4 +132,22 @@ export async function saveSnowman(
 export async function deleteSnowman(snowmanId: string): Promise<void> {
   const { tables, databaseId } = getAppwrite();
   await tables.deleteRow({ databaseId, tableId: TABLES.snowmen, rowId: snowmanId });
+}
+
+/**
+ * 마을 주인이 눈사람을 숨기거나 다시 보이게 한다. 행은 그대로 두고 hidden만 바뀐다.
+ * 주인만 할 수 있어서, 브라우저는 "나는 이 사람이에요" 증명(JWT)을 들고 우리 서버(/api/snowmen/hide)에 부탁한다.
+ */
+export async function setSnowmanHidden(snowmanId: string, hidden: boolean): Promise<void> {
+  await ensureUserId();
+  const { jwt } = await getAppwrite().account.createJWT();
+  const res = await fetch("/api/snowmen/hide", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ snowmanId, hidden }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? "처리하지 못했어요");
+  }
 }

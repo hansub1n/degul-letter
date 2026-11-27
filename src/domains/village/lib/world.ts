@@ -65,6 +65,7 @@ export function createWorld(saved: readonly SavedSnowman[] = [], myId: string | 
       mine: myId !== null && s.authorId === myId,
       authorName: s.authorName,
       hasLetter: s.letterId !== null,
+      hidden: s.hidden,
     };
   }
   fillLooseBalls(world, 40);

@@ -14,6 +14,7 @@ import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
+import { SessionRateLimitError } from "@/shared/lib/session";
 import { createVillage, findMyVillage, listSnowmen } from "../api";
 import { nicknameProblem } from "../lib/nickname";
 import { BACKDROP_CARD_TOP } from "../lib/render";
@@ -61,7 +62,9 @@ export function HomeScreen() {
         if (alive) {
           setLoggedIn(false);
           setMine(null);
-          setMessage("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.");
+          setMessage(
+            e instanceof SessionRateLimitError ? e.message : "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.",
+          );
         }
       });
     return () => {
@@ -80,7 +83,9 @@ export function HomeScreen() {
       router.push(`/v/${village.code}`);
     } catch (e) {
       console.error(e);
-      setMessage("마을을 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
+      setMessage(
+        e instanceof SessionRateLimitError ? e.message : "마을을 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
+      );
       setBusy(false);
     }
   };
@@ -219,6 +224,7 @@ export function HomeScreen() {
       {inviting && (
         <InviteLogin
           variant="page"
+          intro
           onTry={() => {
             setLeaving(true);
             router.push(`/v/${DEMO_VILLAGE_CODE}`);

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { PixelIcon } from "@/shared/components/PixelIcon";
 import { PixelToast } from "@/shared/components/PixelToast";
+import { isModalLocked, onModalLockChange } from "@/shared/lib/modalLock";
 import type { GuideTarget, VillageGame } from "../lib/engine";
 
 /** 조작법 그림은 아래쪽 안내(바닥에서 24px, 높이 약 40px) 바로 위에 간격을 두고 놓는다 */
@@ -43,6 +44,10 @@ function linesFor(isOwner: boolean, hasVillage: boolean, again: boolean): Record
         ? { target: null, spot: "home", say: "내 마을에도 놀러 갈까?\n노란 버튼을 눌러 봐" }
         : { target: null, spot: "invite", say: "어때?\n나만의 마을을 만들어 볼래?" },
   };
+}
+
+function useModalLocked(): boolean {
+  return useSyncExternalStore(onModalLockChange, isModalLocked, () => false);
 }
 
 /** 안내가 아직 진행 중인지 (끝까지 본 적이 없으면 true). 안내와 겹치는 알림을 뺄 때 쓴다 */
@@ -100,6 +105,8 @@ export function DegulGuide({ game, isOwner, hasVillage, letterSent, hidden }: Pr
   }, []);
   const lines = useMemo(() => linesFor(isOwner, hasVillage, again), [isOwner, hasVillage, again]);
   const after = phase === "mailbox" || phase === "last";
+  /** 창(편지 보낸 뒤 "나도 마을 만들기" 등)이 떠 있는 동안은 말풍선 시간을 세지 않는다 */
+  const modalLocked = useModalLocked();
 
   // 편지를 보내기 전까지는 0.3초마다 마을 상태를 보고 맞는 마디를 고른다 (앞으로도, 뒤로도)
   useEffect(() => {
@@ -131,7 +138,7 @@ export function DegulGuide({ game, isOwner, hasVillage, letterSent, hidden }: Pr
 
   // 편지를 보낸 뒤: 우체통 → 마지막 마디를 TALK_MS씩 보여 주고 끝낸다
   useEffect(() => {
-    if (!after) return;
+    if (!after || modalLocked) return;
     const id = window.setTimeout(() => {
       if (phase === "mailbox") setPhase("last");
       else {
@@ -140,7 +147,7 @@ export function DegulGuide({ game, isOwner, hasVillage, letterSent, hidden }: Pr
       }
     }, TALK_MS);
     return () => window.clearTimeout(id);
-  }, [phase, after]);
+  }, [phase, after, modalLocked]);
 
   // 마디가 바뀔 때마다 노랗게 표시할 물건·버튼을 알려 준다
   useEffect(() => {

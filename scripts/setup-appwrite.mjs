@@ -94,6 +94,11 @@ async function setupSnowmen() {
   await ensure("letterId", () =>
     tables.createVarcharColumn({ databaseId, tableId, key: "letterId", size: 36, required: false }),
   );
+  // 마을 주인이 숨긴 눈사람이면 true (기본 false). 눈사람·편지 행은 지우지 않고 이 값만 바뀐다.
+  // 바꾸는 일은 서버(/api/snowmen/hide)가 서버 키로 한다. 이미 있는 눈사람 행은 그대로 두고(비어 있으면 보이는 상태) 칸만 더한다.
+  await ensure("hidden", () =>
+    tables.createBooleanColumn({ databaseId, tableId, key: "hidden", required: false, xdefault: false }),
+  );
   await waitColumns(tableId);
   await ensure("villageId 인덱스", () =>
     tables.createIndex({ databaseId, tableId, key: "village", type: TablesDBIndexType.Key, columns: ["villageId"] }),

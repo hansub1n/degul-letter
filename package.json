@@ -9,9 +9,11 @@
     "lint": "eslint",
     "setup:appwrite": "node --env-file=.env.local scripts/setup-appwrite.mjs",
     "seal:letters": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/seal-letters.mjs",
-    "delete:account": "node --env-file=.env.local scripts/delete-account.mjs"
+    "delete:account": "node --env-file=.env.local scripts/delete-account.mjs",
+    "lock:snowmen": "node --env-file=.env.local scripts/lock-snowmen.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "appwrite": "^29.2.0",
     "galmuri": "2.40.3",
     "next": "16.4.5",
