@@ -20,6 +20,8 @@ export type SavedSnowman = {
   sculpt: Sculpt | null;
   /** 이 눈사람에 묻어 둔 편지 ID (내용은 12/25 전까지 아무도 못 읽는다) */
   letterId: string | null;
+  /** 마을 주인이 숨긴 눈사람이면 true. 데이터는 그대로 두고 마을 화면에서만 빠진다 */
+  hidden: boolean;
 };
 
 /** 저장할 눈사람 (엔진에서 꺼낸 모양) */

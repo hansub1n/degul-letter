@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { isLetterOpen, LETTER_MAX_LENGTH, LetterStamp } from "@/domains/letter";
+import { profanityProblem } from "@/shared/lib/profanity";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelField } from "@/shared/components/PixelField";
@@ -36,7 +37,8 @@ export function FinishDialog(props: Props) {
   const owner = props.mode === "owner";
   const name = nickname.trim();
   const nameProblem = nicknameProblem(nickname);
-  const ready = Boolean(name && !nameProblem && letter.trim());
+  const letterProblem = profanityProblem(letter, "text");
+  const ready = Boolean(name && !nameProblem && letter.trim() && !letterProblem);
 
   // 쓰기 화면의 창 높이를 재 두고, 확인 화면에서도 같은 크기를 유지한다
   useLayoutEffect(() => {
@@ -122,7 +124,8 @@ export function FinishDialog(props: Props) {
             hint={nameProblem ? <span className="text-roof">{nameProblem}</span> : `${nickname.length}/${NICKNAME_MAX}`}
             value={nickname}
             maxLength={NICKNAME_MAX}
-            onChange={(e) => setNickname(e.target.value)}
+            // 한글은 조합 중에 maxLength를 한 글자 넘길 수 있어서 직접 자른다 (편지도 같다)
+            onChange={(e) => setNickname(e.target.value.slice(0, NICKNAME_MAX))}
             placeholder="눈사람과 편지에 쓰여요"
           />
           <PixelField
@@ -134,10 +137,10 @@ export function FinishDialog(props: Props) {
               </span>
             }
             label={owner ? "크리스마스의 나에게" : `${props.recipient}에게`}
-            hint={`${letter.length}/${LETTER_MAX_LENGTH}`}
+            hint={letterProblem ? <span className="text-roof">{letterProblem}</span> : `${letter.length}/${LETTER_MAX_LENGTH}`}
             value={letter}
             maxLength={LETTER_MAX_LENGTH}
-            onChange={(e) => setLetter(e.target.value)}
+            onChange={(e) => setLetter(e.target.value.slice(0, LETTER_MAX_LENGTH))}
             placeholder={
               isLetterOpen()
                 ? "한 줄이어도 좋아요. 지금 바로 열어 볼 수 있어요."

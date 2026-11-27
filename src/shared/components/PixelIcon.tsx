@@ -385,6 +385,65 @@ const ICONS = {
     "owwbbwwo",
     "oooooooo",
   ],
+  // 주인 메뉴(시안 1): 왼쪽에 스프링이 감긴 초록 수첩. 봉투(흰색)와 헷갈리지 않게 표지를 초록으로, 아래에 종이 단면
+  notebook: [
+    "..ooooooooo.",
+    ".lonnnnnnnno",
+    "o.onnnnnnnno",
+    ".lonwwwwwwno",
+    "o.onwsssswno",
+    ".lonwwwwwwno",
+    "o.onnnnnnnno",
+    ".lonnnnnnnno",
+    "o.onnnnnnnno",
+    ".lonNNNNNNNo",
+    "..oPPPPPPPPo",
+    "..ooooooooo.",
+  ],
+  // 주인 메뉴(시안 2): 가로줄 세 개(≡). 기호 아이콘이라 속까지 남색으로 채운다
+  menu: [
+    "oooooooooooo",
+    "oooooooooooo",
+    "............",
+    "............",
+    "oooooooooooo",
+    "oooooooooooo",
+    "............",
+    "............",
+    "oooooooooooo",
+    "oooooooooooo",
+  ],
+  // 숨긴 눈사람: 빗금이 그어진 눈. 눈알이 빗금에 둘로 갈리고, 빗금 양옆은 한 칸씩 비워 또렷하게 한다
+  hide: [
+    "...........o",
+    "..........oo",
+    "...ooooo.oo.",
+    "..o.....oo..",
+    ".o..oo.oo.o.",
+    "o..oo.oo...o",
+    "o..o.oo.o..o",
+    ".o..oo.o..o.",
+    "...oo....o..",
+    "..oo.oooo...",
+    ".oo.........",
+    "oo..........",
+  ],
+  // 스토리 카드: 회색 카메라. 진한 회색 윗단에 흰 플래시·빨간 불, 연회색 몸통, 큰 하늘색 렌즈와 흰 반짝임.
+  // 12칸을 꽉 채우면 옆 버튼(편지·망치)보다 무거워 눌린 듯 보여서 10칸 높이로 둔다
+  camera: [
+    "..ooo.......",
+    ".ommmoooooo.",
+    "omwwmmmmmrmo",
+    "ommmmooommmo",
+    "ohhhocccohho",
+    "ohhocwcccoho",
+    "ohhocccccoho",
+    "ohhhocccohho",
+    "ohhhhooohhho",
+    ".oooooooooo.",
+    // 아래 빈 줄: 12칸 격자에서 한 칸 위로 올려 편지·망치 버튼과 아래 여백을 맞춘다
+    "............",
+  ],
   // 페이지 넘기기 화살표
   prev: [
     "....oo",

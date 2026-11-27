@@ -3,7 +3,7 @@
 // 비밀 열쇠(LETTER_PRIVATE_KEY)로 봉인을 푼다.
 // 브라우저 코드에서 import하면 안 된다 (서버 키가 필요하다). 그래서 index.ts로 내보내지 않는다.
 
-import { Account, Client, TablesDB } from "node-appwrite";
+import { Account, Client, Query, TablesDB } from "node-appwrite";
 import { isLetterOpen } from "./lib/dday";
 import { openSeal } from "./lib/seal";
 
@@ -29,6 +29,25 @@ function config() {
 }
 
 type Row = { $id: string } & Record<string, unknown>;
+
+/**
+ * 이 편지가 든 눈사람이 숨김 상태인지. 마을의 눈사람을 끝까지 훑어 찾는다 (편지 ID에는 인덱스가 없어서).
+ * 못 읽으면 예외를 던진다: 확인하지 못했는데 열어 주는 것보다 막는 쪽이 안전하다.
+ */
+async function isLetterHidden(admin: TablesDB, databaseId: string, villageId: string, letterId: string): Promise<boolean> {
+  const PAGE = 100;
+  let cursor: string | null = null;
+  for (;;) {
+    const queries = [Query.equal("villageId", villageId), Query.limit(PAGE)];
+    if (cursor) queries.push(Query.cursorAfter(cursor));
+    const { rows } = await admin.listRows({ databaseId, tableId: "snowmen", queries });
+    for (const row of rows as unknown as Row[]) {
+      if (row.letterId === letterId) return row.hidden === true;
+    }
+    if (rows.length < PAGE) return false;
+    cursor = rows[rows.length - 1].$id;
+  }
+}
 
 /**
  * jwt: 브라우저가 보낸 "나는 이 사람이에요" 증명 (Appwrite가 발급, 15분 유효)
@@ -71,7 +90,12 @@ export async function openLetterForOwner(params: {
   const letter = await getRow("letters", params.letterId);
   if (letter.villageId !== params.villageId) throw new LetterAccessError(404, "편지를 찾을 수 없어요");
 
-  // 5) 봉인(암호화)을 비밀 열쇠로 푼다. 봉인 전에 저장된 예전 편지는 그대로 나온다
+  // 5) 숨긴 눈사람의 편지는 열지 않는다. 눈사람과 편지는 한 덩어리라, 주인이 다시 보이게 한 뒤에 읽는다
+  if (await isLetterHidden(admin, databaseId, params.villageId, params.letterId)) {
+    throw new LetterAccessError(403, "숨긴 눈사람의 편지예요. 다시 보이게 한 뒤에 열 수 있어요");
+  }
+
+  // 6) 봉인(암호화)을 비밀 열쇠로 푼다. 봉인 전에 저장된 예전 편지는 그대로 나온다
   let content: string;
   try {
     content = await openSeal(String(letter.content), letterKey);

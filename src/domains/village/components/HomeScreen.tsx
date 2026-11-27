@@ -14,6 +14,7 @@ import { PixelPanel } from "@/shared/components/PixelPanel";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { DEMO_VILLAGE_CODE } from "@/shared/lib/site";
 import { SantaSleighLoader } from "@/shared/components/SantaSleighLoader";
+import { SessionRateLimitError } from "@/shared/lib/session";
 import { createVillage, findMyVillage } from "../api";
 import { nicknameProblem } from "../lib/nickname";
 import { tryNativeShare } from "../share";
@@ -58,7 +59,9 @@ export function HomeScreen() {
         if (alive) {
           setLoggedIn(false);
           setMine(null);
-          setMessage("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.");
+          setMessage(
+            e instanceof SessionRateLimitError ? e.message : "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.",
+          );
         }
       });
     return () => {
@@ -77,7 +80,9 @@ export function HomeScreen() {
       router.push(`/v/${village.code}`);
     } catch (e) {
       console.error(e);
-      setMessage("마을을 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
+      setMessage(
+        e instanceof SessionRateLimitError ? e.message : "마을을 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
+      );
       setBusy(false);
     }
   };
@@ -143,7 +148,8 @@ export function HomeScreen() {
             placeholder="마을 이름이 돼요"
             value={name}
             maxLength={NICKNAME_MAX}
-            onChange={(e) => setName(e.target.value)}
+            // 한글은 조합 중에 maxLength를 한 글자 넘길 수 있어서 직접 자른다
+            onChange={(e) => setName(e.target.value.slice(0, NICKNAME_MAX))}
           />
           <PixelCheckbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)}>
             만 14세 이상이며,{" "}
@@ -224,6 +230,7 @@ export function HomeScreen() {
       {inviting && (
         <InviteLogin
           variant="page"
+          intro
           onTry={() => {
             setLeaving(true);
             router.push(`/v/${DEMO_VILLAGE_CODE}`);
