@@ -11,7 +11,7 @@ import { PixelToast } from "@/shared/components/PixelToast";
 import { DegulGuide, isGuideRunning } from "./DegulGuide";
 import { BREAK_HOLD_SECONDS } from "../lib/constants";
 import { createVillageGame, type NearbySnowman, type SculptSeed, type VillageGame as Game } from "../lib/engine";
-import type { StoryCardPlayer, StoryCardSnowman } from "../lib/storyCard";
+import type { StoryCardSnowman } from "../lib/storyCard";
 import type { GameEvent } from "../lib/types";
 
 const BREAK_HOLD_MS = BREAK_HOLD_SECONDS * 1000;
@@ -56,6 +56,8 @@ type Props = {
   onSnowmanCelebrated?: (stackId: number) => void;
   /** 편지 버튼을 눌렀을 때 (어느 눈사람의 편지인지) */
   onOpenLetter?: (snowman: NearbySnowman) => void;
+  /** 내가 세운(저장한) 눈사람의 스토리 카드 버튼을 눌렀을 때 (저장 ID). 없으면 버튼을 띄우지 않는다 */
+  onStoryCard?: (savedId: string) => void;
   /** 마을 주인이 방문자 눈사람의 "숨기기"를 눌렀을 때 (저장 ID). 숨기는 일은 화면 쪽이 서버에 부탁한 뒤 hideSnowman으로 알려 준다 */
   onHideSnowman?: (savedId: string) => void;
   /** 우체통 말풍선을 눌렀을 때 (주인: 우체통 열기, 방문자: 언제 열리는지 안내). 없으면 말풍선을 띄우지 않는다 */
@@ -84,7 +86,6 @@ export type VillageGameApi = {
   stackChestScreen: (stackId: number) => { x: number; y: number } | null;
   /** 마을에 저장되어 서 있는 눈사람들 (스토리 카드 재료) */
   storySnowmen: () => StoryCardSnowman[];
-  storyPlayer: () => StoryCardPlayer | null;
 };
 
 export type MarkSaved = (rowId: string, authorName: string, hasLetter: boolean) => void;
@@ -100,6 +101,7 @@ export function VillageGame({
   onSnowmanBroken,
   onSnowmanCelebrated,
   onOpenLetter,
+  onStoryCard,
   onHideSnowman,
   onOpenMailbox,
   door,
@@ -188,7 +190,6 @@ export function VillageGame({
         return p && box ? { x: p.x + box.left, y: p.y + box.top } : null;
       },
       storySnowmen: () => gameRef.current?.storySnowmen() ?? [],
-      storyPlayer: () => gameRef.current?.storyPlayer() ?? null,
     };
     return () => {
       apiRef.current = null;
@@ -308,7 +309,7 @@ export function VillageGame({
               <PixelButton iconOnly size="sm" icon={door.icon} aria-label={door.label} onClick={door.onClick} />
             )}
             {nearby &&
-              bubbleButtons(nearby, isOwner, unsentIds.includes(nearby.id)).map((kind) => (
+              bubbleButtons(nearby, isOwner, unsentIds.includes(nearby.id), Boolean(onStoryCard)).map((kind) => (
                 <Fragment key={kind}>
                   {kind === "write" && (
                     <PixelButton
@@ -330,6 +331,17 @@ export function VillageGame({
                       data-guide-spot="carve"
                       onClick={() => {
                         setSculpting(gameRef.current?.startSculpt() ?? null);
+                      }}
+                    />
+                  )}
+                  {kind === "story" && (
+                    <PixelButton
+                      iconOnly
+                      size="sm"
+                      icon="camera"
+                      aria-label="스토리 카드 만들기"
+                      onClick={() => {
+                        if (nearby.savedId) onStoryCard?.(nearby.savedId);
                       }}
                     />
                   )}
@@ -373,22 +385,25 @@ export function VillageGame({
  * 말풍선에 띄울 버튼:
  * - 조각 전인 내 눈사람: 끌, 망치
  * - 완성했지만 편지를 아직 안 넣은 내 눈사람: 편지 쓰기, 망치
- * - 완성한 내 눈사람: 망치 (주인이 자기 마을에 세운 것엔 편지가 없다)
+ * - 완성한 내 눈사람: 스토리 카드(저장된 것만), 망치 (주인이 자기 마을에 세운 것엔 편지가 없다)
  * - 남의 눈사람(마을 주인에게만 보임): 편지(있으면), 숨기기
  */
 function bubbleButtons(
   snowman: NearbySnowman,
   isOwner: boolean,
   unsent: boolean,
-): Array<"write" | "carve" | "letter" | "hide" | "hammer"> {
+  canStory: boolean,
+): Array<"write" | "carve" | "story" | "letter" | "hide" | "hammer"> {
   if (!snowman.mine) {
     if (!isOwner || !snowman.savedId) return [];
     return snowman.hasLetter ? ["letter", "hide"] : ["hide"];
   }
-  const buttons: Array<"write" | "carve" | "letter" | "hide" | "hammer"> = [];
+  const buttons: Array<"write" | "carve" | "story" | "letter" | "hide" | "hammer"> = [];
   // 완성했지만 편지 창을 취소한 눈사람: 다시 편지를 쓸 수 있다
   if (snowman.finished && !snowman.savedId && unsent) buttons.push("write");
   if (!snowman.finished) buttons.push("carve");
+  // 저장까지 끝난 내 눈사람: 인스타 스토리 카드 (올리는 사람이 만든 사람이라 내 눈사람에만 둔다)
+  if (canStory && snowman.finished && snowman.savedId) buttons.push("story");
   if (isOwner && snowman.hasLetter) buttons.push("letter");
   buttons.push("hammer");
   return buttons;

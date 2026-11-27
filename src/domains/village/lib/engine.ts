@@ -13,7 +13,7 @@ import {
   type ScreenPad,
 } from "./render";
 import { addStack, ballHeights, breakStack, findNearbySnowman, finishStack, footRadius, stackHeadY, step } from "./rules";
-import type { StoryCardPlayer, StoryCardSnowman } from "./storyCard";
+import type { StoryCardSnowman } from "./storyCard";
 import type { GameEvent, Stack } from "./types";
 import { createWorld, HOUSE_POSITION, MAILBOX_POSITION } from "./world";
 
@@ -74,8 +74,6 @@ export type VillageGame = {
   setSnowmanHidden(rowId: string, hidden: boolean): void;
   /** 마을에 저장되어 서 있는 눈사람들 (스토리 카드에 그릴 재료. 편지 내용은 들어 있지 않다) */
   storySnowmen(): StoryCardSnowman[];
-  /** 스토리 카드에 그릴 데굴이의 자리와 방향 */
-  storyPlayer(): StoryCardPlayer;
   /**
    * 근처 눈사람 머리 위에 띄울 화면 요소를 알려 준다. 엔진이 매 프레임 이 요소를 눈사람 위로 옮긴다.
    * (카메라가 계속 움직이니 React state 대신 엔진이 직접 위치만 바꾼다)
@@ -529,9 +527,6 @@ export function createVillageGame({
       stack.saved.hidden = hidden;
       stack.wobble = 0;
       chargeStart = null;
-    },
-    storyPlayer() {
-      return { x: world.player.x, y: world.player.y, dir: world.player.dir };
     },
     storySnowmen() {
       return world.stacks.flatMap((s) =>

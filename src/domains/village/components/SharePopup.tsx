@@ -5,18 +5,15 @@ import { createPortal } from "react-dom";
 import { PixelButton } from "@/shared/components/PixelButton";
 import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
-import { CONTEST_HASHTAG, CONTEST_NOTICE_OWNER_SHARE } from "@/shared/lib/contest";
-import { canShareLink, shareVillageLink, villageUrl } from "../share";
+import { villageUrl } from "../share";
 
 type Props = {
   code: string;
-  /** "스토리 카드 만들기"를 눌렀을 때 (이 팝업은 닫고 카드 창을 연다) */
-  onStoryCard: () => void;
   onClose: () => void;
 };
 
-/** 공유하기 팝업: 마을 주소를 보여 주고 복사·공유 창으로 보내게 하며, 스토리 카드와 눈사람 대회 참여를 안내한다 */
-export function SharePopup({ code, onStoryCard, onClose }: Props) {
+/** 공유하기 팝업: 데스크톱(또는 공유 창이 없는 브라우저)에서 마을 주소를 보여 주고 복사 버튼으로 복사한다 */
+export function SharePopup({ code, onClose }: Props) {
   const url = villageUrl(code);
   /** 복사할 때마다 알림을 다시 띄우려고 시각을 키로 쓴다 */
   const [copiedAt, setCopiedAt] = useState<number | null>(null);
@@ -33,13 +30,6 @@ export function SharePopup({ code, onStoryCard, onClose }: Props) {
     } catch {
       window.prompt("이 링크를 복사해서 친구에게 보내 주세요", url);
     }
-  };
-
-  // 휴대폰은 카카오톡·문자로 바로 보내는 공유 창을 쓴다. 공유 창이 실패하면 복사로 대신한다
-  const send = () => {
-    void shareVillageLink(code).then((result) => {
-      if (result === "failed") void copy();
-    });
   };
 
   return (
@@ -64,25 +54,6 @@ export function SharePopup({ code, onStoryCard, onClose }: Props) {
               복사
             </PixelButton>
           </div>
-          {canShareLink() && (
-            <PixelButton icon="share" className="w-full" onClick={send}>
-              친구에게 링크 보내기
-            </PixelButton>
-          )}
-        </div>
-        <div className="flex flex-col gap-[calc(var(--p)*2)]">
-          <p className="text-label">스토리 공유</p>
-          <p className="text-body break-keep text-muted">
-            {CONTEST_NOTICE_OWNER_SHARE.split(CONTEST_HASHTAG).map((part, i) => (
-              <span key={i}>
-                {i > 0 && <span className="whitespace-nowrap">{CONTEST_HASHTAG}</span>}
-                {part}
-              </span>
-            ))}
-          </p>
-          <PixelButton className="w-full" onClick={onStoryCard}>
-            스토리 카드 만들기
-          </PixelButton>
         </div>
       </div>
       {/* 창이 움직이는 효과(transform) 안에 두면 창 기준으로 붙으므로 body로 꺼내 화면 아래에 띄운다. 창 베일(z-50)보다 위 */}
