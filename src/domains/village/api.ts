@@ -42,12 +42,12 @@ const toSnowman = (r: SnowmanRow): SavedSnowman => {
   };
 };
 
-/** 내 것만 고치고 지울 수 있게: 누구나 읽기, 고치기·지우기는 나만 */
-const ownedBy = (userId: string) => [
-  Permission.read(Role.any()),
-  Permission.update(Role.user(userId)),
-  Permission.delete(Role.user(userId)),
-];
+/**
+ * 눈사람 권한: 누구나 읽기, 지우기는 만든 사람만. 고치기(update)는 아무에게도 주지 않는다.
+ * 저장한 눈사람을 고치는 화면이 없고, 고치기를 열어 두면 작성자가 주인이 숨긴 눈사람(hidden)을 되돌리거나
+ * 이름을 금칙어로 바꿀 수 있다. 숨기기는 서버(/api/snowmen/hide)가 서버 키로 한다.
+ */
+const snowmanPermissions = (userId: string) => [Permission.read(Role.any()), Permission.delete(Role.user(userId))];
 
 /** 내 마을 조회는 내 계정이 필요해서 세션을 만든 뒤 한다 */
 export async function findMyVillage(): Promise<Village | null> {
@@ -124,7 +124,7 @@ export async function saveSnowman(
       sculpt: encodeSculpt(draft.sculpt),
       letterId,
     },
-    permissions: ownedBy(userId),
+    permissions: snowmanPermissions(userId),
   });
   return toSnowman(row);
 }

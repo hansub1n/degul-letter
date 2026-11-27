@@ -141,7 +141,7 @@ export async function setSnowmanHiddenForOwner(params: {
   if (typeof params.hidden !== "boolean") throw new VillageCreateError(400, "잘못된 요청이에요");
 
   const tables = new TablesDB(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey));
-  let snowman: { $id: string; villageId: string };
+  let snowman: { $id: string; villageId: string; $permissions: string[] };
   try {
     snowman = (await tables.getRow({ databaseId, tableId: "snowmen", rowId: params.snowmanId })) as unknown as typeof snowman;
   } catch (e) {
@@ -158,6 +158,9 @@ export async function setSnowmanHiddenForOwner(params: {
   }
   if (village.ownerId !== account.userId) throw new VillageCreateError(403, "마을 주인만 숨길 수 있어요");
 
-  await tables.updateRow({ databaseId, tableId: "snowmen", rowId: snowman.$id, data: { hidden: params.hidden } });
+  // 예전에 저장된 눈사람은 작성자에게 고치기(update) 권한이 있어서, 그대로 두면 작성자가 hidden을 스스로 false로 되돌릴 수 있다.
+  // 그래서 숨기거나 다시 보이게 할 때 고치기 권한을 걷어 낸다 (읽기·지우기 권한은 그대로).
+  const permissions = snowman.$permissions.filter((p) => !p.startsWith("update("));
+  await tables.updateRow({ databaseId, tableId: "snowmen", rowId: snowman.$id, data: { hidden: params.hidden }, permissions });
   return { id: snowman.$id, hidden: params.hidden };
 }
