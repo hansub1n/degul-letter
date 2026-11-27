@@ -30,9 +30,9 @@ import { FinishDialog } from "./FinishDialog";
 import { GoHomeConfirm } from "./GoHomeConfirm";
 import { LetterFlight } from "./LetterFlight";
 import { LeaveConfirm } from "./LeaveConfirm";
-import { OwnerMenu } from "./OwnerMenu";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { SharePopup } from "./SharePopup";
+import { VillageMenu, type VillageMenuItem } from "./VillageMenu";
 import { VillageSign } from "./VillageSign";
 import { VisitorCtaDialog } from "./VisitorCtaDialog";
 
@@ -331,6 +331,44 @@ export function VillageScreen() {
     leaveNow(to);
   };
 
+  /**
+   * 오른쪽 위 수첩 메뉴 항목.
+   * - 주인: 숨긴 눈사람(개수), 로그아웃(로그인한 주인만. 익명 주인은 로그아웃하면 마을을 잃는다)
+   * - 로그인한 방문자: 내 마을 가기(없으면 내 마을 만들기), 로그아웃
+   * - 로그인 안 한 방문자: 메뉴 없음 (초대장 티켓만)
+   */
+  const menuItems: VillageMenuItem[] = [
+    isOwner
+      ? {
+          icon: "hide",
+          label: "숨긴 눈사람",
+          count: hiddenSnowmen.length,
+          onSelect: () => {
+            if (isModalLocked()) return;
+            setHiddenListOpen(true);
+          },
+        }
+      : {
+          icon: "cottage",
+          label: myVillage ? "내 마을 가기" : "내 마을 만들기",
+          onSelect: () => goOrConfirm(myVillage ? `/v/${myVillage.code}` : "/"),
+        },
+    ...(loggedIn ? [{ icon: "houseDoor", label: "로그아웃", danger: true, onSelect: () => askLogout() } as const] : []),
+  ];
+
+  /** 내 마을이 있는 친구의 "내 마을 가기" 버튼: 주인의 종이비행기 버튼과 같은 모양 */
+  const goMyVillageButton = myVillage && (
+    <PixelButton
+      variant="primary"
+      iconOnly
+      icon="houseDoor"
+      aria-label="내 마을 가기"
+      data-guide-spot="home"
+      className="shrink-0"
+      onClick={() => goOrConfirm(`/v/${myVillage.code}`)}
+    />
+  );
+
   return (
     <>
       <VillageGame
@@ -433,15 +471,7 @@ export function VillageScreen() {
             />
             {isOwner ? (
               <div className="pointer-events-auto ml-auto shrink-0">
-                <OwnerMenu
-                  hiddenCount={hiddenSnowmen.length}
-                  canLogout={loggedIn}
-                  onOpenHidden={() => {
-                    if (isModalLocked()) return;
-                    setHiddenListOpen(true);
-                  }}
-                  onLogout={askLogout}
-                >
+                <VillageMenu items={menuItems}>
                 <PixelButton
                   variant="primary"
                   iconOnly
@@ -457,29 +487,35 @@ export function VillageScreen() {
                     });
                   }}
                 />
-                </OwnerMenu>
+                </VillageMenu>
               </div>
             ) : myVillage ? (
               // 내 마을이 있는 친구: 주인의 종이비행기 버튼과 같은 모양. 아이콘은 집 문 말풍선과 같은 반쯤 열린 문
-              <PixelButton
-                variant="primary"
-                iconOnly
-                icon="houseDoor"
-                aria-label="내 마을 가기"
-                data-guide-spot="home"
-                className="pointer-events-auto ml-auto shrink-0"
-                onClick={() => goOrConfirm(`/v/${myVillage.code}`)}
-              />
+              // 로그인했으면 옆에 수첩 메뉴(내 마을 가기, 로그아웃)를 둔다. 익명 주인은 로그아웃이 없어 메뉴도 없다
+              <div className="pointer-events-auto ml-auto shrink-0">
+                {loggedIn ? (
+                  <VillageMenu items={menuItems}>
+                    {goMyVillageButton}
+                  </VillageMenu>
+                ) : (
+                  goMyVillageButton
+                )}
+              </div>
+            ) : loggedIn ? (
+              // 로그인했지만 아직 마을이 없는 친구: 초대장 티켓(첫 화면에서 마을 만들기) 옆에 수첩 메뉴
+              <div className="pointer-events-auto ml-auto shrink-0">
+                <VillageMenu items={menuItems}>
+                  <InviteTicket data-guide-spot="invite" className="shrink-0" onClick={() => goOrConfirm("/")} />
+                </VillageMenu>
+              </div>
             ) : (
               <InviteTicket
                 data-guide-spot="invite"
                 className="pointer-events-auto ml-auto shrink-0"
-                // 로그인 안 한 방문자: 마을 위에 초대장 카드를 띄워 바로 카카오로 로그인한다.
-                // 이미 로그인했으면(마을만 아직 없음) 첫 화면의 닉네임 입력으로 간다
+                // 로그인 안 한 방문자: 마을 위에 초대장 카드를 띄워 바로 카카오로 로그인한다 (로그인 전이라 수첩 메뉴는 없다)
                 onClick={() => {
                   if (isModalLocked()) return;
-                  if (loggedIn) goOrConfirm("/");
-                  else setInviteOpen(true);
+                  setInviteOpen(true);
                 }}
               />
             )}
