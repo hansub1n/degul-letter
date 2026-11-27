@@ -24,6 +24,7 @@ import { describeError, reportClientError } from "@/shared/lib/clientError";
 import { ensureUserId, forgetUserId, peekUserId, SessionRateLimitError } from "@/shared/lib/session";
 import { tryNativeShare } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman, setSnowmanHidden } from "../api";
+import type { StoryCardSnowman } from "../lib/storyCard";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
 import { ErrorScreen } from "./ErrorScreen";
 import { FinishDialog } from "./FinishDialog";
@@ -32,6 +33,7 @@ import { LetterFlight } from "./LetterFlight";
 import { LeaveConfirm } from "./LeaveConfirm";
 import { VillageGame, type MarkSaved, type VillageGameApi } from "./VillageGame";
 import { SharePopup } from "./SharePopup";
+import { StoryShareDialog } from "./StoryShareDialog";
 import { VillageMenu, type VillageMenuItem } from "./VillageMenu";
 import { VillageSign } from "./VillageSign";
 import { VisitorCtaDialog } from "./VisitorCtaDialog";
@@ -52,6 +54,13 @@ type Loaded = {
 type LeaveTarget = string | typeof LOGOUT;
 const LOGOUT = Symbol("logout");
 
+/** 스토리 카드 창. afterLetter면 편지를 넣은 직후 안내(봉투가 날아가는 연출이 끝나면 띄운다) */
+type StoryCard = {
+  snowmen: StoryCardSnowman[];
+  focusId: string | null;
+  afterLetter: boolean;
+};
+
 type PendingSave = { stackId: number; draft: SnowmanDraft; markSaved: MarkSaved };
 
 /** 공유 링크(/v/[code])로 들어온 마을. 저장된 눈사람을 불러와 세우고, 새로 완성한 눈사람과 편지를 저장한다. */
@@ -64,6 +73,7 @@ export function VillageScreen() {
   const [goHomeOpen, setGoHomeOpen] = useState(false);
   /** 데스크톱 공유하기 팝업 (주소 + 복사 버튼) */
   const [shareOpen, setShareOpen] = useState(false);
+  const [story, setStory] = useState<StoryCard | null>(null);
   /** 이 화면에서 편지를 넣어 눈사람을 세웠는지 (데굴이 안내가 우체통·집으로 넘어간다) */
   const [letterSent, setLetterSent] = useState(false);
   /** 편지를 넣은 직후 봉투가 눈사람에게 날아가는 연출 */
@@ -71,6 +81,11 @@ export function VillageScreen() {
   const [inviteOpen, setInviteOpen] = useState(false);
   /** 방문자가 저장에 성공한 직후 "나도 마을 만들기" 창을 띄울지 (안내를 봤든 껐든 상관없다) */
   const [ctaOpen, setCtaOpen] = useState(false);
+  /**
+   * 저장 뒤 창(스토리 카드 → 나도 마을 만들기)을 이번 방문에서 이미 띄웠는지.
+   * 한 방문자가 눈사람을 여러 개 세워도 처음 한 번만 띄운다 (마을을 옮기면 다시 센다).
+   */
+  const afterSaveShownRef = useRef(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<"notFound" | "error" | null>(null);
   const [pending, setPending] = useState<PendingSave | null>(null);
@@ -109,8 +124,10 @@ export function VillageScreen() {
       setLeaveTo(null);
       setLogoutOpen(false);
       setGoHomeOpen(false);
+      setStory(null);
       setInviteOpen(false);
       setCtaOpen(false);
+      afterSaveShownRef.current = false;
       setStatus(null);
       setLetters([]);
       setHiddenIds(new Set());
@@ -228,8 +245,20 @@ export function VillageScreen() {
       }
       const { row, letterId } = saved;
       markSaved(row.id, name, letterId !== null);
-      if (!isOwner) setCtaOpen(true);
-      if (letterId) setLetterSent(true);
+      // 처음 저장했을 때만: 스토리 카드(참여 부탁)를 먼저, 닫으면 방문자에게 "나도 마을 만들기"를 띄운다
+      const firstSave = !afterSaveShownRef.current;
+      afterSaveShownRef.current = true;
+      if (firstSave && !isOwner) setCtaOpen(true);
+      if (letterId) {
+        setLetterSent(true);
+        if (firstSave) {
+          setStory({
+            snowmen: gameApiRef.current?.storySnowmen() ?? [],
+            focusId: row.id,
+            afterLetter: true,
+          });
+        }
+      }
       if (letterId) {
         setLetters((list) => [...list, { snowmanId: row.id, letterId, authorName: name }]);
       }
@@ -337,23 +366,35 @@ export function VillageScreen() {
    * - 로그인한 방문자: 내 마을 가기(없으면 내 마을 만들기), 로그아웃
    * - 로그인 안 한 방문자: 메뉴 없음 (초대장 티켓만)
    */
+  /** 내 눈사람 말풍선의 스토리 카드: 그 눈사람과 데굴이를 크게 그린 카드를 연다 */
+  const openStoryCard = (savedId: string) => {
+    if (isModalLocked()) return;
+    setStory({ snowmen: gameApiRef.current?.storySnowmen() ?? [], focusId: savedId, afterLetter: false });
+  };
+
   const menuItems: VillageMenuItem[] = [
-    isOwner
-      ? {
-          icon: "hide",
-          label: "숨긴 눈사람",
-          count: hiddenSnowmen.length,
-          onSelect: () => {
-            if (isModalLocked()) return;
-            setHiddenListOpen(true);
+    ...(isOwner
+      ? ([
+          {
+            icon: "hide",
+            label: "숨긴 눈사람",
+            count: hiddenSnowmen.length,
+            onSelect: () => {
+              if (isModalLocked()) return;
+              setHiddenListOpen(true);
+            },
           },
-        }
-      : {
-          icon: "cottage",
-          label: myVillage ? "내 마을 가기" : "내 마을 만들기",
-          onSelect: () => goOrConfirm(myVillage ? `/v/${myVillage.code}` : "/"),
-        },
-    ...(loggedIn ? [{ icon: "houseDoor", label: "로그아웃", danger: true, onSelect: () => askLogout() } as const] : []),
+        ] satisfies VillageMenuItem[])
+      : ([
+          {
+            icon: "cottage",
+            label: myVillage ? "내 마을 가기" : "내 마을 만들기",
+            onSelect: () => goOrConfirm(myVillage ? `/v/${myVillage.code}` : "/"),
+          },
+        ] satisfies VillageMenuItem[])),
+    ...(loggedIn
+      ? ([{ icon: "houseDoor", label: "로그아웃", danger: true, onSelect: () => askLogout() }] satisfies VillageMenuItem[])
+      : []),
   ];
 
   /** 내 마을이 있는 친구의 "내 마을 가기" 버튼: 주인의 종이비행기 버튼과 같은 모양 */
@@ -452,6 +493,7 @@ export function VillageScreen() {
                 },
               }
         }
+        onStoryCard={(savedId) => openStoryCard(savedId)}
         onOpenLetter={(snowman) => {
           if (snowman.savedId) setOpeningLetter({ authorName: snowman.authorName ?? "친구", savedId: snowman.savedId });
         }}
@@ -578,7 +620,8 @@ export function VillageScreen() {
       )}
       {inviteOpen && <InviteLogin variant="overlay" onClose={() => setInviteOpen(false)} />}
       {/* 저장 직후: 편지 봉투가 날아가는 연출이 끝난 뒤 띄운다. 닫아도 오른쪽 위 초대장 티켓은 그대로다 */}
-      {ctaOpen && !flight && !pending && !inviteOpen && !isOwner && (
+      {/* 스토리 카드가 떠 있으면 닫을 때까지 기다린다 (스토리 카드 → 나도 마을 만들기 순서) */}
+      {ctaOpen && !story && !flight && !pending && !inviteOpen && !isOwner && (
         loggedIn || myVillage ? (
           <VisitorCtaDialog
             hasVillage={myVillage !== null}
@@ -603,6 +646,14 @@ export function VillageScreen() {
       )}
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
       {shareOpen && <SharePopup code={village.code} onClose={() => setShareOpen(false)} />}
+      {story && !(story.afterLetter && flight) && (
+        <StoryShareDialog
+          villageName={village.name}
+          snowmen={story.snowmen}
+          focusId={story.focusId}
+          onClose={() => setStory(null)}
+        />
+      )}
       {goHomeOpen && (
         <GoHomeConfirm
           hasVillage={myVillage !== null}

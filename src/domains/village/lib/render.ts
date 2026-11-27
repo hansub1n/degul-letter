@@ -743,6 +743,11 @@ function playerSprite(dir: Direction, step: 0 | 1): HTMLCanvasElement {
   return sprite;
 }
 
+/** 스토리 카드에 그릴 데굴이 (멈춰 선 모습, 밤 색을 곱하지 않은 원래 색) */
+export function storyHeroSprite(dir: Direction = "down"): HTMLCanvasElement {
+  return playerSprite(dir, 0);
+}
+
 // ---------- 우체통 ----------
 
 /** 집 옆 빨간 우체통 14x18. 편지가 있으면 봉투가 삐죽 나오고 노란 깃발이 올라간다. 발밑 가운데가 (5, 17). */

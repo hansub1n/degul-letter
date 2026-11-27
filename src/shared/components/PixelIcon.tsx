@@ -428,6 +428,22 @@ const ICONS = {
     ".oo.........",
     "oo..........",
   ],
+  // 스토리 카드: 회색 카메라. 진한 회색 윗단에 흰 플래시·빨간 불, 연회색 몸통, 큰 하늘색 렌즈와 흰 반짝임.
+  // 12칸을 꽉 채우면 옆 버튼(편지·망치)보다 무거워 눌린 듯 보여서 10칸 높이로 둔다
+  camera: [
+    "..ooo.......",
+    ".ommmoooooo.",
+    "omwwmmmmmrmo",
+    "ommmmooommmo",
+    "ohhhocccohho",
+    "ohhocwcccoho",
+    "ohhocccccoho",
+    "ohhhocccohho",
+    "ohhhhooohhho",
+    ".oooooooooo.",
+    // 아래 빈 줄: 12칸 격자에서 한 칸 위로 올려 편지·망치 버튼과 아래 여백을 맞춘다
+    "............",
+  ],
   // 페이지 넘기기 화살표
   prev: [
     "....oo",
