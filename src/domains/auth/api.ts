@@ -19,7 +19,7 @@ export async function isLoggedIn(): Promise<boolean> {
 }
 
 /**
- * 카카오 로그인 페이지로 보낸다. 지금 익명 계정이 있으면 서버가 카카오 계정에 잇는다.
+ * 카카오 로그인 페이지로 보낸다. 지금 익명 계정이 있으면 서버가 카카오 계정에 잇고, 세션이 없으면(읽기만 한 방문자) 익명 세션을 만들지 않고 바로 로그인한다.
  * returnTo: 로그인 뒤 돌아올 우리 사이트 경로
  */
 export async function startKakaoLogin(returnTo: string): Promise<void> {

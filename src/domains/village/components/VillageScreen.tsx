@@ -20,7 +20,7 @@ import { PixelDialog } from "@/shared/components/PixelDialog";
 import { PixelToast } from "@/shared/components/PixelToast";
 import { isModalLocked } from "@/shared/lib/modalLock";
 import { describeError, reportClientError } from "@/shared/lib/clientError";
-import { ensureUserId, forgetUserId } from "@/shared/lib/session";
+import { ensureUserId, forgetUserId, peekUserId, SessionRateLimitError } from "@/shared/lib/session";
 import { tryNativeShare } from "../share";
 import { deleteSnowman, findMyVillage, getVillageByCode, listSnowmen, saveSnowman } from "../api";
 import type { SavedSnowman, SnowmanDraft, Village } from "../types";
@@ -39,7 +39,8 @@ const AFTER_CELEBRATE_PAUSE_MS = 350;
 type Loaded = {
   village: Village;
   saved: SavedSnowman[];
-  myId: string;
+  /** 이 브라우저에 이미 있는 세션의 계정. 읽기만 하는 방문자는 세션이 없어 null */
+  myId: string | null;
   myVillage: Village | null;
   /** 카카오 로그인 상태. 주인은 로그아웃 말풍선, 방문자는 초대장(로그인 카드)을 띄울지 정한다 */
   loggedIn: boolean;
@@ -104,24 +105,27 @@ export function VillageScreen() {
       setMailboxOpen(false);
       setOpeningLetter(null);
       try {
-        const myId = await ensureUserId();
-        const village = await getVillageByCode(code);
+        // 마을·눈사람 읽기는 누구나 읽기라 세션 없이 한다. 익명 세션은 쓰기가 필요한 순간에 만든다.
+        const [myId, village] = await Promise.all([peekUserId(), getVillageByCode(code)]);
         if (!village) {
           if (alive) setProblem("notFound");
           return;
         }
         const savedPromise = listSnowmen(village.id);
         const minePromise =
-          village.ownerId === myId
+          myId === null || village.ownerId === myId
             ? Promise.resolve(null)
             : findMyVillage().catch((err) => {
                 console.error(err);
                 return null;
               });
-        const loggedInPromise = isLoggedIn().catch((err) => {
-          console.error(err);
-          return false;
-        });
+        const loggedInPromise =
+          myId === null
+            ? Promise.resolve(false)
+            : isLoggedIn().catch((err) => {
+                console.error(err);
+                return false;
+              });
         const [saved, myVillage, loggedIn] = await Promise.all([savedPromise, minePromise, loggedInPromise]);
         if (!alive) return;
         setLetters(
@@ -172,7 +176,7 @@ export function VillageScreen() {
   }
 
   const { village, saved, myId, myVillage, loggedIn } = loaded;
-  const isOwner = village.ownerId === myId;
+  const isOwner = myId !== null && village.ownerId === myId;
 
   const save = async (job: PendingSave, name: string, letter: string) => {
     const { draft, markSaved } = job;
@@ -229,7 +233,9 @@ export function VillageScreen() {
       setDrafts((m) => new Map(m).set(job.stackId, job));
       // 오류 번호를 같이 보여 줘서, 친구가 화면만 찍어 보내도 원인을 알 수 있게 한다
       setStatus(
-        info.network
+        e instanceof SessionRateLimitError
+          ? e.message
+          : info.network
           ? "저장하지 못했어요. 인터넷 연결을 확인해 주세요."
           : `저장하지 못했어요. 잠시 후 다시 해 주세요 (오류 ${info.code})`,
       );
@@ -277,6 +283,11 @@ export function VillageScreen() {
         onSnowmanFinished={(stackId, draft, markSaved) => {
           const job = { stackId, draft, markSaved };
           brokenRef.current.delete(stackId);
+          // 저장(쓰기)이 곧 필요하니 지금 세션을 만들어 둔다. 한도(429)면 편지를 쓰기 전에 알려 준다
+          void ensureUserId().catch((err) => {
+            if (err instanceof SessionRateLimitError) setStatus(err.message);
+            else console.error(err);
+          });
           celebratingRef.current.set(stackId, job);
           setDrafts((m) => new Map(m).set(stackId, job));
         }}

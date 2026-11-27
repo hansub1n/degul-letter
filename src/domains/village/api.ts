@@ -46,6 +46,7 @@ const ownedBy = (userId: string) => [
   Permission.delete(Role.user(userId)),
 ];
 
+/** 내 마을 조회는 내 계정이 필요해서 세션을 만든 뒤 한다 */
 export async function findMyVillage(): Promise<Village | null> {
   const userId = await ensureUserId();
   const { tables, databaseId } = getAppwrite();
@@ -76,6 +77,7 @@ export async function createVillage(name: string): Promise<Village> {
   return { id: data.id, name: data.name, code: data.code, ownerId: data.ownerId };
 }
 
+/** 마을 읽기는 누구나 읽기라 세션 없이 한다 */
 export async function getVillageByCode(code: string): Promise<Village | null> {
   const { tables, databaseId } = getAppwrite();
   const { rows } = await tables.listRows<VillageRow>({
@@ -86,6 +88,7 @@ export async function getVillageByCode(code: string): Promise<Village | null> {
   return rows[0] ? toVillage(rows[0]) : null;
 }
 
+/** 눈사람 목록도 세션 없이 읽는다 */
 export async function listSnowmen(villageId: string): Promise<SavedSnowman[]> {
   const { tables, databaseId } = getAppwrite();
   const { rows } = await tables.listRows<SnowmanRow>({
