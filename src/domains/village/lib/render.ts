@@ -155,6 +155,9 @@ const PAL = {
   slate: "#4A5068",
   hammerLight: "#E3E8F3",
   hammerHead: "#B8C2D8",
+  // 숨긴 눈사람 자리의 떨어진 당근
+  carrot: "#F08A3C",
+  carrotShade: "#C96A26",
 } as const;
 
 /**
@@ -392,6 +395,77 @@ function ballSprite(r: number, roll: number): HTMLCanvasElement {
   });
   ballCache.set(key, sprite);
   return sprite;
+}
+
+/** 녹은 눈사람 그림과, 그림 안에서 눈사람 중심(바닥 가운데)의 x 위치 */
+type MeltedSprite = { sprite: HTMLCanvasElement; cx: number };
+const meltedCache = new Map<number, MeltedSprite>();
+
+/**
+ * 녹아내린 눈사람 도트. 마을 주인이 숨긴 눈사람 자리에 그린다.
+ * 숨겨도 그 자리는 막혀 있어서(다시 보이게 할 때 겹치지 않게), "여기 눈사람이 있었다"는 게 보이게 한다.
+ * 납작한 눈 웅덩이 + 머리였던 혹 + 숯 눈 두 개 + 나뭇가지 팔 두 개 + 옆에 떨어진 당근.
+ * r: 눈사람 맨 아래 눈덩이 반지름. 클수록 웅덩이·가지·당근도 커진다.
+ */
+function meltedSnowmanSprite(r: number): MeltedSprite {
+  const key = Math.round(r);
+  const cached = meltedCache.get(key);
+  if (cached) return cached;
+
+  const rx = Math.max(4, Math.round(r * 1.1));
+  const ry = Math.max(2, Math.round(r * 0.4));
+  const bump = Math.max(1, Math.round(r * 0.3));
+  const twig = Math.max(3, Math.round(r * 0.55));
+  const carrot = Math.max(3, Math.round(r * 0.45));
+  const width = rx * 2 + 1 + carrot;
+  const height = ry + bump + twig + 1;
+  const cx = rx;
+  const base = height - 1;
+  // 웅덩이 윗선: 납작한 반원 + 머리였던 혹(가운데에서 조금 왼쪽)
+  const top = (dx: number) =>
+    Math.round(ry * Math.sqrt(Math.max(0, 1 - (dx / rx) ** 2)) + bump * Math.exp(-(((dx + rx * 0.15) / (rx * 0.38)) ** 2)));
+
+  const sprite = makeSprite(width, height, (ctx) => {
+    for (let dx = -rx; dx <= rx; dx++) {
+      const h = top(dx);
+      for (let k = 0; k <= h; k++) {
+        let color: string;
+        if (k === h || k === 0 || Math.abs(dx) === rx) color = SNOW_EDGE;
+        else {
+          const light = (-dx / rx) * 0.6 + (k / Math.max(1, h)) * 0.8;
+          color = light > 0.35 ? PAL.snow : SNOW_SHADE;
+          if (color === SNOW_SHADE && hash2(dx, k) < 0.08) color = PAL.snow;
+        }
+        rect(ctx, color, cx + dx, base - k, 1, 1);
+      }
+    }
+    // 숯 눈: 작은 눈사람은 칸이 모자라 뭉쳐 보여서 뺀다
+    if (r >= 7) {
+      const ex = cx - Math.round(rx * 0.15);
+      const ey = base - top(ex - cx) + 2;
+      rect(ctx, PAL.ink, ex - 2, ey, 1, 1);
+      rect(ctx, PAL.ink, ex + 1, ey, 1, 1);
+    }
+    // 왼쪽 팔: 위왼쪽으로 뻗은 가지 + 중간에서 옆으로 난 잔가지
+    const lx = cx - Math.round(rx * 0.5);
+    const ly = base - top(lx - cx);
+    for (let i = 0; i < twig; i++) rect(ctx, PAL.wood, lx - i, ly - i, 1, 1);
+    const fork = Math.round(twig * 0.5);
+    for (let i = 1; i < Math.max(2, Math.floor(twig / 2)); i++) rect(ctx, PAL.wood, lx - fork - i, ly - fork, 1, 1);
+    // 오른쪽 팔: 위로 비스듬히 선 가지
+    const rxTwig = cx + Math.round(rx * 0.35);
+    const ryTwig = base - top(rxTwig - cx);
+    for (let i = 0; i < Math.max(2, twig - 1); i++) rect(ctx, PAL.wood, rxTwig + Math.floor(i / 2), ryTwig - i, 1, 1);
+    // 오른쪽에 떨어진 당근 (아래 줄은 그늘)
+    const cy = base - Math.round(ry * 0.35);
+    for (let i = 0; i < carrot; i++) {
+      rect(ctx, PAL.carrot, cx + rx - 1 + i, cy, 1, 1);
+      if (i < carrot - 2) rect(ctx, PAL.carrotShade, cx + rx - 1 + i, cy + 1, 1, 1);
+    }
+  });
+  const melted = { sprite, cx };
+  meltedCache.set(key, melted);
+  return melted;
 }
 
 // 그림은 브라우저에서 게임이 시작될 때 만든다 (서버에는 document가 없다)
@@ -1927,8 +2001,18 @@ export function createRenderer(canvas: HTMLCanvasElement, worldWidth: number, wo
       },
     });
     for (const stack of world.stacks) {
-      // 숨긴 눈사람은 그리지 않는다. 충돌·자리 계산은 rules.ts가 그대로 하므로 그 자리는 계속 막힌다
-      if (stack.saved?.hidden) continue;
+      // 숨긴 눈사람은 그리지 않고 녹아내린 눈사람(눈 웅덩이·가지·당근)만 둔다. 충돌·자리 계산은 rules.ts가 그대로 하므로 그 자리는 계속 막힌다
+      if (stack.saved?.hidden) {
+        layers.push({
+          y: stack.y,
+          paint: () => {
+            const { sprite, cx } = meltedSnowmanSprite(stack.balls[0].r);
+            shadow(px, stack.x - camX, stack.y - camY, cx);
+            px.drawImage(moonlit(sprite), Math.round(stack.x - camX - cx), Math.round(stack.y - camY - sprite.height + 1));
+          },
+        });
+        continue;
+      }
       const charge = overlay.charge?.id === stack.id ? overlay.charge.progress : 0;
       layers.push({
         y: popPose(stack)?.y ?? stack.y,
