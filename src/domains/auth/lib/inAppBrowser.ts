@@ -3,7 +3,7 @@
 
 export type InAppKind = "kakaotalk" | "android" | "ios";
 
-const NAMED_IN_APP = /Instagram|FBAN|FBAV|FB_IAB|FB4A|Line\/|NAVER\(|DaumApps/i;
+const NAMED_IN_APP = /Instagram|FBAN|FBAV|FB_IAB|FB4A|Line\/|NAVER\(|DaumApps|Barcelona|musical_ly|BytedanceWebview|TikTok/i;
 const ANDROID_WEBVIEW = /; wv[;)]/;
 
 /** 일반 브라우저(사파리, 크롬, 삼성 인터넷 등)면 null */
