@@ -23,8 +23,11 @@ export type Stack = {
   pop: Pop | null;
   /** 완성할 때 조각한 모양. 있으면 눈덩이 대신 이 모양으로 그린다. */
   sculpt: Sculpt | null;
-  /** 서버에 저장된 눈사람이면: 저장 ID, 내가 만든 것인지, 만든 사람 이름, 편지가 들어 있는지 */
-  saved: { rowId: string; mine: boolean; authorName: string; hasLetter: boolean } | null;
+  /**
+   * 서버에 저장된 눈사람이면: 저장 ID, 내가 만든 것인지, 만든 사람 이름, 편지가 들어 있는지,
+   * 마을 주인이 숨겼는지(hidden). 숨긴 눈사람은 그리지 않고 누를 수도 없지만, 그 자리는 그대로 차지한다.
+   */
+  saved: { rowId: string; mine: boolean; authorName: string; hasLetter: boolean; hidden: boolean } | null;
 };
 
 export type ObstacleKind = "tree" | "house";
