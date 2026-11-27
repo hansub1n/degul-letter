@@ -124,7 +124,8 @@ export function FinishDialog(props: Props) {
             hint={nameProblem ? <span className="text-roof">{nameProblem}</span> : `${nickname.length}/${NICKNAME_MAX}`}
             value={nickname}
             maxLength={NICKNAME_MAX}
-            onChange={(e) => setNickname(e.target.value)}
+            // 한글은 조합 중에 maxLength를 한 글자 넘길 수 있어서 직접 자른다 (편지도 같다)
+            onChange={(e) => setNickname(e.target.value.slice(0, NICKNAME_MAX))}
             placeholder="눈사람과 편지에 쓰여요"
           />
           <PixelField
@@ -139,7 +140,7 @@ export function FinishDialog(props: Props) {
             hint={letterProblem ? <span className="text-roof">{letterProblem}</span> : `${letter.length}/${LETTER_MAX_LENGTH}`}
             value={letter}
             maxLength={LETTER_MAX_LENGTH}
-            onChange={(e) => setLetter(e.target.value)}
+            onChange={(e) => setLetter(e.target.value.slice(0, LETTER_MAX_LENGTH))}
             placeholder={
               isLetterOpen()
                 ? "한 줄이어도 좋아요. 지금 바로 열어 볼 수 있어요."

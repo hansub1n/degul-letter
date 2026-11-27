@@ -148,7 +148,8 @@ export function HomeScreen() {
             placeholder="마을 이름이 돼요"
             value={name}
             maxLength={NICKNAME_MAX}
-            onChange={(e) => setName(e.target.value)}
+            // 한글은 조합 중에 maxLength를 한 글자 넘길 수 있어서 직접 자른다
+            onChange={(e) => setName(e.target.value.slice(0, NICKNAME_MAX))}
           />
           <PixelCheckbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)}>
             만 14세 이상이며,{" "}
